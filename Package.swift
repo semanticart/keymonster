@@ -10,6 +10,11 @@ let package = Package(
         .executableTarget(
             name: "clipborg",
             path: "Sources/clipborg"
+        ),
+        .testTarget(
+            name: "clipborgTests",
+            dependencies: ["clipborg"],
+            path: "Tests/clipborgTests"
         )
     ]
 )

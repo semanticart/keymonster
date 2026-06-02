@@ -1,12 +1,15 @@
 import SwiftUI
 import AppKit
+import os.log
+
+private let log = Logger(subsystem: "clipborg", category: "menu")
 
 /// The centered panel's contents: a header, a scrollable history list, and a
 /// footer with Clear / Quit. Rendered on a rounded translucent material.
 struct MenuContent: View {
     @ObservedObject var history: ClipboardHistory
 
-    /// Called after the user picks an item (or quits) so the panel can dismiss.
+    /// Called after the user picks an item so the panel can dismiss.
     var onClose: () -> Void = {}
 
     var body: some View {
@@ -97,12 +100,9 @@ struct MenuContent: View {
 
             Spacer()
 
-            Button {
-                onClose()
-                NSApp.terminate(nil)
-            } label: {
-                Label("Quit", systemImage: "power")
-            }
+            Text("Right-click icon for Settings & Quit")
+                .font(.system(size: 10 * uiScale))
+                .foregroundStyle(.tertiary)
         }
         .buttonStyle(.borderless)
         .controlSize(.small)

@@ -1,1 +1,2 @@
-- We have a makefile you can use
+- We have a makefile you can use @Makefile
+- Design the code for testability and fast feedback loops

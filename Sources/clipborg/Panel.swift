@@ -1,5 +1,8 @@
 import SwiftUI
 import AppKit
+import os.log
+
+private let log = Logger(subsystem: "clipborg", category: "panel")
 
 /// Hosts `MenuContent` in a borderless, floating panel that appears centered on
 /// the active screen. Toggled from the menu-bar status item; dismissed on Escape
@@ -36,11 +39,11 @@ final class PanelController {
     }
 
     private func show() {
+        log.debug("show panel")
         centerOnActiveScreen()
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
 
-        // Local Escape handler so the panel closes without a visible menu.
         escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { // Escape
                 self?.hide()
@@ -51,6 +54,7 @@ final class PanelController {
     }
 
     private func hide() {
+        log.debug("hide panel")
         panel.orderOut(nil)
         if let escMonitor {
             NSEvent.removeMonitor(escMonitor)
