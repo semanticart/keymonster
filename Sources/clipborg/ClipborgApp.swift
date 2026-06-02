@@ -25,8 +25,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Menu-bar agent: no Dock icon, no app-switcher entry.
         NSApp.setActivationPolicy(.accessory)
 
-        let watcher = ClipboardWatcher { [history] text, sourceApp in
-            history.add(text, sourceApp: sourceApp)
+        let watcher = ClipboardWatcher { [history] content, sourceApp in
+            history.add(content, sourceApp: sourceApp)
         }
         watcher.start()
         self.watcher = watcher
