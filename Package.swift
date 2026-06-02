@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "clipborg",
     platforms: [
-        .macOS(.v13) // MenuBarExtra requires macOS 13+
+        .macOS(.v14) // SwiftData requires macOS 14+
     ],
     targets: [
         .executableTarget(

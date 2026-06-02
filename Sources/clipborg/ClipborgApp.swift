@@ -1,6 +1,7 @@
 import Combine
 import SwiftUI
 import AppKit
+import SwiftData
 import os.log
 
 private let log = Logger(subsystem: "clipborg", category: "app")
@@ -28,6 +29,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.info("applicationDidFinishLaunching")
         NSApp.setActivationPolicy(.accessory)
+
+        // SwiftData traps internally (EXC_BREAKPOINT) on any save when the
+        // process has no bundle identifier — as is the case for a bare
+        // `swift run` executable. Only enable persistence when running from a
+        // real .app bundle (see `make run`). Without it the app still works,
+        // keeping history in memory for the session; it just isn't saved.
+        if Bundle.main.bundleIdentifier == nil {
+            log.error("No bundle identifier; history will not persist this session. Run via `make run` (a .app bundle), not `swift run`.")
+        } else {
+            do {
+                let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+                let storeDir = appSupport.appendingPathComponent("clipborg")
+                try FileManager.default.createDirectory(at: storeDir, withIntermediateDirectories: true)
+                let storeURL = storeDir.appendingPathComponent("history.store")
+                let schema = Schema([PersistedClipItem.self])
+                let config = ModelConfiguration(schema: schema, url: storeURL)
+                let container = try ModelContainer(for: schema, configurations: config)
+                history.configure(modelContext: container.mainContext)
+            } catch {
+                log.error("SwiftData setup failed: \(error)")
+            }
+        }
 
         let watcher = ClipboardWatcher { [history] content, sourceApp in
             history.add(content, sourceApp: sourceApp)
