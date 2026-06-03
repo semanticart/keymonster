@@ -7,10 +7,9 @@ APP_DIR := .build/$(APP_NAME).app
 build:
 	swift build
 
-# SwiftData requires a real bundle identifier, so the app must run from a
-# proper .app bundle. The bare `swift run` executable has no bundle id and
-# crashes inside SwiftData on the first save. Use `make run` (which builds
-# and launches the bundle), not `swift run`, to run the app.
+# `make run` builds a proper .app bundle (icon, menu bar agent, code signature).
+# Persistence is SQLite via GRDB and needs no bundle identifier, so `swift run`
+# also works for day-to-day development.
 app: build
 	rm -rf "$(APP_DIR)"
 	mkdir -p "$(APP_DIR)/Contents/MacOS"

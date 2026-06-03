@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import SwiftData
 
 private func iconForBundleID(_ bundleID: String?) -> NSImage? {
     guard let id = bundleID,
@@ -62,56 +61,56 @@ extension ClipItem: Equatable {
 }
 
 extension ClipItem {
-    func asPersisted() -> PersistedClipItem {
+    func asRecord() -> ClipRecord {
         switch content {
         case .text(let text):
-            return PersistedClipItem(
+            return ClipRecord(
                 id: id, date: date, contentType: "text", textContent: text,
                 sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID
             )
         case .image(let img):
-            return PersistedClipItem(
+            return ClipRecord(
                 id: id, date: date, contentType: "image", imageData: img.tiffRepresentation,
                 sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID
             )
         case .fileURLs(let urls):
             let data = try? JSONEncoder().encode(urls.map(\.absoluteString))
             let json = data.flatMap { String(data: $0, encoding: .utf8) }
-            return PersistedClipItem(
+            return ClipRecord(
                 id: id, date: date, contentType: "fileURLs", fileURLsJSON: json,
                 sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID
             )
         }
     }
 
-    init?(from persisted: PersistedClipItem) {
-        let icon = iconForBundleID(persisted.sourceAppBundleID)
-        switch persisted.contentType {
+    init?(from record: ClipRecord) {
+        let icon = iconForBundleID(record.sourceAppBundleID)
+        switch record.contentType {
         case "text":
-            guard let text = persisted.textContent else { return nil }
+            guard let text = record.textContent else { return nil }
             self.init(
-                id: persisted.id, content: .text(text), date: persisted.date,
-                sourceAppName: persisted.sourceAppName,
-                sourceAppBundleID: persisted.sourceAppBundleID, sourceAppIcon: icon
+                id: record.id, content: .text(text), date: record.date,
+                sourceAppName: record.sourceAppName,
+                sourceAppBundleID: record.sourceAppBundleID, sourceAppIcon: icon
             )
         case "image":
-            guard let data = persisted.imageData, let image = NSImage(data: data) else { return nil }
+            guard let data = record.imageData, let image = NSImage(data: data) else { return nil }
             self.init(
-                id: persisted.id, content: .image(image), date: persisted.date,
-                sourceAppName: persisted.sourceAppName,
-                sourceAppBundleID: persisted.sourceAppBundleID, sourceAppIcon: icon
+                id: record.id, content: .image(image), date: record.date,
+                sourceAppName: record.sourceAppName,
+                sourceAppBundleID: record.sourceAppBundleID, sourceAppIcon: icon
             )
         case "fileURLs":
-            guard let jsonStr = persisted.fileURLsJSON,
+            guard let jsonStr = record.fileURLsJSON,
                   let data = jsonStr.data(using: .utf8),
                   let strings = try? JSONDecoder().decode([String].self, from: data)
             else { return nil }
             self.init(
-                id: persisted.id,
+                id: record.id,
                 content: .fileURLs(strings.compactMap(URL.init(string:))),
-                date: persisted.date,
-                sourceAppName: persisted.sourceAppName,
-                sourceAppBundleID: persisted.sourceAppBundleID, sourceAppIcon: icon
+                date: record.date,
+                sourceAppName: record.sourceAppName,
+                sourceAppBundleID: record.sourceAppBundleID, sourceAppIcon: icon
             )
         default:
             return nil
@@ -124,21 +123,17 @@ extension ClipItem {
 final class ClipboardHistory: ObservableObject {
     @Published private(set) var items: [ClipItem] = []
 
-    private var modelContext: ModelContext?
+    private var store: ClipStore?
     private let maxItems = 10_000
 
-    func configure(modelContext: ModelContext) {
-        self.modelContext = modelContext
+    func configure(store: ClipStore) {
+        self.store = store
         loadFromStore()
     }
 
     private func loadFromStore() {
-        guard let ctx = modelContext else { return }
-        let descriptor = FetchDescriptor<PersistedClipItem>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        guard let persisted = try? ctx.fetch(descriptor) else { return }
-        items = persisted.compactMap { ClipItem(from: $0) }
+        guard let store, let records = try? store.load() else { return }
+        items = records.compactMap { ClipItem(from: $0) }
     }
 
     func add(_ content: ClipContent, sourceApp: NSRunningApplication? = nil) {
@@ -169,26 +164,14 @@ final class ClipboardHistory: ObservableObject {
 
     func clear() {
         items.removeAll()
-        guard let ctx = modelContext else { return }
-        try? ctx.delete(model: PersistedClipItem.self)
-        try? ctx.save()
+        try? store?.deleteAll()
     }
 
     private func insertIntoStore(_ item: ClipItem) {
-        guard let ctx = modelContext else { return }
-        ctx.insert(item.asPersisted())
-        try? ctx.save()
+        try? store?.insert(item.asRecord())
     }
 
     private func deleteFromStore(id: UUID) {
-        guard let ctx = modelContext else { return }
-        let targetID = id
-        let descriptor = FetchDescriptor<PersistedClipItem>(
-            predicate: #Predicate { $0.id == targetID }
-        )
-        if let found = try? ctx.fetch(descriptor).first {
-            ctx.delete(found)
-            try? ctx.save()
-        }
+        try? store?.delete(id: id)
     }
 }
