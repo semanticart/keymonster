@@ -55,7 +55,11 @@ final class PanelController {
         panel.makeKeyAndOrderFront(nil)
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handle(event) ?? event
+            // Keep `self is nil` distinct from `handle returned nil`: optional
+            // chaining would flatten both to nil, and `?? event` would then leak
+            // every swallowed key (e.g. Ctrl-J) back into the search field.
+            guard let self else { return event }
+            return self.handle(event)
         }
     }
 
