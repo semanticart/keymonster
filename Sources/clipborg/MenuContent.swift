@@ -4,13 +4,18 @@ import os.log
 
 private let log = Logger(subsystem: "clipborg", category: "menu")
 
-/// The centered panel's contents: a header, a scrollable history list, and a
-/// footer with Clear / Quit. Rendered on a rounded translucent material.
+/// The centered panel's contents: a header with a search field, a scrollable
+/// (and filterable) history list, and a footer with Clear / Quit. Rendered on a
+/// rounded translucent material. Keyboard navigation is driven by `model` and the
+/// panel's event monitor (Ctrl-N / Ctrl-P, arrows, Return).
 struct MenuContent: View {
     @ObservedObject var history: ClipboardHistory
+    @ObservedObject var model: HistoryViewModel
 
     /// Called after the user picks an item so the panel can dismiss.
     var onClose: () -> Void = {}
+
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,29 +32,66 @@ struct MenuContent: View {
             RoundedRectangle(cornerRadius: 16 * uiScale, style: .continuous)
                 .strokeBorder(.primary.opacity(0.08), lineWidth: 1)
         )
+        .onAppear { searchFocused = true }
+        .onChange(of: model.focusBump) { searchFocused = true }
     }
 
     // MARK: - Header
 
     private var header: some View {
-        HStack(spacing: 10 * uiScale) {
-            Image(systemName: "doc.on.clipboard.fill")
-                .font(.system(size: 16 * uiScale, weight: .semibold))
-                .foregroundStyle(.tint)
+        VStack(spacing: 10 * uiScale) {
+            HStack(spacing: 10 * uiScale) {
+                Image(systemName: "doc.on.clipboard.fill")
+                    .font(.system(size: 16 * uiScale, weight: .semibold))
+                    .foregroundStyle(.tint)
 
-            VStack(alignment: .leading, spacing: 1 * uiScale) {
-                Text("Clipboard History")
-                    .font(.system(size: 17 * uiScale, weight: .semibold))
-                let count = history.items.count
-                Text(history.items.isEmpty ? "Empty" : "\(count) item\(count == 1 ? "" : "s")")
-                    .font(.system(size: 12 * uiScale))
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 1 * uiScale) {
+                    Text("Clipboard History")
+                        .font(.system(size: 17 * uiScale, weight: .semibold))
+                    let count = history.items.count
+                    Text(history.items.isEmpty ? "Empty" : "\(count) item\(count == 1 ? "" : "s")")
+                        .font(.system(size: 12 * uiScale))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
             }
 
-            Spacer()
+            searchField
         }
         .padding(.horizontal, 18 * uiScale)
         .padding(.vertical, 14 * uiScale)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 7 * uiScale) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 13 * uiScale))
+                .foregroundStyle(.secondary)
+
+            TextField("Search", text: $model.searchText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 14 * uiScale))
+                .focused($searchFocused)
+
+            if !model.searchText.isEmpty {
+                Button {
+                    model.searchText = ""
+                    searchFocused = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 13 * uiScale))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10 * uiScale)
+        .padding(.vertical, 7 * uiScale)
+        .background(
+            RoundedRectangle(cornerRadius: 8 * uiScale, style: .continuous)
+                .fill(.primary.opacity(0.06))
+        )
     }
 
     // MARK: - Content
@@ -58,30 +100,57 @@ struct MenuContent: View {
     private var content: some View {
         if history.items.isEmpty {
             emptyState
+        } else if model.filteredItems.isEmpty {
+            noMatchesState
         } else {
-            ScrollView {
-                LazyVStack(spacing: 4 * uiScale) {
-                    ForEach(history.items) { item in
-                        HistoryRow(item: item) {
-                            copyToPasteboard(item.content)
-                            onClose()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 4 * uiScale) {
+                        ForEach(model.filteredItems) { item in
+                            HistoryRow(item: item, isSelected: item.id == model.selectedID) {
+                                copyToPasteboard(item.content)
+                                onClose()
+                            }
+                            .id(item.id)
                         }
                     }
+                    .padding(8 * uiScale)
                 }
-                .padding(8 * uiScale)
+                .onChange(of: model.selectedID) { _, id in
+                    guard let id else { return }
+                    withAnimation(.easeOut(duration: 0.12)) {
+                        proxy.scrollTo(id, anchor: .center)
+                    }
+                }
             }
         }
     }
 
     private var emptyState: some View {
+        centeredMessage(
+            icon: "tray",
+            title: "No clipboard history yet",
+            subtitle: "Copy something to get started"
+        )
+    }
+
+    private var noMatchesState: some View {
+        centeredMessage(
+            icon: "magnifyingglass",
+            title: "No matches",
+            subtitle: "Try a different search"
+        )
+    }
+
+    private func centeredMessage(icon: String, title: String, subtitle: String) -> some View {
         VStack(spacing: 10 * uiScale) {
-            Image(systemName: "tray")
+            Image(systemName: icon)
                 .font(.system(size: 38 * uiScale, weight: .light))
                 .foregroundStyle(.tertiary)
-            Text("No clipboard history yet")
+            Text(title)
                 .font(.system(size: 16 * uiScale))
                 .foregroundStyle(.secondary)
-            Text("Copy something to get started")
+            Text(subtitle)
                 .font(.system(size: 12 * uiScale))
                 .foregroundStyle(.tertiary)
         }
@@ -101,7 +170,7 @@ struct MenuContent: View {
 
             Spacer()
 
-            Text("Right-click icon for Settings & Quit")
+            Text("⌃N / ⌃P to navigate · ↩ to copy")
                 .font(.system(size: 10 * uiScale))
                 .foregroundStyle(.tertiary)
         }
@@ -110,29 +179,18 @@ struct MenuContent: View {
         .padding(.horizontal, 16 * uiScale)
         .padding(.vertical, 11 * uiScale)
     }
-
-    private func copyToPasteboard(_ content: ClipContent) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        switch content {
-        case .text(let text):
-            pasteboard.setString(text, forType: .string)
-        case .image(let img):
-            pasteboard.writeObjects([img])
-        case .fileURLs(let urls):
-            pasteboard.writeObjects(urls as [NSURL])
-        }
-        // The watcher will see this write and move the item to the top (most-recently-used).
-    }
 }
 
 // MARK: - Row
 
 private struct HistoryRow: View {
     let item: ClipItem
+    let isSelected: Bool
     let onTap: () -> Void
 
     @State private var hovering = false
+
+    private var highlighted: Bool { hovering || isSelected }
 
     var body: some View {
         Button(action: onTap) {
@@ -152,14 +210,14 @@ private struct HistoryRow: View {
                 Image(systemName: "doc.on.doc")
                     .font(.system(size: 11 * uiScale))
                     .foregroundStyle(.secondary)
-                    .opacity(hovering ? 1 : 0)
+                    .opacity(highlighted ? 1 : 0)
             }
             .padding(.horizontal, 12 * uiScale)
             .padding(.vertical, 9 * uiScale)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 9 * uiScale, style: .continuous)
-                    .fill(.tint.opacity(hovering ? 0.18 : 0))
+                    .fill(.tint.opacity(isSelected ? 0.25 : (hovering ? 0.18 : 0)))
             )
             .contentShape(Rectangle())
         }
@@ -180,7 +238,7 @@ private struct HistoryRow: View {
         } else {
             Image(systemName: fallbackIcon)
                 .font(.system(size: 12 * uiScale))
-                .foregroundStyle(hovering ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .foregroundStyle(highlighted ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 .frame(width: 16 * uiScale)
         }
     }

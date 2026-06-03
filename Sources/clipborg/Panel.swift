@@ -10,12 +10,14 @@ private let log = Logger(subsystem: "clipborg", category: "panel")
 @MainActor
 final class PanelController {
     private let panel: FloatingPanel
-    private var escMonitor: Any?
+    private let viewModel: HistoryViewModel
+    private var keyMonitor: Any?
 
     init(history: ClipboardHistory) {
         panel = FloatingPanel()
+        viewModel = HistoryViewModel(history: history)
 
-        let root = MenuContent(history: history) { [weak panel] in
+        let root = MenuContent(history: history, model: viewModel) { [weak panel] in
             panel?.orderOut(nil)
         }
         let hosting = NSHostingView(rootView: root)
@@ -40,15 +42,37 @@ final class PanelController {
 
     private func show() {
         log.debug("show panel")
+        viewModel.prepareForPresentation()
         centerOnActiveScreen()
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
 
-        escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            if event.keyCode == 53 { // Escape
-                self?.hide()
-                return nil
-            }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handle(event) ?? event
+        }
+    }
+
+    /// Intercepts panel-level keys. Returns `nil` to swallow the event, or the
+    /// event to let it through (e.g. typing into the search field).
+    private func handle(_ event: NSEvent) -> NSEvent? {
+        let hasControl = event.modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .contains(.control)
+
+        switch event.keyCode {
+        case 53: // Escape
+            hide()
+            return nil
+        case 45 where hasControl, 125: // Ctrl-N / Down — older
+            viewModel.moveSelection(by: 1)
+            return nil
+        case 35 where hasControl, 126: // Ctrl-P / Up — newer
+            viewModel.moveSelection(by: -1)
+            return nil
+        case 36, 76: // Return / keypad Enter — copy the selection
+            if viewModel.activateSelection() { hide() }
+            return nil
+        default:
             return event
         }
     }
@@ -56,9 +80,9 @@ final class PanelController {
     private func hide() {
         log.debug("hide panel")
         panel.orderOut(nil)
-        if let escMonitor {
-            NSEvent.removeMonitor(escMonitor)
-            self.escMonitor = nil
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+            self.keyMonitor = nil
         }
     }
 

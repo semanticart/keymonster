@@ -61,6 +61,39 @@ extension ClipItem: Equatable {
 }
 
 extension ClipItem {
+    /// Whether this item matches a search query. `query` must already be
+    /// lowercased and whitespace-trimmed. Matches text content, file names, and
+    /// the source app name; images only match via their source app.
+    func matches(lowercasedQuery query: String) -> Bool {
+        if let name = sourceAppName?.lowercased(), name.contains(query) { return true }
+        switch content {
+        case .text(let text):
+            return text.lowercased().contains(query)
+        case .image:
+            return false
+        case .fileURLs(let urls):
+            return urls.contains { $0.lastPathComponent.lowercased().contains(query) }
+        }
+    }
+}
+
+/// Writes a clip's content onto the general pasteboard. The watcher will see the
+/// write and move the item to the top (most-recently-used).
+@MainActor
+func copyToPasteboard(_ content: ClipContent) {
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    switch content {
+    case .text(let text):
+        pasteboard.setString(text, forType: .string)
+    case .image(let img):
+        pasteboard.writeObjects([img])
+    case .fileURLs(let urls):
+        pasteboard.writeObjects(urls as [NSURL])
+    }
+}
+
+extension ClipItem {
     func asRecord() -> ClipRecord {
         switch content {
         case .text(let text):
