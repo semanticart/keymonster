@@ -49,8 +49,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             log.error("SQLite setup failed: \(error)")
         }
 
-        let watcher = ClipboardWatcher { [history] content, sourceApp in
-            history.add(content, sourceApp: sourceApp)
+        let watcher = ClipboardWatcher { [history] content, sourceApp, richData, richType in
+            history.add(content, sourceApp: sourceApp, richTextData: richData, richTextType: richType)
         }
         watcher.start()
         self.watcher = watcher

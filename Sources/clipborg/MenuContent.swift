@@ -119,7 +119,7 @@ struct MenuContent: View {
                             item: item,
                             isSelected: item.id == model.selectedID
                         ) {
-                            copyToPasteboard(item.content)
+                            copyToPasteboard(item)
                             onClose()
                         }
                         .id(item.id)

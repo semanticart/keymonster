@@ -36,6 +36,8 @@ struct ClipItem: Identifiable {
     let sourceAppName: String?
     let sourceAppBundleID: String?
     let sourceAppIcon: NSImage?
+    let richTextData: Data?
+    let richTextType: String?
 
     init(
         id: UUID = UUID(),
@@ -43,7 +45,9 @@ struct ClipItem: Identifiable {
         date: Date,
         sourceAppName: String?,
         sourceAppBundleID: String?,
-        sourceAppIcon: NSImage?
+        sourceAppIcon: NSImage?,
+        richTextData: Data? = nil,
+        richTextType: String? = nil
     ) {
         self.id = id
         self.content = content
@@ -51,6 +55,8 @@ struct ClipItem: Identifiable {
         self.sourceAppName = sourceAppName
         self.sourceAppBundleID = sourceAppBundleID
         self.sourceAppIcon = sourceAppIcon
+        self.richTextData = richTextData
+        self.richTextType = richTextType
     }
 }
 
@@ -80,12 +86,15 @@ extension ClipItem {
 /// Writes a clip's content onto the general pasteboard. The watcher will see the
 /// write and move the item to the top (most-recently-used).
 @MainActor
-func copyToPasteboard(_ content: ClipContent) {
+func copyToPasteboard(_ item: ClipItem) {
     let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
-    switch content {
+    switch item.content {
     case .text(let text):
         pasteboard.setString(text, forType: .string)
+        if let data = item.richTextData, let typeStr = item.richTextType {
+            pasteboard.setData(data, forType: NSPasteboard.PasteboardType(rawValue: typeStr))
+        }
     case .image(let img):
         pasteboard.writeObjects([img])
     case .fileURLs(let urls):
@@ -99,7 +108,8 @@ extension ClipItem {
         case .text(let text):
             return ClipRecord(
                 id: id, date: date, contentType: "text", textContent: text,
-                sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID
+                sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID,
+                richTextData: richTextData, richTextType: richTextType
             )
         case .image(let img):
             return ClipRecord(
@@ -124,7 +134,8 @@ extension ClipItem {
             self.init(
                 id: record.id, content: .text(text), date: record.date,
                 sourceAppName: record.sourceAppName,
-                sourceAppBundleID: record.sourceAppBundleID, sourceAppIcon: icon
+                sourceAppBundleID: record.sourceAppBundleID, sourceAppIcon: icon,
+                richTextData: record.richTextData, richTextType: record.richTextType
             )
         case "image":
             guard let data = record.imageData, let image = NSImage(data: data) else { return nil }
@@ -169,7 +180,12 @@ final class ClipboardHistory: ObservableObject {
         items = records.compactMap { ClipItem(from: $0) }
     }
 
-    func add(_ content: ClipContent, sourceApp: NSRunningApplication? = nil) {
+    func add(
+        _ content: ClipContent,
+        sourceApp: NSRunningApplication? = nil,
+        richTextData: Data? = nil,
+        richTextType: String? = nil
+    ) {
         if case .text(let text) = content,
            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
 
@@ -192,7 +208,9 @@ final class ClipboardHistory: ObservableObject {
             content: content, date: Date(),
             sourceAppName: preservedName,
             sourceAppBundleID: preservedBundleID,
-            sourceAppIcon: preservedIcon
+            sourceAppIcon: preservedIcon,
+            richTextData: richTextData,
+            richTextType: richTextType
         )
         items.insert(newItem, at: 0)
         insertIntoStore(newItem)

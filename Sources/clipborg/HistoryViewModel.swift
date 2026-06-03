@@ -78,7 +78,7 @@ final class HistoryViewModel: ObservableObject {
     func activateSelection() -> Bool {
         guard let id = selectedID,
               let item = filteredItems.first(where: { $0.id == id }) else { return false }
-        copyToPasteboard(item.content)
+        copyToPasteboard(item)
         return true
     }
 

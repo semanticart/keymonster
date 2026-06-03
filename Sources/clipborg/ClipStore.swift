@@ -12,6 +12,8 @@ struct ClipRecord: Codable, Equatable, Sendable, FetchableRecord, PersistableRec
     var fileURLsJSON: String?
     var sourceAppName: String?
     var sourceAppBundleID: String?
+    var richTextData: Data?
+    var richTextType: String?
 
     static let databaseTableName = "clipItem"
 
@@ -23,7 +25,9 @@ struct ClipRecord: Codable, Equatable, Sendable, FetchableRecord, PersistableRec
         imageData: Data? = nil,
         fileURLsJSON: String? = nil,
         sourceAppName: String? = nil,
-        sourceAppBundleID: String? = nil
+        sourceAppBundleID: String? = nil,
+        richTextData: Data? = nil,
+        richTextType: String? = nil
     ) {
         self.id = id
         self.date = date
@@ -33,6 +37,8 @@ struct ClipRecord: Codable, Equatable, Sendable, FetchableRecord, PersistableRec
         self.fileURLsJSON = fileURLsJSON
         self.sourceAppName = sourceAppName
         self.sourceAppBundleID = sourceAppBundleID
+        self.richTextData = richTextData
+        self.richTextType = richTextType
     }
 }
 
@@ -88,6 +94,12 @@ final class SQLiteClipStore: ClipStore {
                 table.column("fileURLsJSON", .text)
                 table.column("sourceAppName", .text)
                 table.column("sourceAppBundleID", .text)
+            }
+        }
+        migrator.registerMigration("addRichText") { database in
+            try database.alter(table: ClipRecord.databaseTableName) { table in
+                table.add(column: "richTextData", .blob)
+                table.add(column: "richTextType", .text)
             }
         }
         try migrator.migrate(dbQueue)
