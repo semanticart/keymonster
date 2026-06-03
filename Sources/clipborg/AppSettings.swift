@@ -15,15 +15,31 @@ final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
     static let shortcutKey = "globalShortcut"
+    static let autoPasteKey = "autoPaste"
+    static let hasLaunchedKey = "hasLaunched"
 
     private let defaults: UserDefaults
+
+    /// False until the app has launched once. Used to show Settings on first run
+    /// so the user can pick a shortcut and grant Accessibility for auto-paste.
+    var hasLaunched: Bool {
+        get { defaults.bool(forKey: Self.hasLaunchedKey) }
+        set { defaults.set(newValue, forKey: Self.hasLaunchedKey) }
+    }
 
     @Published var shortcut: Shortcut? {
         didSet { persist() }
     }
 
+    /// When on, pressing Return pastes the selection into the previously focused
+    /// app instead of only copying it. Defaults on; requires Accessibility access.
+    @Published var autoPaste: Bool {
+        didSet { defaults.set(autoPaste, forKey: Self.autoPasteKey) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        autoPaste = defaults.object(forKey: Self.autoPasteKey) as? Bool ?? true
         if let data = defaults.data(forKey: Self.shortcutKey),
            let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
             shortcut = decoded

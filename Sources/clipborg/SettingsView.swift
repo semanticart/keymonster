@@ -3,6 +3,12 @@ import AppKit
 
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
+    @State private var accessTrusted = Paster.isTrusted
+
+    // Accessibility is granted in System Settings, out of our process, so there's
+    // no event to observe. Poll while the window is open; macOS updates the trust
+    // value live, so the warning clears on its own once the user flips the switch.
+    private let trustPoll = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         Form {
@@ -16,10 +22,33 @@ struct SettingsView: View {
                 Text("Opens clipboard history from anywhere.")
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Toggle("Paste into the active app on Return", isOn: $settings.autoPaste)
+                if settings.autoPaste && !accessTrusted {
+                    HStack {
+                        Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Button("Open Settings…") { Paster.openAccessibilitySettings() }
+                    }
+                }
+            } footer: {
+                Text("Pastes the selected item straight into the app you were using. "
+                    + "Requires Accessibility permission; without it, Return just copies.")
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .frame(width: 380)
         .padding(.vertical)
+        .onChange(of: settings.autoPaste) { _, enabled in
+            if enabled { Paster.requestAccess() }
+            accessTrusted = Paster.isTrusted
+        }
+        .onReceive(trustPoll) { _ in
+            accessTrusted = Paster.isTrusted
+        }
     }
 }
 

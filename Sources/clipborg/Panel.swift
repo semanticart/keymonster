@@ -13,6 +13,12 @@ final class PanelController {
     private let viewModel: HistoryViewModel
     private var keyMonitor: Any?
 
+    /// The app that was frontmost when the panel opened, so auto-paste can return
+    /// focus to it. Captured before we activate ourselves.
+    private var previousApp: NSRunningApplication?
+    /// Avoids re-prompting for Accessibility on every untrusted paste in a session.
+    private var didRequestAccess = false
+
     init(history: ClipboardHistory) {
         panel = FloatingPanel()
         viewModel = HistoryViewModel(history: history)
@@ -43,6 +49,7 @@ final class PanelController {
     private func show() {
         log.debug("show panel")
         viewModel.prepareForPresentation()
+        previousApp = NSWorkspace.shared.frontmostApplication
         centerOnActiveScreen()
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
@@ -69,11 +76,28 @@ final class PanelController {
         case 35 where hasControl, 126: // Ctrl-P / Up — newer
             viewModel.moveSelection(by: -1)
             return nil
-        case 36, 76: // Return / keypad Enter — copy the selection
-            if viewModel.activateSelection() { hide() }
+        case 36, 76: // Return / keypad Enter — copy, then paste into the prior app
+            if viewModel.activateSelection() {
+                let target = previousApp
+                hide()
+                pasteIfEnabled(into: target)
+            }
             return nil
         default:
             return event
+        }
+    }
+
+    /// After the selection is on the pasteboard, paste it into the prior app if
+    /// auto-paste is on. If access is missing, prompt once and leave it copied.
+    private func pasteIfEnabled(into target: NSRunningApplication?) {
+        guard AppSettings.shared.autoPaste else { return }
+        if Paster.isTrusted {
+            Paster.paste(into: target)
+        } else if !didRequestAccess {
+            didRequestAccess = true
+            log.info("auto-paste on but Accessibility not granted; prompting")
+            Paster.requestAccess()
         }
     }
 

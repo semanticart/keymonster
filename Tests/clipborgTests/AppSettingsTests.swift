@@ -39,4 +39,23 @@ final class AppSettingsTests: XCTestCase {
     func testStartsEmptyWhenNothingStored() {
         XCTAssertNil(AppSettings(defaults: defaults).shortcut)
     }
+
+    func testAutoPasteDefaultsOnWhenNothingStored() {
+        XCTAssertTrue(AppSettings(defaults: defaults).autoPaste)
+    }
+
+    func testAutoPastePersists() {
+        let settings = AppSettings(defaults: defaults)
+        settings.autoPaste = false
+
+        XCTAssertFalse(AppSettings(defaults: defaults).autoPaste)
+    }
+
+    func testHasLaunchedStartsFalseThenPersists() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertFalse(settings.hasLaunched)
+        settings.hasLaunched = true
+
+        XCTAssertTrue(AppSettings(defaults: defaults).hasLaunched)
+    }
 }

@@ -62,6 +62,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.applyShortcut(shortcut)
             }
             .store(in: &cancellables)
+
+        if !AppSettings.shared.hasLaunched {
+            AppSettings.shared.hasLaunched = true
+            log.info("first run: showing settings")
+            showSettings()
+        }
     }
 
     // MARK: - Status item
@@ -93,10 +99,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             win.makeKeyAndOrderFront(nil)
             return
         }
-        let win = NSWindow(contentViewController: NSHostingController(rootView: SettingsView()))
+        let hosting = NSHostingController(rootView: SettingsView())
+        hosting.view.layoutSubtreeIfNeeded()
+        let win = NSWindow(contentViewController: hosting)
         win.title = "Clipborg Settings"
         win.styleMask = [.titled, .closable, .miniaturizable]
-        win.setContentSize(NSSize(width: 400, height: 160))
+        win.setContentSize(hosting.view.fittingSize)
         win.center()
         settingsWindow = win
         NSApp.activate(ignoringOtherApps: true)
