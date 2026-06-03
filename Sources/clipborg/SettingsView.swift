@@ -24,6 +24,13 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("Launch at Login", isOn: $settings.launchAtLogin)
+            } footer: {
+                Text("Start Clipborg automatically when you log in.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Paste into the active app on Return", isOn: $settings.autoPaste)
                 if settings.autoPaste && !accessTrusted {
                     HStack {

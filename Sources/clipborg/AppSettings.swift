@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ServiceManagement
 
 struct Shortcut: Codable, Equatable {
     let keyCode: UInt32
@@ -17,6 +18,21 @@ final class AppSettings: ObservableObject {
     static let shortcutKey = "globalShortcut"
     static let autoPasteKey = "autoPaste"
     static let hasLaunchedKey = "hasLaunched"
+
+    @Published var launchAtLogin: Bool {
+        didSet {
+            do {
+                if launchAtLogin {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+            } catch {
+                // Revert to the actual state if the call failed.
+                launchAtLogin = SMAppService.mainApp.status == .enabled
+            }
+        }
+    }
 
     private let defaults: UserDefaults
 
@@ -40,6 +56,7 @@ final class AppSettings: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         autoPaste = defaults.object(forKey: Self.autoPasteKey) as? Bool ?? true
+        launchAtLogin = SMAppService.mainApp.status == .enabled
         if let data = defaults.data(forKey: Self.shortcutKey),
            let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
             shortcut = decoded
