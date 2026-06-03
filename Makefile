@@ -13,8 +13,10 @@ build:
 app: build
 	rm -rf "$(APP_DIR)"
 	mkdir -p "$(APP_DIR)/Contents/MacOS"
+	mkdir -p "$(APP_DIR)/Contents/Resources"
 	cp ".build/$(CONFIG)/clipborg" "$(APP_DIR)/Contents/MacOS/clipborg"
 	cp Resources/Info.plist "$(APP_DIR)/Contents/Info.plist"
+	cp Resources/AppIcon.icns "$(APP_DIR)/Contents/Resources/AppIcon.icns"
 	codesign --force --sign - "$(APP_DIR)"
 	@echo "Built $(APP_DIR)"
 
