@@ -18,12 +18,12 @@ enum ClipContent {
 extension ClipContent: Equatable {
     static func == (lhs: ClipContent, rhs: ClipContent) -> Bool {
         switch (lhs, rhs) {
-        case (.text(let a), .text(let b)):
-            return a == b
-        case (.image(let a), .image(let b)):
-            return a.tiffRepresentation == b.tiffRepresentation
-        case (.fileURLs(let a), .fileURLs(let b)):
-            return Set(a) == Set(b)
+        case (.text(let left), .text(let right)):
+            return left == right
+        case (.image(let left), .image(let right)):
+            return left.tiffRepresentation == right.tiffRepresentation
+        case (.fileURLs(let left), .fileURLs(let right)):
+            return Set(left) == Set(right)
         default:
             return false
         }
@@ -38,7 +38,14 @@ struct ClipItem: Identifiable {
     let sourceAppBundleID: String?
     let sourceAppIcon: NSImage?
 
-    init(id: UUID = UUID(), content: ClipContent, date: Date, sourceAppName: String?, sourceAppBundleID: String?, sourceAppIcon: NSImage?) {
+    init(
+        id: UUID = UUID(),
+        content: ClipContent,
+        date: Date,
+        sourceAppName: String?,
+        sourceAppBundleID: String?,
+        sourceAppIcon: NSImage?
+    ) {
         self.id = id
         self.content = content
         self.date = date
@@ -57,14 +64,23 @@ extension ClipItem: Equatable {
 extension ClipItem {
     func asPersisted() -> PersistedClipItem {
         switch content {
-        case .text(let s):
-            return PersistedClipItem(id: id, date: date, contentType: "text", textContent: s, sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID)
+        case .text(let text):
+            return PersistedClipItem(
+                id: id, date: date, contentType: "text", textContent: text,
+                sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID
+            )
         case .image(let img):
-            return PersistedClipItem(id: id, date: date, contentType: "image", imageData: img.tiffRepresentation, sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID)
+            return PersistedClipItem(
+                id: id, date: date, contentType: "image", imageData: img.tiffRepresentation,
+                sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID
+            )
         case .fileURLs(let urls):
             let data = try? JSONEncoder().encode(urls.map(\.absoluteString))
             let json = data.flatMap { String(data: $0, encoding: .utf8) }
-            return PersistedClipItem(id: id, date: date, contentType: "fileURLs", fileURLsJSON: json, sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID)
+            return PersistedClipItem(
+                id: id, date: date, contentType: "fileURLs", fileURLsJSON: json,
+                sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID
+            )
         }
     }
 
@@ -73,16 +89,30 @@ extension ClipItem {
         switch persisted.contentType {
         case "text":
             guard let text = persisted.textContent else { return nil }
-            self.init(id: persisted.id, content: .text(text), date: persisted.date, sourceAppName: persisted.sourceAppName, sourceAppBundleID: persisted.sourceAppBundleID, sourceAppIcon: icon)
+            self.init(
+                id: persisted.id, content: .text(text), date: persisted.date,
+                sourceAppName: persisted.sourceAppName,
+                sourceAppBundleID: persisted.sourceAppBundleID, sourceAppIcon: icon
+            )
         case "image":
             guard let data = persisted.imageData, let image = NSImage(data: data) else { return nil }
-            self.init(id: persisted.id, content: .image(image), date: persisted.date, sourceAppName: persisted.sourceAppName, sourceAppBundleID: persisted.sourceAppBundleID, sourceAppIcon: icon)
+            self.init(
+                id: persisted.id, content: .image(image), date: persisted.date,
+                sourceAppName: persisted.sourceAppName,
+                sourceAppBundleID: persisted.sourceAppBundleID, sourceAppIcon: icon
+            )
         case "fileURLs":
             guard let jsonStr = persisted.fileURLsJSON,
                   let data = jsonStr.data(using: .utf8),
                   let strings = try? JSONDecoder().decode([String].self, from: data)
             else { return nil }
-            self.init(id: persisted.id, content: .fileURLs(strings.compactMap(URL.init(string:))), date: persisted.date, sourceAppName: persisted.sourceAppName, sourceAppBundleID: persisted.sourceAppBundleID, sourceAppIcon: icon)
+            self.init(
+                id: persisted.id,
+                content: .fileURLs(strings.compactMap(URL.init(string:))),
+                date: persisted.date,
+                sourceAppName: persisted.sourceAppName,
+                sourceAppBundleID: persisted.sourceAppBundleID, sourceAppIcon: icon
+            )
         default:
             return nil
         }
@@ -112,15 +142,20 @@ final class ClipboardHistory: ObservableObject {
     }
 
     func add(_ content: ClipContent, sourceApp: NSRunningApplication? = nil) {
-        if case .text(let s) = content,
-           s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+        if case .text(let text) = content,
+           text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
 
         if let existing = items.firstIndex(where: { $0.content == content }) {
             let old = items.remove(at: existing)
             deleteFromStore(id: old.id)
         }
 
-        let newItem = ClipItem(content: content, date: Date(), sourceAppName: sourceApp?.localizedName, sourceAppBundleID: sourceApp?.bundleIdentifier, sourceAppIcon: sourceApp?.icon)
+        let newItem = ClipItem(
+            content: content, date: Date(),
+            sourceAppName: sourceApp?.localizedName,
+            sourceAppBundleID: sourceApp?.bundleIdentifier,
+            sourceAppIcon: sourceApp?.icon
+        )
         items.insert(newItem, at: 0)
         insertIntoStore(newItem)
 

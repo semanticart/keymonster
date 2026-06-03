@@ -40,7 +40,8 @@ struct MenuContent: View {
             VStack(alignment: .leading, spacing: 1 * uiScale) {
                 Text("Clipboard History")
                     .font(.system(size: 17 * uiScale, weight: .semibold))
-                Text(history.items.isEmpty ? "Empty" : "\(history.items.count) item\(history.items.count == 1 ? "" : "s")")
+                let count = history.items.count
+                Text(history.items.isEmpty ? "Empty" : "\(count) item\(count == 1 ? "" : "s")")
                     .font(.system(size: 12 * uiScale))
                     .foregroundStyle(.secondary)
             }
@@ -111,15 +112,15 @@ struct MenuContent: View {
     }
 
     private func copyToPasteboard(_ content: ClipContent) {
-        let pb = NSPasteboard.general
-        pb.clearContents()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
         switch content {
-        case .text(let s):
-            pb.setString(s, forType: .string)
+        case .text(let text):
+            pasteboard.setString(text, forType: .string)
         case .image(let img):
-            pb.writeObjects([img])
+            pasteboard.writeObjects([img])
         case .fileURLs(let urls):
-            pb.writeObjects(urls as [NSURL])
+            pasteboard.writeObjects(urls as [NSURL])
         }
         // The watcher will see this write and move the item to the top (most-recently-used).
     }
@@ -163,8 +164,8 @@ private struct HistoryRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { h in
-            withAnimation(.easeOut(duration: 0.12)) { hovering = h }
+        .onHover { isHovered in
+            withAnimation(.easeOut(duration: 0.12)) { hovering = isHovered }
         }
     }
 
@@ -187,8 +188,8 @@ private struct HistoryRow: View {
     @ViewBuilder
     private var contentPreview: some View {
         switch item.content {
-        case .text(let s):
-            Text(s.trimmingCharacters(in: .whitespacesAndNewlines))
+        case .text(let text):
+            Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
                 .font(.system(size: 13 * uiScale))
                 .lineLimit(3)
                 .truncationMode(.tail)
@@ -219,9 +220,9 @@ private struct HistoryRow: View {
 
     private var fallbackIcon: String {
         switch item.content {
-        case .text(let s):
-            let t = s.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if t.hasPrefix("http://") || t.hasPrefix("https://") { return "link" }
+        case .text(let text):
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") { return "link" }
             return "text.alignleft"
         case .image:
             return "photo"
@@ -234,20 +235,20 @@ private struct HistoryRow: View {
         let time = Self.relativeFormatter.localizedString(for: item.date, relativeTo: Date())
         let appSuffix = item.sourceAppName.map { " · \($0)" } ?? ""
         switch item.content {
-        case .text(let s):
-            let count = s.trimmingCharacters(in: .whitespacesAndNewlines).count
-            return "\(count) char\(count == 1 ? "" : "s") · \(time)\(appSuffix)"
+        case .text(let text):
+            let charCount = text.trimmingCharacters(in: .whitespacesAndNewlines).count
+            return "\(charCount) char\(charCount == 1 ? "" : "s") · \(time)\(appSuffix)"
         case .image:
             return "Image · \(time)\(appSuffix)"
         case .fileURLs(let urls):
-            let n = urls.count
-            return "\(n) file\(n == 1 ? "" : "s") · \(time)\(appSuffix)"
+            let fileCount = urls.count
+            return "\(fileCount) file\(fileCount == 1 ? "" : "s") · \(time)\(appSuffix)"
         }
     }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter
     }()
 }

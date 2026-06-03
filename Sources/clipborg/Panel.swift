@@ -35,7 +35,7 @@ final class PanelController {
     }
 
     func toggle() {
-        panel.isVisible ? hide() : show()
+        if panel.isVisible { hide() } else { show() }
     }
 
     private func show() {

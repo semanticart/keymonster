@@ -25,13 +25,13 @@ final class AppSettings: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if let data = defaults.data(forKey: Self.shortcutKey),
-           let s = try? JSONDecoder().decode(Shortcut.self, from: data) {
-            shortcut = s
+           let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
+            shortcut = decoded
         }
     }
 
     private func persist() {
-        if let s = shortcut, let data = try? JSONEncoder().encode(s) {
+        if let value = shortcut, let data = try? JSONEncoder().encode(value) {
             defaults.set(data, forKey: Self.shortcutKey)
         } else {
             defaults.removeObject(forKey: Self.shortcutKey)
@@ -49,9 +49,9 @@ enum ShortcutFormatter {
 
         var result = ""
         if carbonModifiers & controlKey != 0 { result += "⌃" }
-        if carbonModifiers & optionKey != 0  { result += "⌥" }
-        if carbonModifiers & shiftKey != 0   { result += "⇧" }
-        if carbonModifiers & cmdKey != 0     { result += "⌘" }
+        if carbonModifiers & optionKey != 0 { result += "⌥" }
+        if carbonModifiers & shiftKey != 0 { result += "⇧" }
+        if carbonModifiers & cmdKey != 0 { result += "⌘" }
         result += keyCharacter(for: keyCode)
         return result
     }
@@ -67,7 +67,7 @@ enum ShortcutFormatter {
             48: "⇥", 49: "Space", 50: "`", 51: "⌫",
             96: "F5", 97: "F6", 98: "F7", 99: "F3", 100: "F8", 101: "F9",
             103: "F11", 109: "F10", 111: "F12", 118: "F4", 120: "F2", 122: "F1",
-            123: "←", 124: "→", 125: "↓", 126: "↑",
+            123: "←", 124: "→", 125: "↓", 126: "↑"
         ]
         return map[keyCode] ?? "?"
     }
@@ -76,8 +76,8 @@ enum ShortcutFormatter {
 func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
     var mods: UInt32 = 0
     if flags.contains(.command) { mods |= 0x0100 }
-    if flags.contains(.shift)   { mods |= 0x0200 }
-    if flags.contains(.option)  { mods |= 0x0800 }
+    if flags.contains(.shift) { mods |= 0x0200 }
+    if flags.contains(.option) { mods |= 0x0800 }
     if flags.contains(.control) { mods |= 0x1000 }
     return mods
 }

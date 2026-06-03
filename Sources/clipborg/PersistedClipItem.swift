@@ -12,7 +12,16 @@ final class PersistedClipItem {
     var sourceAppName: String?
     var sourceAppBundleID: String?
 
-    init(id: UUID, date: Date, contentType: String, textContent: String? = nil, imageData: Data? = nil, fileURLsJSON: String? = nil, sourceAppName: String? = nil, sourceAppBundleID: String? = nil) {
+    init(
+        id: UUID,
+        date: Date,
+        contentType: String,
+        textContent: String? = nil,
+        imageData: Data? = nil,
+        fileURLsJSON: String? = nil,
+        sourceAppName: String? = nil,
+        sourceAppBundleID: String? = nil
+    ) {
         self.id = id
         self.date = date
         self.contentType = contentType

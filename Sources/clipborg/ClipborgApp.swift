@@ -36,7 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // real .app bundle (see `make run`). Without it the app still works,
         // keeping history in memory for the session; it just isn't saved.
         if Bundle.main.bundleIdentifier == nil {
-            log.error("No bundle identifier; history will not persist this session. Run via `make run` (a .app bundle), not `swift run`.")
+            log.error("No bundle identifier — history will not persist this session.")
+            log.error("Run via `make run` (a .app bundle), not `swift run`.")
         } else {
             do {
                 let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -122,9 +123,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Hotkey
 
     private func applyShortcut(_ shortcut: Shortcut?) {
-        if let s = shortcut {
-            log.info("registering hotkey keyCode=\(s.keyCode) mods=\(s.carbonModifiers)")
-            hotkeyManager.register(s) { [weak self] in self?.panelController?.toggle() }
+        if let hotkey = shortcut {
+            log.info("registering hotkey keyCode=\(hotkey.keyCode) mods=\(hotkey.carbonModifiers)")
+            hotkeyManager.register(hotkey) { [weak self] in self?.panelController?.toggle() }
         } else {
             log.info("clearing hotkey")
             hotkeyManager.unregister()

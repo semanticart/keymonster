@@ -11,17 +11,17 @@ final class ShortcutFormatterTests: XCTestCase {
 
     func testCmdShiftV() {
         // keyCode 9 == "V"
-        let s = ShortcutFormatter.format(keyCode: 9, carbonModifiers: cmdKey | shiftKey)
-        XCTAssertEqual(s, "⇧⌘V")
+        let result = ShortcutFormatter.format(keyCode: 9, carbonModifiers: cmdKey | shiftKey)
+        XCTAssertEqual(result, "⇧⌘V")
     }
 
     func testModifierOrderIsControlOptionShiftCommand() {
         // keyCode 49 == "Space"; all modifiers set should render in a fixed order.
-        let s = ShortcutFormatter.format(
+        let result = ShortcutFormatter.format(
             keyCode: 49,
             carbonModifiers: cmdKey | shiftKey | optionKey | controlKey
         )
-        XCTAssertEqual(s, "⌃⌥⇧⌘Space")
+        XCTAssertEqual(result, "⌃⌥⇧⌘Space")
     }
 
     func testNoModifiers() {

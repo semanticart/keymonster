@@ -1,2 +1,3 @@
-- We have a makefile you can use @Makefile
+- We have a Makefile for common tasks. Use them.
 - Design the code for testability and fast feedback loops
+- run `make lint` and fix before commit

@@ -60,7 +60,7 @@ private struct ShortcutRecorder: View {
     }
 
     private func toggleRecording() {
-        isRecording ? stopRecording() : startRecording()
+        if isRecording { stopRecording() } else { startRecording() }
     }
 
     private func startRecording() {
@@ -82,8 +82,8 @@ private struct ShortcutRecorder: View {
 
     private func stopRecording() {
         isRecording = false
-        if let m = eventMonitor {
-            NSEvent.removeMonitor(m)
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
             eventMonitor = nil
         }
     }
