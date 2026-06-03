@@ -76,6 +76,12 @@ final class PanelController {
         case 35 where hasControl, 126: // Ctrl-P / Up — newer
             viewModel.moveSelection(by: -1)
             return nil
+        case 38 where hasControl: // Ctrl-J — scroll detail down
+            viewModel.scrollDetail(by: viewModel.detailScrollStep)
+            return nil
+        case 40 where hasControl: // Ctrl-K — scroll detail up
+            viewModel.scrollDetail(by: -viewModel.detailScrollStep)
+            return nil
         case 36, 76: // Return / keypad Enter — copy, then paste into the prior app
             if viewModel.activateSelection() {
                 let target = previousApp
@@ -131,7 +137,7 @@ final class PanelController {
 final class FloatingPanel: NSPanel {
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 420 * uiScale, height: 540 * uiScale),
+            contentRect: NSRect(x: 0, y: 0, width: 620 * uiScale, height: 500 * uiScale),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
             backing: .buffered,
             defer: false

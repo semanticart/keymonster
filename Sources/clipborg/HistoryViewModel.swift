@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import AppKit
 
 /// Drives the history panel's search-first interaction: it owns the search query
 /// and the keyboard selection, derives the filtered list, and lets the panel
@@ -13,6 +14,16 @@ final class HistoryViewModel: ObservableObject {
 
     /// The id of the keyboard-highlighted row, if any.
     @Published var selectedID: UUID?
+
+    /// The currently selected item, derived from selectedID.
+    var selectedItem: ClipItem? {
+        guard let id = selectedID else { return nil }
+        return filteredItems.first(where: { $0.id == id })
+    }
+
+    /// Set by DetailScrollHost so Ctrl-J/K can drive the right-panel scroll view.
+    weak var detailScrollView: NSScrollView?
+    let detailScrollStep: CGFloat = 80
 
     /// Bumped each time the panel is presented so the view can refocus the field.
     @Published private(set) var focusBump = 0
@@ -69,6 +80,25 @@ final class HistoryViewModel: ObservableObject {
               let item = filteredItems.first(where: { $0.id == id }) else { return false }
         copyToPasteboard(item.content)
         return true
+    }
+
+    /// Scroll the right-panel detail view by `delta` points (positive = down).
+    func scrollDetail(by delta: CGFloat) {
+        guard let scrollView = detailScrollView else { return }
+        let clip = scrollView.contentView
+        let current = clip.bounds.origin
+        let maxY = max(0, (scrollView.documentView?.bounds.height ?? 0) - clip.bounds.height)
+        let newY = max(0, min(current.y + delta, maxY))
+        clip.scroll(to: NSPoint(x: 0, y: newY))
+        scrollView.reflectScrolledClipView(clip)
+    }
+
+    /// Reset the right-panel detail view to the top (e.g. when the selection
+    /// changes). SwiftUI's ScrollView is top-down, so .zero is the top.
+    func scrollDetailToTop() {
+        guard let scrollView = detailScrollView else { return }
+        scrollView.contentView.scroll(to: .zero)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
     private func selectFirst() {

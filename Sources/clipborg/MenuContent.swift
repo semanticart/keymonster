@@ -4,15 +4,12 @@ import os.log
 
 private let log = Logger(subsystem: "clipborg", category: "menu")
 
-/// The centered panel's contents: a header with a search field, a scrollable
-/// (and filterable) history list, and a footer with Clear / Quit. Rendered on a
-/// rounded translucent material. Keyboard navigation is driven by `model` and the
-/// panel's event monitor (Ctrl-N / Ctrl-P, arrows, Return).
+/// The centered panel's contents: a full-width header with search, a split
+/// content area (left list + right detail), and a full-width footer.
 struct MenuContent: View {
     @ObservedObject var history: ClipboardHistory
     @ObservedObject var model: HistoryViewModel
 
-    /// Called after the user picks an item so the panel can dismiss.
     var onClose: () -> Void = {}
 
     @FocusState private var searchFocused: Bool
@@ -25,7 +22,7 @@ struct MenuContent: View {
             Divider().opacity(0.4)
             footer
         }
-        .frame(width: 420 * uiScale, height: 540 * uiScale)
+        .frame(width: 620 * uiScale, height: 500 * uiScale)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 16 * uiScale, style: .continuous))
         .overlay(
@@ -103,28 +100,58 @@ struct MenuContent: View {
         } else if model.filteredItems.isEmpty {
             noMatchesState
         } else {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 4 * uiScale) {
-                        ForEach(model.filteredItems) { item in
-                            HistoryRow(item: item, isSelected: item.id == model.selectedID) {
-                                copyToPasteboard(item.content)
-                                onClose()
-                            }
-                            .id(item.id)
+            HStack(spacing: 0) {
+                leftPanel
+                Divider().opacity(0.4)
+                rightPanel
+            }
+        }
+    }
+
+    // MARK: - Left Panel
+
+    private var leftPanel: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 3 * uiScale) {
+                    ForEach(model.filteredItems) { item in
+                        CompactHistoryRow(
+                            item: item,
+                            isSelected: item.id == model.selectedID
+                        ) {
+                            copyToPasteboard(item.content)
+                            onClose()
                         }
+                        .id(item.id)
                     }
-                    .padding(8 * uiScale)
                 }
-                .onChange(of: model.selectedID) { _, id in
-                    guard let id else { return }
-                    withAnimation(.easeOut(duration: 0.12)) {
-                        proxy.scrollTo(id, anchor: .center)
-                    }
+                .padding(6 * uiScale)
+            }
+            .frame(width: 200 * uiScale)
+            .onChange(of: model.selectedID) { _, id in
+                guard let id else { return }
+                withAnimation(.easeOut(duration: 0.12)) {
+                    proxy.scrollTo(id, anchor: .center)
                 }
             }
         }
     }
+
+    // MARK: - Right Panel
+
+    @ViewBuilder
+    private var rightPanel: some View {
+        if let item = model.selectedItem {
+            DetailScrollHost(item: item, viewModel: model)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            Text("Select an item")
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    // MARK: - Empty States
 
     private var emptyState: some View {
         centeredMessage(
@@ -170,7 +197,7 @@ struct MenuContent: View {
 
             Spacer()
 
-            Text("⌃N / ⌃P to navigate · ↩ to copy")
+            Text("⌃N/P navigate · ⌃J/K scroll · ↩ copy")
                 .font(.system(size: 10 * uiScale))
                 .foregroundStyle(.tertiary)
         }
@@ -181,42 +208,31 @@ struct MenuContent: View {
     }
 }
 
-// MARK: - Row
+// MARK: - Compact Row (left panel)
 
-private struct HistoryRow: View {
+private struct CompactHistoryRow: View {
     let item: ClipItem
     let isSelected: Bool
     let onTap: () -> Void
 
     @State private var hovering = false
-
     private var highlighted: Bool { hovering || isSelected }
 
     var body: some View {
         Button(action: onTap) {
-            HStack(alignment: .top, spacing: 11 * uiScale) {
+            HStack(spacing: 8 * uiScale) {
                 sourceIcon
-                    .padding(.top, 1 * uiScale)
-
-                VStack(alignment: .leading, spacing: 3 * uiScale) {
-                    contentPreview
-                    Text(subtitle)
-                        .font(.system(size: 11 * uiScale))
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "doc.on.doc")
-                    .font(.system(size: 11 * uiScale))
-                    .foregroundStyle(.secondary)
-                    .opacity(highlighted ? 1 : 0)
+                Text(descriptor)
+                    .font(.system(size: 12 * uiScale))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(.primary)
             }
-            .padding(.horizontal, 12 * uiScale)
-            .padding(.vertical, 9 * uiScale)
+            .padding(.horizontal, 9 * uiScale)
+            .padding(.vertical, 7 * uiScale)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 9 * uiScale, style: .continuous)
+                RoundedRectangle(cornerRadius: 7 * uiScale, style: .continuous)
                     .fill(.tint.opacity(isSelected ? 0.25 : (hovering ? 0.18 : 0)))
             )
             .contentShape(Rectangle())
@@ -243,36 +259,18 @@ private struct HistoryRow: View {
         }
     }
 
-    @ViewBuilder
-    private var contentPreview: some View {
+    private var descriptor: String {
         switch item.content {
         case .text(let text):
-            Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
-                .font(.system(size: 13 * uiScale))
-                .lineLimit(3)
-                .truncationMode(.tail)
-                .foregroundStyle(.primary)
-        case .image(let img):
-            Image(nsImage: img)
-                .resizable()
-                .scaledToFit()
-                .frame(maxHeight: 80 * uiScale)
-                .cornerRadius(4 * uiScale)
+            let firstLine = text.components(separatedBy: .newlines)
+                .first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) ?? text
+            return firstLine.trimmingCharacters(in: .whitespaces)
+        case .image:
+            return "Image"
         case .fileURLs(let urls):
-            VStack(alignment: .leading, spacing: 2 * uiScale) {
-                ForEach(urls.prefix(3), id: \.self) { url in
-                    Text(url.lastPathComponent)
-                        .font(.system(size: 13 * uiScale))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .foregroundStyle(.primary)
-                }
-                if urls.count > 3 {
-                    Text("+ \(urls.count - 3) more")
-                        .font(.system(size: 11 * uiScale))
-                        .foregroundStyle(.secondary)
-                }
-            }
+            return urls.count == 1
+                ? urls[0].lastPathComponent
+                : urls.map { $0.lastPathComponent }.joined(separator: ", ")
         }
     }
 
@@ -288,25 +286,4 @@ private struct HistoryRow: View {
             return urls.count == 1 ? "doc" : "doc.on.doc"
         }
     }
-
-    private var subtitle: String {
-        let time = Self.relativeFormatter.localizedString(for: item.date, relativeTo: Date())
-        let appSuffix = item.sourceAppName.map { " · \($0)" } ?? ""
-        switch item.content {
-        case .text(let text):
-            let charCount = text.trimmingCharacters(in: .whitespacesAndNewlines).count
-            return "\(charCount) char\(charCount == 1 ? "" : "s") · \(time)\(appSuffix)"
-        case .image:
-            return "Image · \(time)\(appSuffix)"
-        case .fileURLs(let urls):
-            let fileCount = urls.count
-            return "\(fileCount) file\(fileCount == 1 ? "" : "s") · \(time)\(appSuffix)"
-        }
-    }
-
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter
-    }()
 }
