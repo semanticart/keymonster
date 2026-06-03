@@ -5,7 +5,20 @@ import os.log
 
 private let log = Logger(subsystem: "clipborg", category: "app")
 
+/// Process entry point. Normally launches the full menu-bar app; with a
+/// `snapshot` argument it renders the history panel headlessly instead (see
+/// `SnapshotRunner`) so the design can be iterated on autonomously.
 @main
+enum Entry {
+    static func main() {
+        if CommandLine.arguments.dropFirst().contains("snapshot") {
+            MainActor.assumeIsolated { SnapshotRunner.main() }
+        } else {
+            ClipborgApp.main()
+        }
+    }
+}
+
 struct ClipborgApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
@@ -30,11 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         do {
-            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            let storeDir = appSupport.appendingPathComponent("clipborg")
-            try FileManager.default.createDirectory(at: storeDir, withIntermediateDirectories: true)
-            let storeURL = storeDir.appendingPathComponent("history.sqlite")
-            let store = try SQLiteClipStore(url: storeURL)
+            let store = try SQLiteClipStore(url: SQLiteClipStore.defaultURL())
             history.configure(store: store)
         } catch {
             log.error("SQLite setup failed: \(error)")

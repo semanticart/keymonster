@@ -1,4 +1,4 @@
-.PHONY: build run test clean lint app
+.PHONY: build run test clean lint app snapshot
 
 CONFIG ?= debug
 APP_NAME := Clipborg
@@ -34,6 +34,12 @@ app: build
 run: app
 	-pkill -x clipborg
 	open "$(APP_DIR)"
+
+# Render the history panel headlessly against the real on-disk history and write
+# one PNG per selection state. Override args, e.g. `make snapshot SNAP_ARGS="--out /tmp/shots --count 8"`.
+SNAP_ARGS ?=
+snapshot: build
+	swift run clipborg snapshot $(SNAP_ARGS)
 
 test:
 	swift test

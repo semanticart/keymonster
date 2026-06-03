@@ -65,6 +65,17 @@ final class SQLiteClipStore: ClipStore {
         try SQLiteClipStore(DatabaseQueue())
     }
 
+    /// The on-disk location of the user's history database, creating the
+    /// containing directory if needed. Shared by the app and the snapshot tool
+    /// so both read and write the same file.
+    static func defaultURL() throws -> URL {
+        let appSupport = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dir = appSupport.appendingPathComponent("clipborg")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("history.sqlite")
+    }
+
     private func migrate() throws {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("createClipItem") { database in
