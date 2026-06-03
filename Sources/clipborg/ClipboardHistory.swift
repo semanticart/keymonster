@@ -173,16 +173,26 @@ final class ClipboardHistory: ObservableObject {
         if case .text(let text) = content,
            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
 
+        // When deduplicating, preserve the original item's source app so that
+        // re-selecting from the history panel doesn't overwrite the origin icon
+        // with clipborg's own icon.
+        var preservedName: String? = sourceApp?.localizedName
+        var preservedBundleID: String? = sourceApp?.bundleIdentifier
+        var preservedIcon: NSImage? = sourceApp?.icon
+
         if let existing = items.firstIndex(where: { $0.content == content }) {
             let old = items.remove(at: existing)
             deleteFromStore(id: old.id)
+            preservedName = old.sourceAppName
+            preservedBundleID = old.sourceAppBundleID
+            preservedIcon = old.sourceAppIcon
         }
 
         let newItem = ClipItem(
             content: content, date: Date(),
-            sourceAppName: sourceApp?.localizedName,
-            sourceAppBundleID: sourceApp?.bundleIdentifier,
-            sourceAppIcon: sourceApp?.icon
+            sourceAppName: preservedName,
+            sourceAppBundleID: preservedBundleID,
+            sourceAppIcon: preservedIcon
         )
         items.insert(newItem, at: 0)
         insertIntoStore(newItem)
