@@ -1,4 +1,4 @@
-.PHONY: build run test clean lint app snapshot
+.PHONY: build run test clean lint app snapshot icon
 
 CONFIG ?= debug
 APP_NAME := Clipborg
@@ -40,6 +40,28 @@ run: app
 SNAP_ARGS ?=
 snapshot: build
 	swift run clipborg snapshot $(SNAP_ARGS)
+
+# Regenerate Resources/AppIcon.icns from Resources/icon.svg. Edit the SVG, then
+# run this to rebuild the bundled icon at every size macOS needs. Requires
+# rsvg-convert (`brew install librsvg`) and iconutil (ships with macOS).
+ICONSET := .build/AppIcon.iconset
+icon:
+	@command -v rsvg-convert >/dev/null || { echo "rsvg-convert not found: brew install librsvg"; exit 1; }
+	rm -rf "$(ICONSET)"
+	mkdir -p "$(ICONSET)"
+	rsvg-convert -w 16   -h 16   Resources/icon.svg -o "$(ICONSET)/icon_16x16.png"
+	rsvg-convert -w 32   -h 32   Resources/icon.svg -o "$(ICONSET)/icon_16x16@2x.png"
+	rsvg-convert -w 32   -h 32   Resources/icon.svg -o "$(ICONSET)/icon_32x32.png"
+	rsvg-convert -w 64   -h 64   Resources/icon.svg -o "$(ICONSET)/icon_32x32@2x.png"
+	rsvg-convert -w 128  -h 128  Resources/icon.svg -o "$(ICONSET)/icon_128x128.png"
+	rsvg-convert -w 256  -h 256  Resources/icon.svg -o "$(ICONSET)/icon_128x128@2x.png"
+	rsvg-convert -w 256  -h 256  Resources/icon.svg -o "$(ICONSET)/icon_256x256.png"
+	rsvg-convert -w 512  -h 512  Resources/icon.svg -o "$(ICONSET)/icon_256x256@2x.png"
+	rsvg-convert -w 512  -h 512  Resources/icon.svg -o "$(ICONSET)/icon_512x512.png"
+	rsvg-convert -w 1024 -h 1024 Resources/icon.svg -o "$(ICONSET)/icon_512x512@2x.png"
+	iconutil -c icns "$(ICONSET)" -o Resources/AppIcon.icns
+	rm -rf "$(ICONSET)"
+	@echo "Wrote Resources/AppIcon.icns from Resources/icon.svg"
 
 test:
 	swift test

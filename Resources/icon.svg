@@ -1,64 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- MacOS squircle backdrop -->
+    <!-- macOS squircle backdrop -->
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1f2a30"/>
-      <stop offset="0.5" stop-color="#10181c"/>
-      <stop offset="1" stop-color="#070b0d"/>
+      <stop offset="0" stop-color="#5a6772"/>
+      <stop offset="1" stop-color="#2f3942"/>
     </linearGradient>
-    <linearGradient id="board" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2b3a42"/>
-      <stop offset="1" stop-color="#1a242a"/>
+    <!-- brushed-metal paperclip -->
+    <linearGradient id="clip" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#dfe6ea"/>
+      <stop offset="1" stop-color="#aab6bd"/>
     </linearGradient>
-    <linearGradient id="clip" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#d8dee2"/>
-      <stop offset="1" stop-color="#9aa6ad"/>
-    </linearGradient>
-    <radialGradient id="eye" cx="0.5" cy="0.45" r="0.6">
-      <stop offset="0" stop-color="#c8ffd9"/>
-      <stop offset="0.35" stop-color="#22e06a"/>
-      <stop offset="0.75" stop-color="#0b7a39"/>
-      <stop offset="1" stop-color="#063d1d"/>
+    <!-- cyborg eye lens -->
+    <radialGradient id="lens" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#d6ffe6"/>
+      <stop offset="0.4" stop-color="#34e078"/>
+      <stop offset="1" stop-color="#0b7a3b"/>
     </radialGradient>
     <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#34ff88" stop-opacity="0.9"/>
-      <stop offset="1" stop-color="#34ff88" stop-opacity="0"/>
+      <stop offset="0" stop-color="#46ff95" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#46ff95" stop-opacity="0"/>
     </radialGradient>
-    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="10"/>
-    </filter>
   </defs>
 
   <!-- Background squircle -->
   <rect x="92" y="92" width="840" height="840" rx="196" ry="196" fill="url(#bg)"/>
-  <rect x="92" y="92" width="840" height="840" rx="196" ry="196" fill="none" stroke="#3a4a52" stroke-width="3" opacity="0.6"/>
+  <rect x="92" y="92" width="840" height="840" rx="196" ry="196" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.18"/>
 
-  <!-- Clipboard board -->
-  <rect x="276" y="250" width="472" height="560" rx="44" ry="44" fill="url(#board)" stroke="#0c1316" stroke-width="6"/>
+  <!-- Paperclip body -->
+  <path d="M 392 300 L 392 700 a 120 120 0 0 0 240 0 L 632 360 a 64 64 0 0 0 -128 0 L 504 660"
+        fill="none" stroke="url(#clip)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
 
-  <!-- Metal clip at top -->
-  <rect x="436" y="206" width="152" height="92" rx="30" ry="30" fill="url(#clip)" stroke="#7d888f" stroke-width="4"/>
-  <rect x="470" y="186" width="84" height="56" rx="28" ry="28" fill="none" stroke="#bcc4c9" stroke-width="16"/>
-
-  <!-- Borg laser scan line -->
-  <line x1="276" y1="540" x2="748" y2="540" stroke="#34ff88" stroke-width="6" opacity="0.55" filter="url(#soft)"/>
-  <line x1="276" y1="540" x2="748" y2="540" stroke="#9dffc4" stroke-width="2" opacity="0.9"/>
-
-  <!-- Cyber eye glow -->
-  <circle cx="512" cy="540" r="190" fill="url(#glow)" opacity="0.7"/>
-
-  <!-- Cyber eye -->
-  <circle cx="512" cy="540" r="138" fill="#05110a" stroke="#0d2a18" stroke-width="10"/>
-  <circle cx="512" cy="540" r="112" fill="url(#eye)"/>
-  <circle cx="512" cy="540" r="46" fill="#03160b"/>
-  <circle cx="480" cy="508" r="20" fill="#eafff1" opacity="0.85"/>
-
-  <!-- Targeting crosshair ticks -->
-  <g stroke="#0a1f12" stroke-width="8" stroke-linecap="round" opacity="0.8">
-    <line x1="512" y1="406" x2="512" y2="436"/>
-    <line x1="512" y1="644" x2="512" y2="674"/>
-    <line x1="378" y1="540" x2="408" y2="540"/>
-    <line x1="616" y1="540" x2="646" y2="540"/>
-  </g>
+  <!-- Cyborg eye at the clip head -->
+  <circle cx="392" cy="300" r="116" fill="url(#glow)"/>
+  <circle cx="392" cy="300" r="58" fill="#06140c"/>
+  <circle cx="392" cy="300" r="44" fill="url(#lens)"/>
+  <circle cx="378" cy="286" r="12" fill="#eafff2" opacity="0.9"/>
 </svg>

@@ -58,10 +58,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panelController = PanelController(history: history)
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(
-            systemSymbolName: "doc.on.clipboard",
-            accessibilityDescription: "Clipborg"
-        )
+        let icon = MenuBarIcon.image()
+        icon.accessibilityDescription = "Clipborg"
+        item.button?.image = icon
         item.menu = buildStatusMenu()
         statusItem = item
 
