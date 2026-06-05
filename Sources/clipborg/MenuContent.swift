@@ -38,9 +38,8 @@ struct MenuContent: View {
     private var header: some View {
         VStack(spacing: 10 * uiScale) {
             HStack(spacing: 10 * uiScale) {
-                Image(systemName: "doc.on.clipboard.fill")
-                    .font(.system(size: 16 * uiScale, weight: .semibold))
-                    .foregroundStyle(.tint)
+                AppIconView()
+                    .frame(width: 26 * uiScale, height: 26 * uiScale)
 
                 VStack(alignment: .leading, spacing: 1 * uiScale) {
                     Text("Clipboard History")
