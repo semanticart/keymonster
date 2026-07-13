@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import ServiceManagement
 
-struct Shortcut: Codable, Equatable {
+struct Shortcut: Codable, Equatable, Hashable {
     let keyCode: UInt32
     let carbonModifiers: UInt32
 
@@ -11,11 +11,49 @@ struct Shortcut: Codable, Equatable {
     }
 }
 
+/// Finds key combos bound more than once. A shortcut can only be registered by a
+/// single hotkey, so duplicates (across the history shortcut and every focus
+/// shortcut) mean all but the first silently fail to register.
+enum ShortcutConflicts {
+    static func conflicting(_ shortcuts: [Shortcut]) -> Set<Shortcut> {
+        var counts: [Shortcut: Int] = [:]
+        for shortcut in shortcuts {
+            counts[shortcut, default: 0] += 1
+        }
+        return Set(counts.filter { $0.value > 1 }.keys)
+    }
+}
+
+/// A target application for a focus shortcut. We store the bundle identifier
+/// (stable, used to activate/launch) plus a display name for the settings UI.
+struct AppRef: Codable, Equatable, Hashable, Identifiable {
+    let bundleID: String
+    let name: String
+
+    var id: String { bundleID }
+}
+
+/// Binds a global shortcut to one or more apps. Firing the shortcut focuses the
+/// first app; pressing it again while one of them is frontmost cycles to the
+/// next, so a single key can rotate through e.g. Slack and Chrome.
+struct AppShortcut: Codable, Equatable, Identifiable {
+    var id: UUID
+    var shortcut: Shortcut?
+    var apps: [AppRef]
+
+    init(id: UUID = UUID(), shortcut: Shortcut? = nil, apps: [AppRef] = []) {
+        self.id = id
+        self.shortcut = shortcut
+        self.apps = apps
+    }
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
     static let shortcutKey = "globalShortcut"
+    static let appShortcutsKey = "appFocusShortcuts"
     static let autoPasteKey = "autoPaste"
     static let hasLaunchedKey = "hasLaunched"
 
@@ -47,6 +85,11 @@ final class AppSettings: ObservableObject {
         didSet { persist() }
     }
 
+    /// Global shortcuts that focus (or cycle through) a set of apps.
+    @Published var appShortcuts: [AppShortcut] {
+        didSet { persistAppShortcuts() }
+    }
+
     /// When on, pressing Return pastes the selection into the previously focused
     /// app instead of only copying it. Defaults on; requires Accessibility access.
     @Published var autoPaste: Bool {
@@ -61,6 +104,12 @@ final class AppSettings: ObservableObject {
            let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
             shortcut = decoded
         }
+        if let data = defaults.data(forKey: Self.appShortcutsKey),
+           let decoded = try? JSONDecoder().decode([AppShortcut].self, from: data) {
+            appShortcuts = decoded
+        } else {
+            appShortcuts = []
+        }
     }
 
     private func persist() {
@@ -68,6 +117,14 @@ final class AppSettings: ObservableObject {
             defaults.set(data, forKey: Self.shortcutKey)
         } else {
             defaults.removeObject(forKey: Self.shortcutKey)
+        }
+    }
+
+    private func persistAppShortcuts() {
+        if appShortcuts.isEmpty {
+            defaults.removeObject(forKey: Self.appShortcutsKey)
+        } else if let data = try? JSONEncoder().encode(appShortcuts) {
+            defaults.set(data, forKey: Self.appShortcutsKey)
         }
     }
 }

@@ -68,3 +68,39 @@ final class ShortcutCodableTests: XCTestCase {
         XCTAssertEqual(decoded, original)
     }
 }
+
+final class ShortcutConflictsTests: XCTestCase {
+    private func shortcut(_ key: UInt32, _ mods: UInt32 = 0x0100) -> Shortcut {
+        Shortcut(keyCode: key, carbonModifiers: mods)
+    }
+
+    func testNoConflictsWhenAllUnique() {
+        let result = ShortcutConflicts.conflicting([shortcut(0), shortcut(1), shortcut(2)])
+        XCTAssertTrue(result.isEmpty)
+    }
+
+    func testDetectsADuplicate() {
+        let dup = shortcut(0)
+        let result = ShortcutConflicts.conflicting([dup, shortcut(1), dup])
+        XCTAssertEqual(result, [dup])
+    }
+
+    func testSameKeyDifferentModifiersDoNotConflict() {
+        let result = ShortcutConflicts.conflicting([
+            shortcut(0, 0x0100),
+            shortcut(0, 0x0200)
+        ])
+        XCTAssertTrue(result.isEmpty)
+    }
+
+    func testReportsEachConflictingComboOnce() {
+        let first = shortcut(0)
+        let second = shortcut(1)
+        let result = ShortcutConflicts.conflicting([first, first, first, second, second])
+        XCTAssertEqual(result, [first, second])
+    }
+
+    func testEmptyInputHasNoConflicts() {
+        XCTAssertTrue(ShortcutConflicts.conflicting([]).isEmpty)
+    }
+}

@@ -51,6 +51,30 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertFalse(AppSettings(defaults: defaults).autoPaste)
     }
 
+    func testAppShortcutsStartEmptyWhenNothingStored() {
+        XCTAssertTrue(AppSettings(defaults: defaults).appShortcuts.isEmpty)
+    }
+
+    func testAppShortcutsPersist() {
+        let settings = AppSettings(defaults: defaults)
+        let entry = AppShortcut(
+            shortcut: Shortcut(keyCode: 0, carbonModifiers: 0x0100),
+            apps: [AppRef(bundleID: "com.apple.Safari", name: "Safari")]
+        )
+        settings.appShortcuts = [entry]
+
+        XCTAssertEqual(AppSettings(defaults: defaults).appShortcuts, [entry])
+    }
+
+    func testClearingAppShortcutsRemovesThem() {
+        let settings = AppSettings(defaults: defaults)
+        settings.appShortcuts = [AppShortcut()]
+        settings.appShortcuts = []
+
+        XCTAssertNil(defaults.data(forKey: AppSettings.appShortcutsKey))
+        XCTAssertTrue(AppSettings(defaults: defaults).appShortcuts.isEmpty)
+    }
+
     func testHasLaunchedStartsFalseThenPersists() {
         let settings = AppSettings(defaults: defaults)
         XCTAssertFalse(settings.hasLaunched)

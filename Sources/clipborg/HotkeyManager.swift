@@ -1,8 +1,10 @@
 import Carbon.HIToolbox
 import Foundation
 
-// Module-level globals so the C callback can reach them without captures.
-nonisolated(unsafe) private var _hotkeyCallback: (() -> Void)?
+// Module-level globals so the C callback can reach them without captures. Keyed
+// by the hotkey id we assign at registration time, so a single handler can fan
+// out to many distinct shortcuts.
+nonisolated(unsafe) private var _hotkeyCallbacks: [UInt32: () -> Void] = [:]
 nonisolated(unsafe) private var _eventHandlerRef: EventHandlerRef?
 
 private func carbonHotKeyHandler(
@@ -10,41 +12,65 @@ private func carbonHotKeyHandler(
     _ event: EventRef?,
     _ userData: UnsafeMutableRawPointer?
 ) -> OSStatus {
-    DispatchQueue.main.async { _hotkeyCallback?() }
+    var hotkeyID = EventHotKeyID()
+    let status = GetEventParameter(
+        event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+        nil, MemoryLayout<EventHotKeyID>.size, nil, &hotkeyID
+    )
+    guard status == noErr else { return status }
+    let id = hotkeyID.id
+    DispatchQueue.main.async { _hotkeyCallbacks[id]?() }
     return noErr
+}
+
+/// A single global shortcut and the action to run when it fires.
+struct HotkeyBinding {
+    let shortcut: Shortcut
+    let action: () -> Void
 }
 
 @MainActor
 final class HotkeyManager {
-    private var hotKeyRef: EventHotKeyRef?
+    private var hotKeyRefs: [UInt32: EventHotKeyRef] = [:]
+    private var nextID: UInt32 = 1
 
-    func register(_ shortcut: Shortcut, onActivate: @escaping () -> Void) {
-        unregister()
-        _hotkeyCallback = onActivate
+    /// Replace every registered hotkey with `bindings`. Re-registering wholesale
+    /// keeps the callback table in sync with settings without per-entry bookkeeping.
+    func register(_ bindings: [HotkeyBinding]) {
+        unregisterAll()
+        installHandlerIfNeeded()
 
-        if _eventHandlerRef == nil {
-            var spec = EventTypeSpec(
-                eventClass: OSType(kEventClassKeyboard),
-                eventKind: UInt32(kEventHotKeyPressed)
+        for binding in bindings {
+            let id = nextID
+            nextID += 1
+            _hotkeyCallbacks[id] = binding.action
+            let hotkeyID = EventHotKeyID(signature: 0x434C5047 /* CLPG */, id: id)
+            var ref: EventHotKeyRef?
+            RegisterEventHotKey(
+                binding.shortcut.keyCode, binding.shortcut.carbonModifiers,
+                hotkeyID, GetApplicationEventTarget(), 0, &ref
             )
-            InstallEventHandler(
-                GetApplicationEventTarget(), carbonHotKeyHandler,
-                1, &spec, nil, &_eventHandlerRef
-            )
+            hotKeyRefs[id] = ref
         }
-
-        let hotkeyID = EventHotKeyID(signature: 0x434C5047 /* CLPG */, id: 1)
-        RegisterEventHotKey(
-            shortcut.keyCode, shortcut.carbonModifiers,
-            hotkeyID, GetApplicationEventTarget(), 0, &hotKeyRef
-        )
     }
 
-    func unregister() {
-        if let ref = hotKeyRef {
+    func unregisterAll() {
+        for ref in hotKeyRefs.values {
             UnregisterEventHotKey(ref)
-            hotKeyRef = nil
         }
-        _hotkeyCallback = nil
+        hotKeyRefs.removeAll()
+        _hotkeyCallbacks.removeAll()
+    }
+
+    private func installHandlerIfNeeded() {
+        guard _eventHandlerRef == nil else { return }
+        var spec = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+        InstallEventHandler(
+            GetApplicationEventTarget(), carbonHotKeyHandler,
+            1, &spec, nil, &_eventHandlerRef
+        )
     }
 }

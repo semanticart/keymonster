@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var panelController: PanelController?
     private let hotkeyManager = HotkeyManager()
+    private let appFocuser = AppFocuser()
     private var cancellables: Set<AnyCancellable> = []
     private var settingsWindow: NSWindow?
 
@@ -64,10 +65,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.menu = buildStatusMenu()
         statusItem = item
 
+        // Re-register the full hotkey set whenever the history shortcut or any of
+        // the app-focus shortcuts change. combineLatest emits the current value of
+        // both immediately, so this also performs the initial registration.
         AppSettings.shared.$shortcut
+            .combineLatest(AppSettings.shared.$appShortcuts)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] shortcut in
-                self?.applyShortcut(shortcut)
+            .sink { [weak self] _, _ in
+                self?.applyHotkeys()
             }
             .store(in: &cancellables)
 
@@ -125,13 +130,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Hotkey
 
-    private func applyShortcut(_ shortcut: Shortcut?) {
-        if let hotkey = shortcut {
-            log.info("registering hotkey keyCode=\(hotkey.keyCode) mods=\(hotkey.carbonModifiers)")
-            hotkeyManager.register(hotkey) { [weak self] in self?.panelController?.toggle() }
-        } else {
-            log.info("clearing hotkey")
-            hotkeyManager.unregister()
+    private func applyHotkeys() {
+        var bindings: [HotkeyBinding] = []
+
+        if let historyShortcut = AppSettings.shared.shortcut {
+            bindings.append(HotkeyBinding(shortcut: historyShortcut) { [weak self] in
+                self?.panelController?.toggle()
+            })
         }
+
+        for entry in AppSettings.shared.appShortcuts {
+            guard let shortcut = entry.shortcut, !entry.apps.isEmpty else { continue }
+            let apps = entry.apps
+            bindings.append(HotkeyBinding(shortcut: shortcut) { [weak self] in
+                self?.appFocuser.focus(apps)
+            })
+        }
+
+        log.info("registering \(bindings.count) hotkey(s)")
+        hotkeyManager.register(bindings)
     }
 }
