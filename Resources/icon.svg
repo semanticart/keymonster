@@ -1,40 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- macOS squircle backdrop -->
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#5a6772"/>
-      <stop offset="1" stop-color="#2f3942"/>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#45b3f0"/>
+      <stop offset="1" stop-color="#1868b6"/>
     </linearGradient>
-    <!-- brushed-metal paperclip -->
-    <linearGradient id="clip" x1="0.3" y1="0" x2="0.7" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="0.5" stop-color="#dfe6ea"/>
-      <stop offset="1" stop-color="#aab6bd"/>
+    <radialGradient id="furShine" cx="0.35" cy="0.25" r="0.9">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="board" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f7f9"/>
+      <stop offset="1" stop-color="#cfd9df"/>
     </linearGradient>
-    <!-- cyborg eye lens -->
-    <radialGradient id="lens" cx="0.4" cy="0.35" r="0.75">
-      <stop offset="0" stop-color="#d6ffe6"/>
-      <stop offset="0.4" stop-color="#34e078"/>
-      <stop offset="1" stop-color="#0b7a3b"/>
-    </radialGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#46ff95" stop-opacity="0.6"/>
-      <stop offset="1" stop-color="#46ff95" stop-opacity="0"/>
-    </radialGradient>
+    <clipPath id="squircle">
+      <rect x="92" y="92" width="840" height="840" rx="196" ry="196"/>
+    </clipPath>
   </defs>
 
-  <!-- Background squircle -->
-  <rect x="92" y="92" width="840" height="840" rx="196" ry="196" fill="url(#bg)"/>
-  <rect x="92" y="92" width="840" height="840" rx="196" ry="196" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.18"/>
+  <!-- Blue furry face fills the whole squircle -->
+  <rect x="92" y="92" width="840" height="840" rx="196" ry="196" fill="url(#fur)"/>
+  <rect x="92" y="92" width="840" height="840" rx="196" ry="196" fill="url(#furShine)"/>
 
-  <!-- Paperclip body -->
-  <path d="M 392 300 L 392 700 a 120 120 0 0 0 240 0 L 632 360 a 64 64 0 0 0 -128 0 L 504 660"
-        fill="none" stroke="url(#clip)" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+  <g clip-path="url(#squircle)">
+    <!-- Fur tufts: jagged darker fringe across the brow -->
+    <path d="M 92 250
+             L 170 205 L 225 258 L 290 200 L 350 252 L 415 198 L 480 250
+             L 545 196 L 610 248 L 675 194 L 740 246 L 805 198 L 870 250 L 932 205
+             L 932 92 L 92 92 Z"
+          fill="#1a72c4" opacity="0.55"/>
 
-  <!-- Cyborg eye at the clip head -->
-  <circle cx="392" cy="300" r="116" fill="url(#glow)"/>
-  <circle cx="392" cy="300" r="58" fill="#06140c"/>
-  <circle cx="392" cy="300" r="44" fill="url(#lens)"/>
-  <circle cx="378" cy="286" r="12" fill="#eafff2" opacity="0.9"/>
+    <!-- Giant open mouth -->
+    <path d="M 150 610
+             C 320 520 704 520 874 610
+             C 874 810 730 940 512 940
+             C 294 940 150 810 150 610 Z"
+          fill="#131c26"/>
+    <!-- inner mouth shadow -->
+    <path d="M 200 640 C 340 580 684 580 824 640 C 810 700 760 740 512 740 C 264 740 214 700 200 640 Z"
+          fill="#0a1118"/>
+
+    <!-- Keyboard being chomped: tilted, lower edge inside the mouth,
+         top-right corner bitten clean off (mask cuts through the keys) -->
+    <mask id="bite">
+      <rect x="0" y="0" width="1024" height="1024" fill="#ffffff"/>
+      <circle cx="712" cy="560" r="62" fill="#000000"/>
+      <circle cx="646" cy="536" r="46" fill="#000000"/>
+      <circle cx="740" cy="646" r="52" fill="#000000"/>
+    </mask>
+    <g transform="rotate(-10 512 690)" mask="url(#bite)">
+      <rect x="300" y="545" width="424" height="270" rx="28" fill="url(#board)"/>
+      <rect x="300" y="545" width="424" height="270" rx="28" fill="none" stroke="#93a5b1" stroke-width="6"/>
+      <g fill="#ffffff" stroke="#aebcc6" stroke-width="4">
+        <rect x="326" y="572" width="44" height="44" rx="10"/>
+        <rect x="378" y="572" width="44" height="44" rx="10"/>
+        <rect x="430" y="572" width="44" height="44" rx="10"/>
+        <rect x="482" y="572" width="44" height="44" rx="10"/>
+        <rect x="534" y="572" width="44" height="44" rx="10"/>
+        <rect x="586" y="572" width="44" height="44" rx="10"/>
+        <rect x="638" y="572" width="44" height="44" rx="10"/>
+        <rect x="326" y="624" width="44" height="44" rx="10"/>
+        <rect x="378" y="624" width="44" height="44" rx="10"/>
+        <rect x="430" y="624" width="44" height="44" rx="10"/>
+        <rect x="482" y="624" width="44" height="44" rx="10"/>
+        <rect x="534" y="624" width="44" height="44" rx="10"/>
+        <rect x="586" y="624" width="44" height="44" rx="10"/>
+        <rect x="638" y="624" width="44" height="44" rx="10"/>
+        <rect x="326" y="676" width="44" height="44" rx="10"/>
+        <rect x="378" y="676" width="44" height="44" rx="10"/>
+        <rect x="430" y="676" width="44" height="44" rx="10"/>
+        <rect x="482" y="676" width="44" height="44" rx="10"/>
+        <rect x="534" y="676" width="44" height="44" rx="10"/>
+        <rect x="586" y="676" width="44" height="44" rx="10"/>
+        <rect x="638" y="676" width="44" height="44" rx="10"/>
+        <rect x="326" y="728" width="44" height="44" rx="10"/>
+        <rect x="378" y="728" width="44" height="44" rx="10"/>
+        <rect x="430" y="728" width="172" height="44" rx="10"/>
+        <rect x="610" y="728" width="44" height="44" rx="10"/>
+        <rect x="662" y="728" width="44" height="44" rx="10"/>
+      </g>
+    </g>
+
+    <!-- Bitten-off keycaps flying like crumbs -->
+    <g transform="rotate(24 812 470)">
+      <rect x="786" y="444" width="52" height="52" rx="12" fill="#ffffff" stroke="#aebcc6" stroke-width="4"/>
+      <g stroke="#7d8f9b" stroke-width="7" fill="none" stroke-linecap="round">
+        <path d="M 802 460 h 20 M 802 480 h 20 M 802 460 v 20 M 822 460 v 20"/>
+        <circle cx="802" cy="460" r="5"/><circle cx="822" cy="460" r="5"/>
+        <circle cx="802" cy="480" r="5"/><circle cx="822" cy="480" r="5"/>
+      </g>
+    </g>
+    <rect x="742" y="360" width="40" height="40" rx="10" fill="#ffffff" stroke="#aebcc6" stroke-width="4" transform="rotate(-18 762 380)"/>
+    <rect x="852" y="560" width="34" height="34" rx="9" fill="#ffffff" stroke="#aebcc6" stroke-width="4" transform="rotate(40 869 577)"/>
+
+    <!-- Lower lip over the clipboard so it sits IN the mouth -->
+    <path d="M 150 800
+             C 250 760 380 830 512 830
+             C 644 830 774 760 874 800
+             C 830 900 700 950 512 950
+             C 324 950 194 900 150 800 Z"
+          fill="#1f7ccb"/>
+
+    <!-- Crumb flecks -->
+    <g fill="#e8eef2">
+      <circle cx="300" cy="560" r="14"/>
+      <circle cx="262" cy="512" r="9"/>
+      <circle cx="340" cy="500" r="7"/>
+    </g>
+  </g>
+
+  <!-- Googly eyes (wonky, touching — classic Cookie Monster) -->
+  <circle cx="398" cy="330" r="122" fill="#ffffff"/>
+  <circle cx="398" cy="330" r="122" fill="none" stroke="#0e2a44" stroke-opacity="0.12" stroke-width="8"/>
+  <circle cx="642" cy="296" r="122" fill="#ffffff"/>
+  <circle cx="642" cy="296" r="122" fill="none" stroke="#0e2a44" stroke-opacity="0.12" stroke-width="8"/>
+  <circle cx="438" cy="378" r="44" fill="#101418"/>
+  <circle cx="598" cy="330" r="44" fill="#101418"/>
 </svg>
