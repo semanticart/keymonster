@@ -3,7 +3,7 @@ import SwiftUI
 import AppKit
 import os.log
 
-private let log = Logger(subsystem: "clipborg", category: "app")
+private let log = Logger(subsystem: "keymonster", category: "app")
 
 /// Process entry point. Normally launches the full menu-bar app; with a
 /// `snapshot` argument it renders the history panel headlessly instead (see
@@ -14,12 +14,12 @@ enum Entry {
         if CommandLine.arguments.dropFirst().contains("snapshot") {
             MainActor.assumeIsolated { SnapshotRunner.main() }
         } else {
-            ClipborgApp.main()
+            KeyMonsterApp.main()
         }
     }
 }
 
-struct ClipborgApp: App {
+struct KeyMonsterApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
@@ -60,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         let icon = MenuBarIcon.image()
-        icon.accessibilityDescription = "Clipborg"
+        icon.accessibilityDescription = "Key Monster"
         item.button?.image = icon
         item.menu = buildStatusMenu()
         statusItem = item
@@ -95,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsItem.target = self
         menu.addItem(settingsItem)
         menu.addItem(.separator())
-        let quitItem = NSMenuItem(title: "Quit Clipborg", action: #selector(quit), keyEquivalent: "")
+        let quitItem = NSMenuItem(title: "Quit Key Monster", action: #selector(quit), keyEquivalent: "")
         quitItem.target = self
         menu.addItem(quitItem)
         return menu
@@ -115,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let hosting = NSHostingController(rootView: SettingsView())
         hosting.view.layoutSubtreeIfNeeded()
         let win = NSWindow(contentViewController: hosting)
-        win.title = "Clipborg Settings"
+        win.title = "Key Monster Settings"
         win.styleMask = [.titled, .closable, .miniaturizable]
         win.setContentSize(hosting.view.fittingSize)
         win.center()

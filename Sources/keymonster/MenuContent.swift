@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import os.log
 
-private let log = Logger(subsystem: "clipborg", category: "menu")
+private let log = Logger(subsystem: "keymonster", category: "menu")
 
 /// The centered panel's contents: a full-width header with search, a split
 /// content area (left list + right detail), and a full-width footer.

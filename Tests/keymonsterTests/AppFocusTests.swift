@@ -1,5 +1,5 @@
 import XCTest
-@testable import clipborg
+@testable import keymonster
 
 final class AppFocusTests: XCTestCase {
     func testReturnsNilForNoCandidates() {

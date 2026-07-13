@@ -1,6 +1,6 @@
-# Clipborg
+# Key Monster
 
-A lightweight clipboard history manager for macOS. Clipborg lives in your menu
+A lightweight clipboard history manager for macOS. Key Monster lives in your menu
 bar, quietly records what you copy, and lets you search back through it and paste
 any earlier entry from a fast, keyboard-driven panel.
 
@@ -20,12 +20,16 @@ any earlier entry from a fast, keyboard-driven panel.
   - `Esc` — dismiss the panel (it also closes when it loses focus)
 - **Auto-paste** — `Return` pastes the selection straight into the previously
   focused app by synthesizing a `⌘V`, so you don't have to switch back and paste
-  manually. On by default; it needs Accessibility permission (Clipborg requests
+  manually. On by default; it needs Accessibility permission (Key Monster requests
   it when you enable the toggle) and gracefully falls back to copy-only without it.
 - **Source app tracking** — each entry remembers (and shows the icon of) the app
   it was copied from. The origin is preserved when you re-select an old item.
 - **Configurable global shortcut** — record any modifier + key combo in Settings
   to summon the panel from anywhere.
+- **App focus shortcuts** — bind a global shortcut to one or more apps. Press it
+  to focus the app; press again while one is frontmost to cycle through the rest,
+  so a single combo can rotate through e.g. Slack and Chrome. Settings warns when
+  a combo is bound more than once, since only the first binding can register.
 - **Password-manager aware** — respects the
   [nspasteboard.org](http://nspasteboard.org) convention and skips clipboard
   contents marked concealed, transient, or auto-generated.
@@ -65,12 +69,12 @@ Override explicitly with `make run CODESIGN_IDENTITY=<identity>` if needed.
 
 ## Usage
 
-1. Launch Clipborg — a clipboard icon (`doc.on.clipboard`) appears in the menu bar.
+1. Launch Key Monster — a clipboard icon (`doc.on.clipboard`) appears in the menu bar.
    On first launch the Settings window opens automatically.
 2. Record a **Global Shortcut**. To use auto-paste, leave **Paste into the active
    app on Return** enabled and grant **Accessibility** access when prompted
-   (Clipborg links you to the right System Settings pane).
-3. Copy things as you normally would; Clipborg records them in the background.
+   (Key Monster links you to the right System Settings pane).
+3. Copy things as you normally would; Key Monster records them in the background.
 4. Press your shortcut (or choose **Show History** from the menu) to open the
    panel, type to search, select an entry, and press `Return` — it pastes into
    the app you came from (or just copies, if auto-paste is off/ungranted).
@@ -78,28 +82,29 @@ Override explicitly with `make run CODESIGN_IDENTITY=<identity>` if needed.
 Your history is stored at:
 
 ```
-~/Library/Application Support/clipborg/history.sqlite
+~/Library/Application Support/keymonster/history.sqlite
 ```
 
 ## Architecture
 
 | File | Responsibility |
 | --- | --- |
-| `ClipborgApp.swift` | App entry point and `AppDelegate` — wires up the status item, watcher, panel, hotkey, and store. |
+| `KeyMonsterApp.swift` | App entry point and `AppDelegate` — wires up the status item, watcher, panel, hotkey, and store. |
 | `ClipboardWatcher.swift` | Polls `NSPasteboard` `changeCount` and reports new contents. |
 | `ClipboardHistory.swift` | Observable history model with dedup and size cap; `ClipItem` / `ClipContent` types. |
 | `ClipStore.swift` | `ClipStore` persistence protocol and the GRDB/SQLite implementation. |
 | `HistoryViewModel.swift` | Drives the panel's search + keyboard selection. |
 | `Panel.swift` | The floating panel window and its key-handling. |
 | `MenuContent.swift` | SwiftUI content of the history panel. |
-| `SettingsView.swift` | Settings UI — shortcut recorder and the auto-paste toggle. |
-| `AppSettings.swift` | Persisted settings and shortcut formatting. |
-| `HotkeyManager.swift` | Registers/unregisters the global hotkey. |
+| `SettingsView.swift` | Settings UI — shortcut recorder, focus-shortcut editor, and the auto-paste toggle. |
+| `AppSettings.swift` | Persisted settings, shortcut formatting, and focus-shortcut conflict detection. |
+| `HotkeyManager.swift` | Registers/unregisters the global hotkeys (history panel + every focus shortcut). |
+| `AppFocuser.swift` | Focuses (or cycles through) the apps bound to a focus shortcut. |
 | `Paster.swift` | Accessibility trust check/request and `⌘V` synthesis for auto-paste. |
 
 The persistence layer is kept behind the narrow `ClipStore` protocol so
 `ClipboardHistory` can be tested against an in-memory SQLite store
-(`SQLiteClipStore.inMemory()`). Tests live in `Tests/clipborgTests/`.
+(`SQLiteClipStore.inMemory()`). Tests live in `Tests/keymonsterTests/`.
 
 ## Tech Stack
 

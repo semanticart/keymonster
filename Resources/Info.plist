@@ -5,13 +5,13 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>clipborg</string>
+    <string>keymonster</string>
     <key>CFBundleIdentifier</key>
-    <string>com.semanticart.clipborg</string>
+    <string>com.semanticart.keymonster</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Clipborg</string>
+    <string>Key Monster</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundlePackageType</key>
@@ -28,6 +28,6 @@
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSHumanReadableCopyright</key>
-    <string>Clipborg</string>
+    <string>Key Monster</string>
 </dict>
 </plist>

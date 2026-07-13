@@ -3,7 +3,7 @@ import ApplicationServices
 import CoreGraphics
 import os.log
 
-private let log = Logger(subsystem: "clipborg", category: "paster")
+private let log = Logger(subsystem: "keymonster", category: "paster")
 
 /// Pastes the just-copied selection into whichever app was frontmost before the
 /// panel appeared, by reactivating that app and synthesizing a ⌘V keystroke.

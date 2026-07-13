@@ -1,5 +1,5 @@
 import XCTest
-@testable import clipborg
+@testable import keymonster
 
 @MainActor
 final class HistoryViewModelTests: XCTestCase {

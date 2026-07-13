@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "clipborg",
+    name: "keymonster",
     platforms: [
         .macOS(.v14)
     ],
@@ -11,16 +11,16 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "clipborg",
+            name: "keymonster",
             dependencies: [
                 .product(name: "GRDB", package: "GRDB.swift")
             ],
-            path: "Sources/clipborg"
+            path: "Sources/keymonster"
         ),
         .testTarget(
-            name: "clipborgTests",
-            dependencies: ["clipborg"],
-            path: "Tests/clipborgTests"
+            name: "keymonsterTests",
+            dependencies: ["keymonster"],
+            path: "Tests/keymonsterTests"
         )
     ]
 )

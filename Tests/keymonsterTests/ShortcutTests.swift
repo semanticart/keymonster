@@ -1,6 +1,6 @@
 import AppKit
 import XCTest
-@testable import clipborg
+@testable import keymonster
 
 final class ShortcutFormatterTests: XCTestCase {
     // Carbon modifier bit constants, mirrored from AppSettings.

@@ -191,7 +191,7 @@ final class ClipboardHistory: ObservableObject {
 
         // When deduplicating, preserve the original item's source app so that
         // re-selecting from the history panel doesn't overwrite the origin icon
-        // with clipborg's own icon.
+        // with Key Monster's own icon.
         var preservedName: String? = sourceApp?.localizedName
         var preservedBundleID: String? = sourceApp?.bundleIdentifier
         var preservedIcon: NSImage? = sourceApp?.icon

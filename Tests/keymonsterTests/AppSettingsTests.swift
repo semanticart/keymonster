@@ -1,10 +1,10 @@
 import XCTest
-@testable import clipborg
+@testable import keymonster
 
 @MainActor
 final class AppSettingsTests: XCTestCase {
     private var defaults: UserDefaults!
-    private let suiteName = "clipborgTests.AppSettings"
+    private let suiteName = "keymonsterTests.AppSettings"
 
     override func setUp() {
         super.setUp()

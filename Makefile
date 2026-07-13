@@ -1,7 +1,7 @@
 .PHONY: build run test clean lint app snapshot icon
 
 CONFIG ?= debug
-APP_NAME := Clipborg
+APP_NAME := Key Monster
 APP_DIR := .build/$(APP_NAME).app
 
 # Accessibility (needed for auto-paste) grants are keyed to the app's code-signing
@@ -25,21 +25,21 @@ app: build
 	rm -rf "$(APP_DIR)"
 	mkdir -p "$(APP_DIR)/Contents/MacOS"
 	mkdir -p "$(APP_DIR)/Contents/Resources"
-	cp ".build/$(CONFIG)/clipborg" "$(APP_DIR)/Contents/MacOS/clipborg"
+	cp ".build/$(CONFIG)/keymonster" "$(APP_DIR)/Contents/MacOS/keymonster"
 	cp Resources/Info.plist "$(APP_DIR)/Contents/Info.plist"
 	cp Resources/AppIcon.icns "$(APP_DIR)/Contents/Resources/AppIcon.icns"
 	codesign --force --sign "$(CODESIGN_IDENTITY)" "$(APP_DIR)"
 	@echo "Built $(APP_DIR) (signed with: $(CODESIGN_IDENTITY))"
 
 run: app
-	-pkill -x clipborg
+	-pkill -x keymonster
 	open "$(APP_DIR)"
 
 # Render the history panel headlessly against the real on-disk history and write
 # one PNG per selection state. Override args, e.g. `make snapshot SNAP_ARGS="--out /tmp/shots --count 8"`.
 SNAP_ARGS ?=
 snapshot: build
-	swift run clipborg snapshot $(SNAP_ARGS)
+	swift run keymonster snapshot $(SNAP_ARGS)
 
 # Regenerate Resources/AppIcon.icns from Resources/icon.svg. Edit the SVG, then
 # run this to rebuild the bundled icon at every size macOS needs. Requires

@@ -1,7 +1,7 @@
 import AppKit
 import os.log
 
-private let log = Logger(subsystem: "clipborg", category: "focuser")
+private let log = Logger(subsystem: "keymonster", category: "focuser")
 
 /// Decides which app a focus shortcut should bring forward. Pure so the cycling
 /// behaviour can be tested without touching the running app list.

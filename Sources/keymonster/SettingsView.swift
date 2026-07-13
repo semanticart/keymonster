@@ -63,7 +63,7 @@ struct SettingsView: View {
             Section {
                 Toggle("Launch at Login", isOn: $settings.launchAtLogin)
             } footer: {
-                Text("Start Clipborg automatically when you log in.")
+                Text("Start Key Monster automatically when you log in.")
                     .foregroundStyle(.secondary)
             }
 

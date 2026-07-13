@@ -77,7 +77,7 @@ final class SQLiteClipStore: ClipStore {
     static func defaultURL() throws -> URL {
         let appSupport = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = appSupport.appendingPathComponent("clipborg")
+        let dir = appSupport.appendingPathComponent("keymonster")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("history.sqlite")
     }

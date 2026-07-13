@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import os.log
 
-private let log = Logger(subsystem: "clipborg", category: "panel")
+private let log = Logger(subsystem: "keymonster", category: "panel")
 
 /// Hosts `MenuContent` in a borderless, floating panel that appears centered on
 /// the active screen. Toggled from the menu-bar status item; dismissed on Escape

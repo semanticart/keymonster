@@ -2,11 +2,11 @@ import SwiftUI
 import AppKit
 import os.log
 
-private let log = Logger(subsystem: "clipborg", category: "snapshot")
+private let log = Logger(subsystem: "keymonster", category: "snapshot")
 
 /// Headless rendering of the history panel for autonomous design iteration.
 ///
-/// Invoked via `clipborg snapshot [--out DIR] [--count N]`. It loads the real
+/// Invoked via `keymonster snapshot [--out DIR] [--count N]`. It loads the real
 /// on-disk history, then renders `MenuContent` at successive selection indices
 /// into an offscreen window and writes one PNG per selection state. No global
 /// hotkey, status-item click, screen-recording permission, or synthetic key
@@ -17,7 +17,7 @@ enum SnapshotRunner {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
 
-        let outDir = option("--out") ?? (NSTemporaryDirectory() + "clipborg-snapshots")
+        let outDir = option("--out") ?? (NSTemporaryDirectory() + "keymonster-snapshots")
         let count = option("--count").flatMap(Int.init) ?? 5
         let outURL = URL(fileURLWithPath: outDir, isDirectory: true)
         do {
@@ -118,7 +118,7 @@ enum SnapshotRunner {
     }
 
     private static func fail(_ message: String) -> Never {
-        FileHandle.standardError.write(Data("clipborg snapshot: \(message)\n".utf8))
+        FileHandle.standardError.write(Data("keymonster snapshot: \(message)\n".utf8))
         exit(1)
     }
 }
