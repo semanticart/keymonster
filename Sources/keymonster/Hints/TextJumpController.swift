@@ -11,26 +11,37 @@ import ApplicationServices
 /// label. Delete backs out of the zoom, then out of the labels to pick a
 /// different character; Escape, a real click, or any non-hint keystroke
 /// dismisses.
+///
+/// All label/zoom rules live in `LabelSession`; this controller only reads the
+/// field, feeds keystrokes in, and turns the resulting effects into overlay
+/// updates and caret moves.
 @MainActor
 final class TextJumpController {
+    /// The focused field captured when the mode armed.
+    private struct Field {
+        let element: AXUIElement
+        let value: String
+        let windowFrame: CGRect
+    }
+
+    /// The mode's whole life as one value: transitions are single assignments,
+    /// and a phase can't carry stale leftovers from another.
+    private enum Phase {
+        case inactive
+        /// Waiting for the keystroke that names the target character.
+        case armed(Field)
+        /// Labels are on screen; `hits` are what `labels` commits index into.
+        case labeling(Field, hits: [AXFocusedText.Occurrence], labels: LabelSession)
+    }
+
     private let overlay = HintOverlay()
     private let keyTap = HintKeyTap()
+    private var phase: Phase = .inactive
 
-    // Session state, non-nil only while the mode is active.
-    private var element: AXUIElement?
-    private var value = ""
-    private var windowFrame: CGRect = .zero
-
-    // Label state, non-nil only once a character has been picked and its
-    // occurrences are on screen. Groups map label indices to `hits`.
-    private var hits: [AXFocusedText.Occurrence] = []
-    private var groups: [HintGrouping.Group] = []
-    private var groupLabels: [String] = []
-    private var zoomed: HintGrouping.Group?
-    private var selection: HintSelection?
-
-    var isActive: Bool { element != nil }
-    private var pickingLabel: Bool { selection != nil }
+    var isActive: Bool {
+        if case .inactive = phase { return false }
+        return true
+    }
 
     init() {
         // The target character can be anything typed — a digit, punctuation, or
@@ -66,133 +77,99 @@ final class TextJumpController {
             return
         }
 
-        element = focus.element
-        value = focus.value
-        self.windowFrame = windowFrame
+        let field = Field(element: focus.element, value: focus.value, windowFrame: windowFrame)
+        phase = .armed(field)
         // Confirm the mode is armed and prompt for the target character; the
         // labels replace this banner once a character is chosen.
         overlay.showBanner("Jump to a character…", windowFrame: windowFrame)
     }
 
     private func handle(_ key: HintKeyEvent) {
-        guard isActive else { return }
-        if pickingLabel {
-            handleLabel(key)
-        } else {
-            handleCharacter(key)
+        switch phase {
+        case .inactive:
+            break
+        case .armed(let field):
+            handleCharacter(key, field: field)
+        case .labeling(let field, let hits, let labels):
+            handleLabel(key, field: field, hits: hits, labels: labels)
         }
     }
 
     /// First phase: the keystroke names the character to jump to.
-    private func handleCharacter(_ key: HintKeyEvent) {
+    private func handleCharacter(_ key: HintKeyEvent, field: Field) {
         switch key {
         case .escape, .cancel, .enter:
             dismiss()
         case .backspace:
             break // nothing typed yet; ignore
         case .letter(let character, _):
-            showLabels(for: character)
+            showLabels(for: character, field: field)
         }
     }
 
     /// Second phase: the keystrokes spell a label — a group label first, then a
     /// member label if the group opened a zoom.
-    private func handleLabel(_ key: HintKeyEvent) {
+    private func handleLabel(
+        _ key: HintKeyEvent, field: Field,
+        hits: [AXFocusedText.Occurrence], labels: LabelSession
+    ) {
+        var labels = labels
+        let effect: LabelSession.Effect
         switch key {
         case .escape, .cancel, .enter:
             dismiss()
+            return
         case .backspace:
-            if !(selection?.typed.isEmpty ?? true) {
-                selection?.backspace()
-                overlay.update(typed: selection?.typed ?? "")
-            } else if zoomed != nil {
-                exitZoom()
-            } else {
-                backToCharacterPick()
-            }
+            effect = labels.backspace()
         case .letter(let character, _):
             // Labels are lowercase letters; the raw keystroke may be shifted or
             // otherwise, so fold it before matching.
             let letter = Character(String(character).lowercased())
-            switch selection?.type(letter) {
-            case .matched(let index):
-                pick(index)
-            case .pending:
-                overlay.update(typed: selection?.typed ?? "")
-            case .rejected, nil:
-                NSSound.beep()
-            }
+            effect = labels.type(letter, shifted: false)
+        }
+        // Store the advanced session before acting on the effect: a commit
+        // dismisses, and dismissal must win over this write-back.
+        phase = .labeling(field, hits: hits, labels: labels)
+        switch effect {
+        case .commit(let index, _):
+            placeCursor(to: hits[index].caret, element: field.element)
+        case .unwound:
+            backToCharacterPick(field)
+        default:
+            overlay.apply(effect)
         }
     }
 
-    private func showLabels(for character: Character) {
-        guard let element else { return }
+    private func showLabels(for character: Character, field: Field) {
         let occurrences = AXFocusedText.occurrences(
-            of: character, in: value, element: element, within: windowFrame
+            of: character, in: field.value, element: field.element, within: field.windowFrame
         )
         guard !occurrences.isEmpty else {
             // No visible match; stay armed so another character can be tried.
             NSSound.beep()
             return
         }
-        hits = occurrences
         // Badges may go anywhere on the window's screen; see HintScreens.
-        (groups, groupLabels) = HintGrouping.groupsWithLabels(
+        let labels = LabelSession(
             anchors: occurrences.map(\.rect),
-            within: HintScreens.bounds(around: windowFrame),
-            badgeSize: HintOverlayView.badgeSize(forLabelLength:)
+            windowFrame: field.windowFrame,
+            screenBounds: HintScreens.bounds(around: field.windowFrame),
+            badgeSize: BadgeMetrics.size(forLabelLength:)
         )
-        selection = HintSelection(labels: groupLabels)
-        overlay.show(groups: groups, labels: groupLabels, windowFrame: windowFrame)
-    }
-
-    /// A full label was typed: inside the zoom it names an occurrence; outside
-    /// it names a group, which either places the caret (single) or zooms in
-    /// (cluster).
-    private func pick(_ index: Int) {
-        if let zoomed {
-            placeCursor(to: hits[zoomed.members[index]].caret)
-        } else if groups[index].isCluster {
-            enterZoom(groups[index])
-        } else {
-            placeCursor(to: hits[groups[index].members[0]].caret)
-        }
-    }
-
-    private func enterZoom(_ group: HintGrouping.Group) {
-        zoomed = group
-        let memberFrames = group.members.map { hits[$0].rect }
-        let labels = HintLabels.labels(count: memberFrames.count)
-        selection = HintSelection(labels: labels)
-        // A little context around the characters, kept on the window.
-        let area = group.area.insetBy(dx: -8, dy: -8).intersection(windowFrame)
-        overlay.showZoom(
-            area: area,
-            image: overlay.snapshotBelow(area: area),
-            memberFrames: memberFrames,
-            labels: labels
+        phase = .labeling(field, hits: occurrences, labels: labels)
+        overlay.show(
+            groups: labels.groups, labels: labels.groupLabels, windowFrame: field.windowFrame
         )
-    }
-
-    private func exitZoom() {
-        zoomed = nil
-        selection = HintSelection(labels: groupLabels)
-        overlay.clearZoom()
     }
 
     /// Drops the labels and returns to waiting for a target character, keeping
     /// the field session alive.
-    private func backToCharacterPick() {
-        hits = []
-        groups = []
-        groupLabels = []
-        zoomed = nil
-        selection = nil
-        overlay.showBanner("Jump to a character…", windowFrame: windowFrame)
+    private func backToCharacterPick(_ field: Field) {
+        phase = .armed(field)
+        overlay.showBanner("Jump to a character…", windowFrame: field.windowFrame)
     }
 
-    private func placeCursor(to caret: AXFocusedText.Caret) {
-        guard let element else { return }
+    private func placeCursor(to caret: AXFocusedText.Caret, element: AXUIElement) {
         dismiss()
         AXFocusedText.setCursor(element, to: caret)
     }
@@ -200,13 +177,6 @@ final class TextJumpController {
     private func dismiss() {
         keyTap.stop()
         overlay.hide()
-        element = nil
-        value = ""
-        windowFrame = .zero
-        hits = []
-        groups = []
-        groupLabels = []
-        zoomed = nil
-        selection = nil
+        phase = .inactive
     }
 }

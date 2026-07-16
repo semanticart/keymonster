@@ -87,11 +87,7 @@ final class GridModeController {
 
     private func click(at point: CGPoint, shifted: Bool) {
         dismiss()
-        // Give the overlay a beat to leave the screen before the click lands.
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(50))
-            MouseClicker.click(at: point, button: shifted ? .right : .left)
-        }
+        MouseClicker.clickOnceOverlaySettles(at: point, button: shifted ? .right : .left)
     }
 
     private func dismiss() {

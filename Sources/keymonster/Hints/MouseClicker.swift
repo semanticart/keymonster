@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 
 /// Synthesizes real mouse clicks at a global screen point. CGEvent uses the same
 /// top-left origin coordinate space that AX element frames are reported in, so
@@ -9,6 +10,17 @@ enum MouseClicker {
         case right
 
         var opposite: Button { self == .left ? .right : .left }
+    }
+
+    /// Clicks after the mode's overlay has had a beat to leave the screen, so
+    /// the click lands on the app's pixels rather than the departing badges.
+    /// Every mode dismisses first and then calls this.
+    @MainActor
+    static func clickOnceOverlaySettles(at point: CGPoint, button: Button) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            click(at: point, button: button)
+        }
     }
 
     static func click(at point: CGPoint, button: Button) {

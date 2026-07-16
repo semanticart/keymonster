@@ -38,18 +38,20 @@ final class HintOverlay {
     }
 
     /// Magnifies `area` (AX coordinates) in a panel over the same window, with
-    /// one normal badge per member frame. `image` is the screenshot to magnify;
-    /// nil sketches the member outlines instead. Call while the overlay is
-    /// already showing; `clearZoom` restores the group badges untouched.
-    func showZoom(area: CGRect, image: CGImage?, memberFrames: [CGRect], labels: [String]) {
+    /// one normal badge per member frame. Screenshots what's beneath the
+    /// overlay itself; without Screen Recording permission the member outlines
+    /// are sketched instead. Call while the overlay is already showing;
+    /// `clearZoom` restores the group badges untouched.
+    func zoomIn(area: CGRect, memberFrames: [CGRect], labels: [String]) {
         guard let view else { return }
+        let image = WindowCapture.below(window, bounds: area)
         func local(_ rect: CGRect) -> CGRect {
             rect.offsetBy(dx: -origin.x, dy: -origin.y)
         }
         let layout = HintZoom.layout(
             area: local(area),
             members: memberFrames.map(local),
-            badgeSize: HintOverlayView.badgeSize(forLabelLength: labels.first?.count ?? 1),
+            badgeSize: BadgeMetrics.size(forLabelLength: labels.first?.count ?? 1),
             bounds: view.bounds
         )
         view.typed = ""
@@ -75,13 +77,6 @@ final class HintOverlay {
     func clearZoom() {
         view?.zoom = nil
         view?.typed = ""
-    }
-
-    /// What's on screen beneath the overlay in `area` (AX coordinates) — the
-    /// app's own pixels, without our badges. Nil without Screen Recording
-    /// permission.
-    func snapshotBelow(area: CGRect) -> CGImage? {
-        WindowCapture.below(window, bounds: area)
     }
 
     /// Lays a fresh transparent, click-through overlay window over the screen
@@ -126,6 +121,23 @@ final class HintOverlay {
         window?.orderOut(nil)
         window = nil
         view = nil
+    }
+
+    /// Runs the presentation half of a `LabelSession` effect. `.commit` and
+    /// `.unwound` are the mode's own to handle; they draw nothing.
+    func apply(_ effect: LabelSession.Effect) {
+        switch effect {
+        case .updateTyped(let typed):
+            update(typed: typed)
+        case .zoomIn(let area, let memberFrames, let labels):
+            zoomIn(area: area, memberFrames: memberFrames, labels: labels)
+        case .zoomOut:
+            clearZoom()
+        case .reject:
+            NSSound.beep()
+        case .commit, .unwound:
+            break
+        }
     }
 }
 
@@ -199,29 +211,12 @@ final class HintOverlayView: NSView {
 
     override var isFlipped: Bool { true }
 
-    private static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .bold)
     private static let fill = NSColor(calibratedRed: 1.0, green: 0.87, blue: 0.4, alpha: 0.95)
     private static let stroke = NSColor(calibratedRed: 0.5, green: 0.38, blue: 0.05, alpha: 0.9)
     private static let groupFill = NSColor(calibratedRed: 0.6, green: 0.9, blue: 0.5, alpha: 0.95)
     private static let groupStroke = NSColor(calibratedRed: 0.12, green: 0.42, blue: 0.1, alpha: 0.9)
     private static let ink = NSColor.black
     private static let typedInk = NSColor.black.withAlphaComponent(0.35)
-    private static let padding = CGSize(width: 5, height: 2)
-
-    /// How big a badge with a label of `length` letters draws — used to lay
-    /// badges out before the labels themselves exist. The font is monospaced,
-    /// so only the length matters.
-    static func badgeSize(forLabelLength length: Int) -> CGSize {
-        let sample = NSAttributedString(
-            string: String(repeating: "W", count: max(1, length)),
-            attributes: [.font: font, .kern: 0.5]
-        )
-        let textSize = sample.size()
-        return CGSize(
-            width: textSize.width + padding.width * 2,
-            height: textSize.height + padding.height * 2
-        )
-    }
 
     override func draw(_ dirtyRect: NSRect) {
         if let zoom {
@@ -325,7 +320,7 @@ final class HintOverlayView: NSView {
     private func drawBadge(_ badge: Badge) {
         let text = NSMutableAttributedString(
             string: badge.label.uppercased(),
-            attributes: [.font: Self.font, .foregroundColor: Self.ink, .kern: 0.5]
+            attributes: [.font: BadgeMetrics.font, .foregroundColor: Self.ink, .kern: BadgeMetrics.kern]
         )
         if !typed.isEmpty {
             text.addAttribute(
