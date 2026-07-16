@@ -113,10 +113,11 @@ Your history is stored at:
 | --- | --- |
 | `KeyMonsterApp.swift` | App entry point and `AppDelegate` — wires up the status item, watcher, panel, hotkey, and store. |
 | `ClipboardWatcher.swift` | Polls `NSPasteboard` `changeCount` and reports new contents. |
-| `ClipboardHistory.swift` | Observable history model with dedup and size cap; `ClipItem` / `ClipContent` types. |
+| `ClipboardHistory.swift` | Observable history model with dedup and size cap; `ClipItem` / `ClipContent` types (headless — no AppKit). |
+| `ClipboardHistory+AppKit.swift` | The model's AppKit edge: pasteboard writer, app-icon lookup, `NSRunningApplication` convenience. |
 | `ClipStore.swift` | `ClipStore` persistence protocol and the GRDB/SQLite implementation. |
 | `HistoryViewModel.swift` | Drives the panel's search + keyboard selection. |
-| `Panel.swift` | The floating panel window and its key-handling. |
+| `Panel.swift` | The floating panel window; `PanelCommand` maps its keys to actions. |
 | `MenuContent.swift` | SwiftUI content of the history panel. |
 | `SettingsView.swift` | Settings UI — shortcut recorder, focus-shortcut editor, and the auto-paste toggle. |
 | `AppSettings.swift` | Persisted settings, shortcut formatting, and focus-shortcut conflict detection. |
@@ -124,6 +125,8 @@ Your history is stored at:
 | `AppFocuser.swift` | Focuses (or cycles through) the apps bound to a focus shortcut. |
 | `Paster.swift` | Accessibility trust check/request and `⌘V` synthesis for auto-paste. |
 | `Hints/HintModeController.swift` | Orchestrates hint mode: scan → overlay → keystrokes → click. |
+| `Hints/LabelSession.swift` | The labeling/zoom state machine shared by hint mode and text jump: group, type, zoom, commit. |
+| `Hints/BadgeMetrics.swift` | Badge font and box metrics, shared by grouping and the overlay view. |
 | `Hints/HintLabels.swift` | Two-letter label generation (home row first) and the typed-prefix state machine. |
 | `Hints/HintTargets.swift` | Pure clickability/visibility heuristics and AX↔Cocoa coordinate conversion. |
 | `Hints/AXHintTargetFinder.swift` | Walks the frontmost window's accessibility tree to find clickable elements. |

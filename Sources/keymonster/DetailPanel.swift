@@ -63,11 +63,16 @@ private struct DetailContent: View {
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-            case .image(let img):
-                Image(nsImage: img)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            case .image(let data):
+                if let img = NSImage(data: data) {
+                    Image(nsImage: img)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Text("Unable to load image")
+                        .foregroundStyle(.secondary)
+                }
             case .fileURLs(let urls):
                 VStack(alignment: .leading, spacing: 4 * uiScale) {
                     ForEach(urls, id: \.self) { url in

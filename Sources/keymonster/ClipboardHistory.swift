@@ -1,16 +1,8 @@
 import Foundation
-import AppKit
-
-private func iconForBundleID(_ bundleID: String?) -> NSImage? {
-    guard let id = bundleID,
-          let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id)
-    else { return nil }
-    return NSWorkspace.shared.icon(forFile: url.path)
-}
 
 enum ClipContent {
     case text(String)
-    case image(NSImage)
+    case image(Data)
     case fileURLs([URL])
 }
 
@@ -19,8 +11,10 @@ extension ClipContent: Equatable {
         switch (lhs, rhs) {
         case (.text(let left), .text(let right)):
             return left == right
+        // Plain Data equality — cheap, unlike the tiffRepresentation comparison
+        // this replaced, which re-encoded both images on every dedup check.
         case (.image(let left), .image(let right)):
-            return left.tiffRepresentation == right.tiffRepresentation
+            return left == right
         case (.fileURLs(let left), .fileURLs(let right)):
             return Set(left) == Set(right)
         default:
@@ -35,7 +29,6 @@ struct ClipItem: Identifiable {
     let date: Date
     let sourceAppName: String?
     let sourceAppBundleID: String?
-    let sourceAppIcon: NSImage?
     let richTextData: Data?
     let richTextType: String?
 
@@ -45,7 +38,6 @@ struct ClipItem: Identifiable {
         date: Date,
         sourceAppName: String?,
         sourceAppBundleID: String?,
-        sourceAppIcon: NSImage?,
         richTextData: Data? = nil,
         richTextType: String? = nil
     ) {
@@ -54,7 +46,6 @@ struct ClipItem: Identifiable {
         self.date = date
         self.sourceAppName = sourceAppName
         self.sourceAppBundleID = sourceAppBundleID
-        self.sourceAppIcon = sourceAppIcon
         self.richTextData = richTextData
         self.richTextType = richTextType
     }
@@ -83,25 +74,6 @@ extension ClipItem {
     }
 }
 
-/// Writes a clip's content onto the general pasteboard. The watcher will see the
-/// write and move the item to the top (most-recently-used).
-@MainActor
-func copyToPasteboard(_ item: ClipItem) {
-    let pasteboard = NSPasteboard.general
-    pasteboard.clearContents()
-    switch item.content {
-    case .text(let text):
-        pasteboard.setString(text, forType: .string)
-        if let data = item.richTextData, let typeStr = item.richTextType {
-            pasteboard.setData(data, forType: NSPasteboard.PasteboardType(rawValue: typeStr))
-        }
-    case .image(let img):
-        pasteboard.writeObjects([img])
-    case .fileURLs(let urls):
-        pasteboard.writeObjects(urls as [NSURL])
-    }
-}
-
 extension ClipItem {
     func asRecord() -> ClipRecord {
         switch content {
@@ -111,9 +83,9 @@ extension ClipItem {
                 sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID,
                 richTextData: richTextData, richTextType: richTextType
             )
-        case .image(let img):
+        case .image(let data):
             return ClipRecord(
-                id: id, date: date, contentType: "image", imageData: img.tiffRepresentation,
+                id: id, date: date, contentType: "image", imageData: data,
                 sourceAppName: sourceAppName, sourceAppBundleID: sourceAppBundleID
             )
         case .fileURLs(let urls):
@@ -127,22 +99,21 @@ extension ClipItem {
     }
 
     init?(from record: ClipRecord) {
-        let icon = iconForBundleID(record.sourceAppBundleID)
         switch record.contentType {
         case "text":
             guard let text = record.textContent else { return nil }
             self.init(
                 id: record.id, content: .text(text), date: record.date,
                 sourceAppName: record.sourceAppName,
-                sourceAppBundleID: record.sourceAppBundleID, sourceAppIcon: icon,
+                sourceAppBundleID: record.sourceAppBundleID,
                 richTextData: record.richTextData, richTextType: record.richTextType
             )
         case "image":
-            guard let data = record.imageData, let image = NSImage(data: data) else { return nil }
+            guard let data = record.imageData else { return nil }
             self.init(
-                id: record.id, content: .image(image), date: record.date,
+                id: record.id, content: .image(data), date: record.date,
                 sourceAppName: record.sourceAppName,
-                sourceAppBundleID: record.sourceAppBundleID, sourceAppIcon: icon
+                sourceAppBundleID: record.sourceAppBundleID
             )
         case "fileURLs":
             guard let jsonStr = record.fileURLsJSON,
@@ -154,7 +125,7 @@ extension ClipItem {
                 content: .fileURLs(strings.compactMap(URL.init(string:))),
                 date: record.date,
                 sourceAppName: record.sourceAppName,
-                sourceAppBundleID: record.sourceAppBundleID, sourceAppIcon: icon
+                sourceAppBundleID: record.sourceAppBundleID
             )
         default:
             return nil
@@ -182,7 +153,8 @@ final class ClipboardHistory: ObservableObject {
 
     func add(
         _ content: ClipContent,
-        sourceApp: NSRunningApplication? = nil,
+        sourceAppName: String? = nil,
+        sourceAppBundleID: String? = nil,
         richTextData: Data? = nil,
         richTextType: String? = nil
     ) {
@@ -190,25 +162,22 @@ final class ClipboardHistory: ObservableObject {
            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
 
         // When deduplicating, preserve the original item's source app so that
-        // re-selecting from the history panel doesn't overwrite the origin icon
-        // with Key Monster's own icon.
-        var preservedName: String? = sourceApp?.localizedName
-        var preservedBundleID: String? = sourceApp?.bundleIdentifier
-        var preservedIcon: NSImage? = sourceApp?.icon
+        // re-selecting from the history panel doesn't overwrite the origin
+        // name/bundle ID with Key Monster's own.
+        var preservedName = sourceAppName
+        var preservedBundleID = sourceAppBundleID
 
         if let existing = items.firstIndex(where: { $0.content == content }) {
             let old = items.remove(at: existing)
             deleteFromStore(id: old.id)
             preservedName = old.sourceAppName
             preservedBundleID = old.sourceAppBundleID
-            preservedIcon = old.sourceAppIcon
         }
 
         let newItem = ClipItem(
             content: content, date: Date(),
             sourceAppName: preservedName,
             sourceAppBundleID: preservedBundleID,
-            sourceAppIcon: preservedIcon,
             richTextData: richTextData,
             richTextType: richTextType
         )

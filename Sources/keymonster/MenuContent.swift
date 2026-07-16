@@ -244,7 +244,7 @@ private struct CompactHistoryRow: View {
 
     @ViewBuilder
     private var sourceIcon: some View {
-        if let appIcon = item.sourceAppIcon {
+        if let appIcon = iconForBundleID(item.sourceAppBundleID) {
             Image(nsImage: appIcon)
                 .resizable()
                 .interpolation(.high)

@@ -6,14 +6,14 @@ final class HistoryViewModelTests: XCTestCase {
     private func textItem(_ text: String, app: String? = nil) -> ClipItem {
         ClipItem(
             content: .text(text), date: Date(),
-            sourceAppName: app, sourceAppBundleID: nil, sourceAppIcon: nil
+            sourceAppName: app, sourceAppBundleID: nil
         )
     }
 
     private func fileItem(_ path: String) -> ClipItem {
         ClipItem(
             content: .fileURLs([URL(fileURLWithPath: path)]), date: Date(),
-            sourceAppName: nil, sourceAppBundleID: nil, sourceAppIcon: nil
+            sourceAppName: nil, sourceAppBundleID: nil
         )
     }
 

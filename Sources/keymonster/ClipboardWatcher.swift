@@ -60,9 +60,11 @@ final class ClipboardWatcher {
             return
         }
 
-        // Images (e.g. copied from Preview or a browser).
-        if let image = NSImage(pasteboard: pasteboard) {
-            onChange(.image(image), sourceApp, nil, nil)
+        // Images (e.g. copied from Preview or a browser). Prefer PNG, matching
+        // NSImage(pasteboard:)'s own preference order, falling back to TIFF for
+        // sources that only publish that type.
+        if let data = pasteboard.data(forType: .png) ?? pasteboard.data(forType: .tiff) {
+            onChange(.image(data), sourceApp, nil, nil)
             return
         }
 

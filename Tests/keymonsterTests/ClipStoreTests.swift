@@ -68,4 +68,21 @@ final class ClipStoreTests: XCTestCase {
         reloaded.configure(store: store)
         XCTAssertEqual(reloaded.items.map(\.content), [.text("a"), .text("b")])
     }
+
+    func testHistoryDedupImagesByDataEquality() throws {
+        let store = try SQLiteClipStore.inMemory()
+        let history = ClipboardHistory()
+        history.configure(store: store)
+
+        let imageA = Data([0xDE, 0xAD, 0xBE, 0xEF])
+        let imageB = Data([0xFA, 0xCE, 0xFE, 0xED])
+
+        history.add(.image(imageA))
+        history.add(.image(imageB))
+        // Same bytes as imageA but a distinct instance — dedup must compare by
+        // value, not identity, and without decoding either as an NSImage.
+        history.add(.image(Data([0xDE, 0xAD, 0xBE, 0xEF])))
+
+        XCTAssertEqual(history.items.map(\.content), [.image(imageA), .image(imageB)])
+    }
 }
