@@ -120,9 +120,9 @@ enum HintGeometry {
     /// Height of the caret pointer drawn between a badge and what it labels.
     static let caretHeight: CGFloat = 5
 
-    /// Where a badge of `size` sits for an element at `area`: hanging above the
-    /// element's top-left corner, caret pointing down at it, so the label
-    /// covers as little of the element as possible. Flips underneath the
+    /// Where a badge of `size` prefers to sit for an element at `area`: hanging
+    /// above the element's top-left corner, caret pointing down at it, so the
+    /// label covers as little of the element as possible. Flips underneath the
     /// element when the top of `bounds` leaves no room, and is always kept
     /// inside `bounds`.
     static func badgeRect(_ size: CGSize, labeling area: CGRect, in bounds: CGRect) -> CGRect {
@@ -138,6 +138,43 @@ enum HintGeometry {
         rect.origin.x = min(max(rect.minX, bounds.minX), max(bounds.minX, bounds.maxX - rect.width))
         rect.origin.y = min(max(rect.minY, bounds.minY), max(bounds.minY, bounds.maxY - rect.height))
         return rect
+    }
+
+    /// The preferred badge spot followed by escape spots — below, left of, and
+    /// right of the element — for when the preferred spot is taken by a
+    /// neighbor's badge. An escape spot is offered only when it fits inside
+    /// `bounds` on its own side of the element; clamping one back over the
+    /// element would defeat the point.
+    static func badgeCandidates(
+        _ size: CGSize, labeling area: CGRect, in bounds: CGRect
+    ) -> [CGRect] {
+        let preferred = badgeRect(size, labeling: area, in: bounds)
+        let clampedX = min(max(area.minX, bounds.minX), max(bounds.minX, bounds.maxX - size.width))
+        let sideY = min(
+            max(area.midY - size.height / 2, bounds.minY),
+            max(bounds.minY, bounds.maxY - size.height)
+        )
+        let escapes = [
+            CGRect(x: clampedX, y: area.maxY + caretHeight,
+                   width: size.width, height: size.height),
+            CGRect(x: area.minX - caretHeight - size.width, y: sideY,
+                   width: size.width, height: size.height),
+            CGRect(x: area.maxX + caretHeight, y: sideY,
+                   width: size.width, height: size.height)
+        ]
+        return [preferred] + escapes.filter { bounds.contains($0) && $0 != preferred }
+    }
+
+    /// The frame among `frames` sharing the most area with `rect` — which
+    /// screen a window is on, say — or nil when none overlap it.
+    static func bestContainer(for rect: CGRect, among frames: [CGRect]) -> CGRect? {
+        func overlap(_ frame: CGRect) -> CGFloat {
+            let shared = rect.intersection(frame)
+            return shared.isNull ? 0 : shared.width * shared.height
+        }
+        guard let best = frames.max(by: { overlap($0) < overlap($1) }),
+              overlap(best) > 0 else { return nil }
+        return best
     }
 
     /// AX reports global frames with a top-left origin; Cocoa windows use a

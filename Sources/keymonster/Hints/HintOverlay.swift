@@ -1,22 +1,26 @@
 import AppKit
 
-/// Shows hint badges in a transparent, click-through window laid exactly over
-/// the frontmost app's focused window.
+/// Shows hint badges in a transparent, click-through window covering the
+/// screen the frontmost app's focused window is on — badges for elements at
+/// the window's edge may hang just outside it.
 @MainActor
 final class HintOverlay {
     private var window: NSWindow?
     private var view: HintOverlayView?
+    /// AX (top-left origin) coordinates of the overlay window's own origin —
+    /// what to subtract to make a global AX rect view-local.
+    private var origin: CGPoint = .zero
 
     /// `windowFrame` is the target window's frame in AX (top-left origin)
     /// coordinates — the same space the groups' frames are in. Single-member
     /// groups draw a normal badge; clusters draw a green area badge.
     func show(groups: [HintGrouping.Group], labels: [String], windowFrame: CGRect) {
-        guard let view = install(windowFrame: windowFrame) else { return }
+        guard let view = install(around: windowFrame) else { return }
         // Badge rects become view-local (the view is flipped, so it shares the
-        // AX tree's top-left origin — only the window's origin needs removing).
+        // AX tree's top-left origin — only the overlay's origin needs removing).
         view.badges = zip(groups, labels).map { group, label in
             HintOverlayView.Badge(
-                rect: group.badge.offsetBy(dx: -windowFrame.minX, dy: -windowFrame.minY),
+                rect: group.badge.offsetBy(dx: -origin.x, dy: -origin.y),
                 label: label,
                 isGroup: group.isCluster,
                 caret: HintOverlayView.caretDirection(from: group.badge, toward: group.area)
@@ -27,20 +31,17 @@ final class HintOverlay {
     /// Shows a centered message over the window with no hints — used to signal
     /// that a mode is armed and waiting for input.
     func showBanner(_ text: String, windowFrame: CGRect) {
-        install(windowFrame: windowFrame)?.banner = text
+        install(around: windowFrame)?.banner = text
     }
 
     /// Magnifies `area` (AX coordinates) in a panel over the same window, with
     /// one normal badge per member frame. `image` is the screenshot to magnify;
     /// nil sketches the member outlines instead. Call while the overlay is
     /// already showing; `clearZoom` restores the group badges untouched.
-    func showZoom(
-        area: CGRect, image: CGImage?, memberFrames: [CGRect], labels: [String],
-        windowFrame: CGRect
-    ) {
+    func showZoom(area: CGRect, image: CGImage?, memberFrames: [CGRect], labels: [String]) {
         guard let view else { return }
         func local(_ rect: CGRect) -> CGRect {
-            rect.offsetBy(dx: -windowFrame.minX, dy: -windowFrame.minY)
+            rect.offsetBy(dx: -origin.x, dy: -origin.y)
         }
         let layout = HintZoom.layout(
             area: local(area),
@@ -80,14 +81,16 @@ final class HintOverlay {
         WindowCapture.below(window, bounds: area)
     }
 
-    /// Lays a fresh transparent, click-through overlay window exactly over the
-    /// target window and returns its view, or nil if there's no screen.
+    /// Lays a fresh transparent, click-through overlay window over the screen
+    /// containing the target window and returns its view, or nil if there's no
+    /// screen.
     @discardableResult
-    private func install(windowFrame: CGRect) -> HintOverlayView? {
+    private func install(around windowFrame: CGRect) -> HintOverlayView? {
         hide()
         guard let primary = NSScreen.screens.first else { return nil }
+        let frame = HintScreens.bounds(around: windowFrame)
         let cocoaFrame = HintGeometry.cocoaRect(
-            fromAX: windowFrame, primaryScreenHeight: primary.frame.height
+            fromAX: frame, primaryScreenHeight: primary.frame.height
         )
 
         let window = NSWindow(
@@ -102,11 +105,13 @@ final class HintOverlay {
         window.isReleasedWhenClosed = false
 
         let view = HintOverlayView(frame: CGRect(origin: .zero, size: cocoaFrame.size))
+        view.windowRegion = windowFrame.offsetBy(dx: -frame.minX, dy: -frame.minY)
         window.contentView = view
         window.orderFrontRegardless()
 
         self.window = window
         self.view = view
+        self.origin = frame.origin
         return view
     }
 
@@ -126,11 +131,11 @@ final class HintOverlay {
 /// cluster is picked, a magnified panel of its area with normal badges on the
 /// members. Flipped so its coordinates match AX frames.
 final class HintOverlayView: NSView {
-    /// Which way a badge's caret pointer aims — at the element below it, above
-    /// it, or nowhere (the badge overlaps what it labels, so a pointer would
-    /// only mislead).
+    /// Which way a badge's caret pointer aims — at the element below, above, or
+    /// beside it, or nowhere (the badge overlaps what it labels, so a pointer
+    /// would only mislead).
     enum CaretDirection {
-        case downward, upward, hidden
+        case downward, upward, leftward, rightward, hidden
     }
 
     struct Badge {
@@ -146,6 +151,8 @@ final class HintOverlayView: NSView {
     static func caretDirection(from badge: CGRect, toward area: CGRect) -> CaretDirection {
         if badge.maxY <= area.minY { return .downward }
         if badge.minY >= area.maxY { return .upward }
+        if badge.maxX <= area.minX { return .rightward }
+        if badge.minX >= area.maxX { return .leftward }
         return .hidden
     }
 
@@ -158,6 +165,11 @@ final class HintOverlayView: NSView {
         let content: [CGRect]
         let badges: [Badge]
     }
+
+    /// The target window's frame in view coordinates. The overlay covers the
+    /// whole screen; the banner and the zoom's dimming stay over the window
+    /// the hints belong to.
+    var windowRegion: CGRect = .zero
 
     var badges: [Badge] = [] {
         didSet { needsDisplay = true }
@@ -222,7 +234,7 @@ final class HintOverlayView: NSView {
     private func drawZoom(_ zoom: Zoom) {
         // Dim the window so the panel is unmistakably the thing to read.
         NSColor.black.withAlphaComponent(0.25).setFill()
-        bounds.fill(using: .sourceOver)
+        windowRegion.intersection(bounds).fill(using: .sourceOver)
 
         let panel = NSBezierPath(roundedRect: zoom.panel, xRadius: 10, yRadius: 10)
         NSColor(calibratedWhite: 0.13, alpha: 0.98).setFill()
@@ -267,9 +279,10 @@ final class HintOverlayView: NSView {
         let string = NSAttributedString(string: text, attributes: attributes)
         let textSize = string.size()
         let padding = CGSize(width: 14, height: 8)
+        let region = windowRegion.isEmpty ? bounds : windowRegion
         let pill = CGRect(
-            x: bounds.midX - textSize.width / 2 - padding.width,
-            y: max(0, bounds.height * 0.12),
+            x: region.midX - textSize.width / 2 - padding.width,
+            y: region.minY + region.height * 0.12,
             width: textSize.width + padding.width * 2,
             height: textSize.height + padding.height * 2
         )
@@ -315,29 +328,44 @@ final class HintOverlayView: NSView {
     /// where the two shapes join. The view is flipped: `.down` means toward
     /// larger y.
     private func drawCaret(of badge: Badge, fill: NSColor, stroke: NSColor) {
-        guard badge.caret != .hidden else { return }
         let halfBase: CGFloat = 4
-        let tipX = badge.rect.minX + min(8, badge.rect.width / 2)
-        let baseY = badge.caret == .downward ? badge.rect.maxY : badge.rect.minY
-        let tipY = badge.caret == .downward
-            ? baseY + HintGeometry.caretHeight
-            : baseY - HintGeometry.caretHeight
-        // Tuck the base a point into the badge so the fill hides the border
-        // between them.
-        let tuckedY = badge.caret == .downward ? baseY - 1 : baseY + 1
+        let rect = badge.rect
+
+        // The caret's base sits on the badge edge facing the element, its tip
+        // `caretHeight` beyond it; the base corners get tucked a point into the
+        // badge so the fill hides the border between the two shapes.
+        let base: CGPoint, tip: CGPoint, across: CGPoint, tuck: CGPoint
+        switch badge.caret {
+        case .hidden:
+            return
+        case .downward, .upward:
+            let baseY = badge.caret == .downward ? rect.maxY : rect.minY
+            let reach = badge.caret == .downward ? HintGeometry.caretHeight : -HintGeometry.caretHeight
+            base = CGPoint(x: rect.minX + min(8, rect.width / 2), y: baseY)
+            tip = CGPoint(x: base.x, y: baseY + reach)
+            across = CGPoint(x: halfBase, y: 0)
+            tuck = CGPoint(x: 0, y: badge.caret == .downward ? -1 : 1)
+        case .rightward, .leftward:
+            let baseX = badge.caret == .rightward ? rect.maxX : rect.minX
+            let reach = badge.caret == .rightward ? HintGeometry.caretHeight : -HintGeometry.caretHeight
+            base = CGPoint(x: baseX, y: rect.midY)
+            tip = CGPoint(x: baseX + reach, y: base.y)
+            across = CGPoint(x: 0, y: halfBase)
+            tuck = CGPoint(x: badge.caret == .rightward ? -1 : 1, y: 0)
+        }
 
         let body = NSBezierPath()
-        body.move(to: CGPoint(x: tipX - halfBase, y: tuckedY))
-        body.line(to: CGPoint(x: tipX, y: tipY))
-        body.line(to: CGPoint(x: tipX + halfBase, y: tuckedY))
+        body.move(to: CGPoint(x: base.x - across.x + tuck.x, y: base.y - across.y + tuck.y))
+        body.line(to: tip)
+        body.line(to: CGPoint(x: base.x + across.x + tuck.x, y: base.y + across.y + tuck.y))
         body.close()
         fill.setFill()
         body.fill()
 
         let edges = NSBezierPath()
-        edges.move(to: CGPoint(x: tipX - halfBase, y: baseY))
-        edges.line(to: CGPoint(x: tipX, y: tipY))
-        edges.line(to: CGPoint(x: tipX + halfBase, y: baseY))
+        edges.move(to: CGPoint(x: base.x - across.x, y: base.y - across.y))
+        edges.line(to: tip)
+        edges.line(to: CGPoint(x: base.x + across.x, y: base.y + across.y))
         stroke.setStroke()
         edges.lineWidth = 1
         edges.stroke()

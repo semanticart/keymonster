@@ -64,9 +64,12 @@ final class HintModeController {
         // More targets than two-letter labels exist: drop the overflow.
         targets = Array(scan.targets.prefix(HintLabels.maxCount))
         windowFrame = scan.windowFrame
+        // Badges may go anywhere on the window's screen, so labels for
+        // elements at the window's edge hang just outside it instead of
+        // crowding (and clustering) within.
         (groups, groupLabels) = HintGrouping.groupsWithLabels(
             anchors: targets.map(\.frame),
-            within: windowFrame,
+            within: HintScreens.bounds(around: windowFrame),
             badgeSize: HintOverlayView.badgeSize(forLabelLength:)
         )
         selection = HintSelection(labels: groupLabels)
@@ -125,8 +128,7 @@ final class HintModeController {
             area: area,
             image: overlay.snapshotBelow(area: area),
             memberFrames: memberFrames,
-            labels: labels,
-            windowFrame: windowFrame
+            labels: labels
         )
     }
 

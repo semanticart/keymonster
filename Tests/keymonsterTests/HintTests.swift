@@ -251,11 +251,53 @@ final class HintGeometryTests: XCTestCase {
         let below = CGRect(x: 100, y: 335, width: 22, height: 18)
         XCTAssertEqual(HintOverlayView.caretDirection(from: above, toward: area), .downward)
         XCTAssertEqual(HintOverlayView.caretDirection(from: below, toward: area), .upward)
+        let left = CGRect(x: 73, y: 306, width: 22, height: 18)
+        let right = CGRect(x: 185, y: 306, width: 22, height: 18)
+        XCTAssertEqual(HintOverlayView.caretDirection(from: left, toward: area), .rightward)
+        XCTAssertEqual(HintOverlayView.caretDirection(from: right, toward: area), .leftward)
         // Clamped on top of the element: no pointer.
         XCTAssertEqual(
             HintOverlayView.caretDirection(from: above.offsetBy(dx: 0, dy: 30), toward: area),
             .hidden
         )
+    }
+
+    func testBadgeCandidatesOfferEscapesOnFreeSides() {
+        let area = CGRect(x: 100, y: 300, width: 80, height: 30)
+        let candidates = HintGeometry.badgeCandidates(badgeSize, labeling: area, in: bounds)
+        // Preferred (above) first, then below, left, and right of the element.
+        XCTAssertEqual(candidates.count, 4)
+        XCTAssertEqual(candidates[0], HintGeometry.badgeRect(badgeSize, labeling: area, in: bounds))
+        XCTAssertEqual(candidates[1].minY, area.maxY + HintGeometry.caretHeight)
+        XCTAssertEqual(candidates[2].maxX, area.minX - HintGeometry.caretHeight)
+        XCTAssertEqual(candidates[3].minX, area.maxX + HintGeometry.caretHeight)
+        for candidate in candidates {
+            XCTAssertTrue(bounds.contains(candidate))
+        }
+    }
+
+    func testBadgeCandidatesDropEscapesThatDoNotFit() {
+        // Flush against the left edge: no left escape; the preferred spot
+        // (above) and the below/right escapes remain.
+        let area = CGRect(x: 0, y: 300, width: 80, height: 30)
+        let candidates = HintGeometry.badgeCandidates(badgeSize, labeling: area, in: bounds)
+        XCTAssertEqual(candidates.count, 3)
+        XCTAssertTrue(candidates.allSatisfy { bounds.contains($0) })
+        XCTAssertFalse(candidates.contains { $0.maxX <= area.minX })
+    }
+
+    func testBestContainerPicksTheFrameSharingTheMostArea() {
+        let screens = [
+            CGRect(x: 0, y: 0, width: 800, height: 600),
+            CGRect(x: 800, y: 0, width: 800, height: 600)
+        ]
+        // A window straddling both screens, mostly on the second.
+        let window = CGRect(x: 700, y: 100, width: 400, height: 300)
+        XCTAssertEqual(HintGeometry.bestContainer(for: window, among: screens), screens[1])
+        // Off every screen entirely: no container.
+        XCTAssertNil(HintGeometry.bestContainer(
+            for: window.offsetBy(dx: 2000, dy: 0), among: screens
+        ))
     }
 
     func testAXToCocoaFlipsVertically() {

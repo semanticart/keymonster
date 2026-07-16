@@ -136,9 +136,10 @@ final class TextJumpController {
             return
         }
         hits = occurrences
+        // Badges may go anywhere on the window's screen; see HintScreens.
         (groups, groupLabels) = HintGrouping.groupsWithLabels(
             anchors: occurrences.map(\.rect),
-            within: windowFrame,
+            within: HintScreens.bounds(around: windowFrame),
             badgeSize: HintOverlayView.badgeSize(forLabelLength:)
         )
         selection = HintSelection(labels: groupLabels)
@@ -169,8 +170,7 @@ final class TextJumpController {
             area: area,
             image: overlay.snapshotBelow(area: area),
             memberFrames: memberFrames,
-            labels: labels,
-            windowFrame: windowFrame
+            labels: labels
         )
     }
 

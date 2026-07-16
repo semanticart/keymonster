@@ -79,13 +79,34 @@ final class HintGroupingTests: XCTestCase {
     }
 
     func testElementsSharingACornerClusterUp() {
-        // Nearly the same top-left corner: the badges land on top of each
-        // other, so the pair collapses into one green area label.
+        // Nearly the same top-left corner: both badges want their natural spot
+        // and land on top of each other — real crowding, so the pair collapses
+        // into one green area label rather than badges escaping sideways.
         let outer = CGRect(x: 100, y: 100, width: 200, height: 120)
         let inner = CGRect(x: 104, y: 103, width: 60, height: 24)
         let groups = group([outer, inner])
         XCTAssertEqual(groups.count, 1)
         XCTAssertTrue(groups[0].isCluster)
+    }
+
+    func testTopCornerNeighborsEscapeInsteadOfClustering() {
+        // A help "?" and a close X stacked in a window's top-right corner: the
+        // help badge flips below (no room above), landing right where the close
+        // badge hangs. There's clear space around them, so both keep individual
+        // labels instead of merging into a cluster.
+        let help = CGRect(x: 770, y: 6, width: 17, height: 17)
+        let close = CGRect(x: 760, y: 50, width: 17, height: 17)
+        let groups = group([help, close])
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertTrue(groups.allSatisfy { !$0.isCluster })
+        XCTAssertFalse(groups[0].badge.insetBy(dx: -1, dy: -1).intersects(groups[1].badge))
+        // The escaped badge found genuinely clear space: no badge covers
+        // either element.
+        for grp in groups {
+            for anchor in [help, close] {
+                XCTAssertFalse(grp.badge.intersects(anchor), "\(grp.badge) covers \(anchor)")
+            }
+        }
     }
 
     func testFinalBadgesNeverCollide() {
