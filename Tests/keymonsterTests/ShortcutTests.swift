@@ -3,11 +3,10 @@ import XCTest
 @testable import keymonster
 
 final class ShortcutFormatterTests: XCTestCase {
-    // Carbon modifier bit constants, mirrored from AppSettings.
-    private let cmdKey = 0x0100
-    private let shiftKey = 0x0200
-    private let optionKey = 0x0800
-    private let controlKey = 0x1000
+    private let cmdKey = Int(CarbonModifierMask.command)
+    private let shiftKey = Int(CarbonModifierMask.shift)
+    private let optionKey = Int(CarbonModifierMask.option)
+    private let controlKey = Int(CarbonModifierMask.control)
 
     func testCmdShiftV() {
         // keyCode 9 == "V"
@@ -36,20 +35,20 @@ final class ShortcutFormatterTests: XCTestCase {
 
 final class CarbonModifiersTests: XCTestCase {
     func testMapsEachFlagToCarbonBit() {
-        XCTAssertEqual(carbonModifiers(from: .command), 0x0100)
-        XCTAssertEqual(carbonModifiers(from: .shift), 0x0200)
-        XCTAssertEqual(carbonModifiers(from: .option), 0x0800)
-        XCTAssertEqual(carbonModifiers(from: .control), 0x1000)
+        XCTAssertEqual(carbonModifiers(from: .command), CarbonModifierMask.command)
+        XCTAssertEqual(carbonModifiers(from: .shift), CarbonModifierMask.shift)
+        XCTAssertEqual(carbonModifiers(from: .option), CarbonModifierMask.option)
+        XCTAssertEqual(carbonModifiers(from: .control), CarbonModifierMask.control)
     }
 
     func testCombinesFlags() {
         let mods = carbonModifiers(from: [.command, .shift])
-        XCTAssertEqual(mods, 0x0100 | 0x0200)
+        XCTAssertEqual(mods, CarbonModifierMask.command | CarbonModifierMask.shift)
     }
 
     func testIgnoresNonModifierFlags() {
         // capsLock should not contribute any Carbon bits.
-        XCTAssertEqual(carbonModifiers(from: [.command, .capsLock]), 0x0100)
+        XCTAssertEqual(carbonModifiers(from: [.command, .capsLock]), CarbonModifierMask.command)
     }
 
     func testFormatterRoundTripsRecorderOutput() {
@@ -62,7 +61,7 @@ final class CarbonModifiersTests: XCTestCase {
 
 final class ShortcutCodableTests: XCTestCase {
     func testEncodeDecodeRoundTrip() throws {
-        let original = Shortcut(keyCode: 9, carbonModifiers: 0x0100 | 0x0200)
+        let original = Shortcut(keyCode: 9, carbonModifiers: CarbonModifierMask.command | CarbonModifierMask.shift)
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(Shortcut.self, from: data)
         XCTAssertEqual(decoded, original)
@@ -70,7 +69,7 @@ final class ShortcutCodableTests: XCTestCase {
 }
 
 final class ShortcutConflictsTests: XCTestCase {
-    private func shortcut(_ key: UInt32, _ mods: UInt32 = 0x0100) -> Shortcut {
+    private func shortcut(_ key: UInt32, _ mods: UInt32 = CarbonModifierMask.command) -> Shortcut {
         Shortcut(keyCode: key, carbonModifiers: mods)
     }
 
@@ -87,8 +86,8 @@ final class ShortcutConflictsTests: XCTestCase {
 
     func testSameKeyDifferentModifiersDoNotConflict() {
         let result = ShortcutConflicts.conflicting([
-            shortcut(0, 0x0100),
-            shortcut(0, 0x0200)
+            shortcut(0, CarbonModifierMask.command),
+            shortcut(0, CarbonModifierMask.shift)
         ])
         XCTAssertTrue(result.isEmpty)
     }

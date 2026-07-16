@@ -36,14 +36,11 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                HStack {
-                    Text("Clipboard Shortcut")
-                    Spacer()
-                    ShortcutRecorder(shortcut: $settings.shortcut)
-                }
-                if isConflicting(settings.shortcut) {
-                    ConflictWarning()
-                }
+                ShortcutSettingRow(
+                    title: "Clipboard Shortcut",
+                    shortcut: $settings.shortcut,
+                    isConflicting: isConflicting(settings.shortcut)
+                )
             } footer: {
                 Text("Opens clipboard history from anywhere.")
                     .foregroundStyle(.secondary)
@@ -69,29 +66,18 @@ struct SettingsView: View {
             }
 
             Section {
-                HStack {
-                    Text("Left Click")
-                    Spacer()
-                    ShortcutRecorder(shortcut: $settings.hintLeftShortcut)
-                }
-                if isConflicting(settings.hintLeftShortcut) {
-                    ConflictWarning()
-                }
-                HStack {
-                    Text("Right Click")
-                    Spacer()
-                    ShortcutRecorder(shortcut: $settings.hintRightShortcut)
-                }
-                if isConflicting(settings.hintRightShortcut) {
-                    ConflictWarning()
-                }
+                ShortcutSettingRow(
+                    title: "Left Click",
+                    shortcut: $settings.hintLeftShortcut,
+                    isConflicting: isConflicting(settings.hintLeftShortcut)
+                )
+                ShortcutSettingRow(
+                    title: "Right Click",
+                    shortcut: $settings.hintRightShortcut,
+                    isConflicting: isConflicting(settings.hintRightShortcut)
+                )
                 if hintsConfigured && !accessTrusted {
-                    HStack {
-                        Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                        Spacer()
-                        Button("Open Settings…") { Paster.openAccessibilitySettings() }
-                    }
+                    AccessibilityNotice()
                 }
             } header: {
                 Text("Click Hints")
@@ -103,60 +89,30 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section {
-                HStack {
-                    Text("Show Grid")
-                    Spacer()
-                    ShortcutRecorder(shortcut: $settings.gridShortcut)
-                }
-                if isConflicting(settings.gridShortcut) {
-                    ConflictWarning()
-                }
-                if settings.gridShortcut != nil && !accessTrusted {
-                    HStack {
-                        Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                        Spacer()
-                        Button("Open Settings…") { Paster.openAccessibilitySettings() }
-                    }
-                }
-            } header: {
-                Text("Grid Click")
-            } footer: {
-                Text("Overlay a grid mirroring the keyboard's letter rows (Q–/) on the "
+            ShortcutSettingSection(
+                title: "Show Grid",
+                shortcut: $settings.gridShortcut,
+                isConflicting: isConflicting(settings.gridShortcut),
+                showAccessibilityNotice: settings.gridShortcut != nil && !accessTrusted,
+                header: "Grid Click",
+                footer: "Overlay a grid mirroring the keyboard's letter rows (Q–/) on the "
                     + "active window; each key zooms into that cell, and after two "
                     + "zooms the next key clicks. Return clicks the center anytime — "
                     + "hold Shift to right-click. Delete zooms back out; Esc cancels. "
-                    + "Requires Accessibility permission.")
-                    .foregroundStyle(.secondary)
-            }
+                    + "Requires Accessibility permission."
+            )
 
-            Section {
-                HStack {
-                    Text("Jump to Character")
-                    Spacer()
-                    ShortcutRecorder(shortcut: $settings.textJumpShortcut)
-                }
-                if isConflicting(settings.textJumpShortcut) {
-                    ConflictWarning()
-                }
-                if settings.textJumpShortcut != nil && !accessTrusted {
-                    HStack {
-                        Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                        Spacer()
-                        Button("Open Settings…") { Paster.openAccessibilitySettings() }
-                    }
-                }
-            } header: {
-                Text("Text Jump")
-            } footer: {
-                Text("In the active text field — native or web — press this shortcut, "
+            ShortcutSettingSection(
+                title: "Jump to Character",
+                shortcut: $settings.textJumpShortcut,
+                isConflicting: isConflicting(settings.textJumpShortcut),
+                showAccessibilityNotice: settings.textJumpShortcut != nil && !accessTrusted,
+                header: "Text Jump",
+                footer: "In the active text field — native or web — press this shortcut, "
                     + "then a character. Every visible occurrence gets a label; type one "
                     + "to drop the caret just before that character. Delete picks a "
-                    + "different character; Esc cancels. Requires Accessibility permission.")
-                    .foregroundStyle(.secondary)
-            }
+                    + "different character; Esc cancels. Requires Accessibility permission."
+            )
 
             Section {
                 Toggle("Launch at Login", isOn: $settings.launchAtLogin)
@@ -168,12 +124,7 @@ struct SettingsView: View {
             Section {
                 Toggle("Paste into the active app on Return", isOn: $settings.autoPaste)
                 if settings.autoPaste && !accessTrusted {
-                    HStack {
-                        Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                        Spacer()
-                        Button("Open Settings…") { Paster.openAccessibilitySettings() }
-                    }
+                    AccessibilityNotice()
                 }
             } footer: {
                 Text("Pastes the selected item straight into the app you were using. "
@@ -236,8 +187,11 @@ private struct ShortcutRecorder: View {
 
     private func startRecording() {
         isRecording = true
-        // Temporarily unregister so the current hotkey doesn't fire while recording.
-        // (HotkeyManager keeps its ref; we'll re-register in AppDelegate via settings change.)
+        // Suspend all global hotkeys while recording: AppSettings.shared.suspendHotkeys
+        // makes AppDelegate.applyHotkeys register an empty binding list (it re-runs via
+        // the objectWillChange subscription), so a combo captured here can't also fire
+        // as a live shortcut mid-recording.
+        AppSettings.shared.suspendHotkeys = true
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.keyCode == 53 { // Escape cancels
                 stopRecording()
@@ -253,6 +207,7 @@ private struct ShortcutRecorder: View {
 
     private func stopRecording() {
         isRecording = false
+        AppSettings.shared.suspendHotkeys = false
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
@@ -331,6 +286,62 @@ private struct ConflictWarning: View {
               systemImage: "exclamationmark.triangle.fill")
             .font(.caption)
             .foregroundStyle(.orange)
+    }
+}
+
+/// Shown wherever a feature needing Accessibility permission is enabled but the app isn't trusted yet.
+private struct AccessibilityNotice: View {
+    var body: some View {
+        HStack {
+            Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Spacer()
+            Button("Open Settings…") { Paster.openAccessibilitySettings() }
+        }
+    }
+}
+
+/// A titled shortcut recorder plus its conflict warning, shared by every single-shortcut settings row.
+private struct ShortcutSettingRow: View {
+    let title: String
+    @Binding var shortcut: Shortcut?
+    let isConflicting: Bool
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            ShortcutRecorder(shortcut: $shortcut)
+        }
+        if isConflicting {
+            ConflictWarning()
+        }
+    }
+}
+
+/// A full settings section built around one `ShortcutSettingRow`, with an
+/// optional Accessibility notice and header/footer text. Covers the Grid Click
+/// and Text Jump sections, which are otherwise identical in shape.
+private struct ShortcutSettingSection: View {
+    let title: String
+    @Binding var shortcut: Shortcut?
+    let isConflicting: Bool
+    let showAccessibilityNotice: Bool
+    let header: String
+    let footer: String
+
+    var body: some View {
+        Section {
+            ShortcutSettingRow(title: title, shortcut: $shortcut, isConflicting: isConflicting)
+            if showAccessibilityNotice {
+                AccessibilityNotice()
+            }
+        } header: {
+            Text(header)
+        } footer: {
+            Text(footer)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

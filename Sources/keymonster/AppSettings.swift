@@ -2,6 +2,16 @@ import AppKit
 import Foundation
 import ServiceManagement
 
+/// Carbon's modifier-flag bits, as used by RegisterEventHotKey and the Shortcut
+/// encoding. Defined once here; ShortcutFormatter, carbonModifiers(from:), and
+/// the tests all reference these instead of repeating the magic numbers.
+enum CarbonModifierMask {
+    static let command: UInt32 = 0x0100
+    static let shift: UInt32 = 0x0200
+    static let option: UInt32 = 0x0800
+    static let control: UInt32 = 0x1000
+}
+
 struct Shortcut: Codable, Equatable, Hashable {
     let keyCode: UInt32
     let carbonModifiers: UInt32
@@ -125,6 +135,11 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(autoPaste, forKey: Self.autoPasteKey) }
     }
 
+    /// True while ShortcutRecorder is capturing a key combo. Not persisted:
+    /// AppDelegate registers no hotkeys while this is set, so a combo being
+    /// recorded can't also trigger a live global shortcut.
+    @Published var suspendHotkeys: Bool = false
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         autoPaste = defaults.object(forKey: Self.autoPasteKey) as? Bool ?? true
@@ -166,17 +181,12 @@ final class AppSettings: ObservableObject {
 
 enum ShortcutFormatter {
     static func format(keyCode: Int, carbonModifiers: Int) -> String {
-        // Carbon modifier constants
-        let cmdKey    = 0x0100
-        let shiftKey  = 0x0200
-        let optionKey = 0x0800
-        let controlKey = 0x1000
-
+        let mods = UInt32(carbonModifiers)
         var result = ""
-        if carbonModifiers & controlKey != 0 { result += "⌃" }
-        if carbonModifiers & optionKey != 0 { result += "⌥" }
-        if carbonModifiers & shiftKey != 0 { result += "⇧" }
-        if carbonModifiers & cmdKey != 0 { result += "⌘" }
+        if mods & CarbonModifierMask.control != 0 { result += "⌃" }
+        if mods & CarbonModifierMask.option != 0 { result += "⌥" }
+        if mods & CarbonModifierMask.shift != 0 { result += "⇧" }
+        if mods & CarbonModifierMask.command != 0 { result += "⌘" }
         result += keyCharacter(for: keyCode)
         return result
     }
@@ -200,9 +210,9 @@ enum ShortcutFormatter {
 
 func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
     var mods: UInt32 = 0
-    if flags.contains(.command) { mods |= 0x0100 }
-    if flags.contains(.shift) { mods |= 0x0200 }
-    if flags.contains(.option) { mods |= 0x0800 }
-    if flags.contains(.control) { mods |= 0x1000 }
+    if flags.contains(.command) { mods |= CarbonModifierMask.command }
+    if flags.contains(.shift) { mods |= CarbonModifierMask.shift }
+    if flags.contains(.option) { mods |= CarbonModifierMask.option }
+    if flags.contains(.control) { mods |= CarbonModifierMask.control }
     return mods
 }

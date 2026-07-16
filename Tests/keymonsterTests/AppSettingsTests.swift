@@ -82,4 +82,13 @@ final class AppSettingsTests: XCTestCase {
 
         XCTAssertTrue(AppSettings(defaults: defaults).hasLaunched)
     }
+
+    func testSuspendHotkeysDefaultsFalseAndIsNotPersisted() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertFalse(settings.suspendHotkeys)
+        settings.suspendHotkeys = true
+
+        // Transient recording state, not user data: a fresh instance never sees it.
+        XCTAssertFalse(AppSettings(defaults: defaults).suspendHotkeys)
+    }
 }

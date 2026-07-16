@@ -68,23 +68,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.menu = buildStatusMenu()
         statusItem = item
 
-        // Re-register the full hotkey set whenever the history shortcut, any of
-        // the app-focus shortcuts, or the hint/grid shortcuts change.
-        // combineLatest emits the current values immediately, so this also
-        // performs the initial registration.
-        AppSettings.shared.$shortcut
-            .combineLatest(
-                AppSettings.shared.$appShortcuts,
-                AppSettings.shared.$hintLeftShortcut,
-                AppSettings.shared.$hintRightShortcut
-            )
-            .combineLatest(AppSettings.shared.$gridShortcut)
-            .combineLatest(AppSettings.shared.$textJumpShortcut)
+        // Re-register the full hotkey set on any settings change. objectWillChange
+        // fires before the new value lands, so we hop to the next runloop turn
+        // (receive(on:)) to read the settled values; re-registering wholesale on
+        // every change is harmless since HotkeyManager.register replaces the set.
+        AppSettings.shared.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.applyHotkeys()
             }
             .store(in: &cancellables)
+        applyHotkeys()
 
         if !AppSettings.shared.hasLaunched {
             AppSettings.shared.hasLaunched = true
@@ -141,41 +135,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Hotkey
 
     private func applyHotkeys() {
-        var bindings: [HotkeyBinding] = []
-
-        if let historyShortcut = AppSettings.shared.shortcut {
-            bindings.append(HotkeyBinding(shortcut: historyShortcut) { [weak self] in
-                self?.panelController?.toggle()
-            })
+        // While a shortcut is being recorded, register nothing: a combo that's
+        // mid-capture shouldn't also fire as a live global hotkey. This re-runs
+        // (via the objectWillChange subscription above) once recording ends.
+        guard !AppSettings.shared.suspendHotkeys else {
+            log.info("hotkeys suspended while recording")
+            hotkeyManager.register([])
+            return
         }
 
-        for entry in AppSettings.shared.appShortcuts {
-            guard let shortcut = entry.shortcut, !entry.apps.isEmpty else { continue }
+        // Order matters: when two entries share a shortcut, only the first one
+        // registered actually fires (see ShortcutConflicts), so this must match
+        // the order the settings UI lists them in (and previously registered them in).
+        let settings = AppSettings.shared
+        var entries: [(shortcut: Shortcut?, action: () -> Void)] = [
+            (settings.shortcut, { [weak self] in self?.panelController?.toggle() })
+        ]
+        for entry in settings.appShortcuts {
+            guard !entry.apps.isEmpty else { continue }
             let apps = entry.apps
-            bindings.append(HotkeyBinding(shortcut: shortcut) { [weak self] in
-                self?.appFocuser.focus(apps)
-            })
+            entries.append((entry.shortcut, { [weak self] in self?.appFocuser.focus(apps) }))
         }
+        entries.append(contentsOf: [
+            (settings.hintLeftShortcut, { [weak self] in self?.hintMode.toggle(button: .left) }),
+            (settings.hintRightShortcut, { [weak self] in self?.hintMode.toggle(button: .right) }),
+            (settings.gridShortcut, { [weak self] in self?.gridMode.toggle() }),
+            (settings.textJumpShortcut, { [weak self] in self?.textJumpMode.toggle() })
+        ])
 
-        if let hintLeft = AppSettings.shared.hintLeftShortcut {
-            bindings.append(HotkeyBinding(shortcut: hintLeft) { [weak self] in
-                self?.hintMode.toggle(button: .left)
-            })
-        }
-        if let hintRight = AppSettings.shared.hintRightShortcut {
-            bindings.append(HotkeyBinding(shortcut: hintRight) { [weak self] in
-                self?.hintMode.toggle(button: .right)
-            })
-        }
-        if let grid = AppSettings.shared.gridShortcut {
-            bindings.append(HotkeyBinding(shortcut: grid) { [weak self] in
-                self?.gridMode.toggle()
-            })
-        }
-        if let textJump = AppSettings.shared.textJumpShortcut {
-            bindings.append(HotkeyBinding(shortcut: textJump) { [weak self] in
-                self?.textJumpMode.toggle()
-            })
+        let bindings = entries.compactMap { entry -> HotkeyBinding? in
+            guard let shortcut = entry.shortcut else { return nil }
+            return HotkeyBinding(shortcut: shortcut, action: entry.action)
         }
 
         log.info("registering \(bindings.count) hotkey(s)")
