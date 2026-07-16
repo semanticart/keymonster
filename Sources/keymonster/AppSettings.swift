@@ -59,6 +59,7 @@ final class AppSettings: ObservableObject {
     static let hintLeftShortcutKey = "hintLeftClickShortcut"
     static let hintRightShortcutKey = "hintRightClickShortcut"
     static let gridShortcutKey = "gridClickShortcut"
+    static let textJumpShortcutKey = "textJumpShortcut"
 
     @Published var launchAtLogin: Bool {
         didSet {
@@ -111,6 +112,13 @@ final class AppSettings: ObservableObject {
         didSet { persist(gridShortcut, forKey: Self.gridShortcutKey) }
     }
 
+    /// Global shortcut that, over the focused text field, labels every
+    /// occurrence of the next character typed; picking a label places the caret
+    /// just before that character.
+    @Published var textJumpShortcut: Shortcut? {
+        didSet { persist(textJumpShortcut, forKey: Self.textJumpShortcutKey) }
+    }
+
     /// When on, pressing Return pastes the selection into the previously focused
     /// app instead of only copying it. Defaults on; requires Accessibility access.
     @Published var autoPaste: Bool {
@@ -125,6 +133,7 @@ final class AppSettings: ObservableObject {
         hintLeftShortcut = Self.loadShortcut(defaults, key: Self.hintLeftShortcutKey)
         hintRightShortcut = Self.loadShortcut(defaults, key: Self.hintRightShortcutKey)
         gridShortcut = Self.loadShortcut(defaults, key: Self.gridShortcutKey)
+        textJumpShortcut = Self.loadShortcut(defaults, key: Self.textJumpShortcutKey)
         if let data = defaults.data(forKey: Self.appShortcutsKey),
            let decoded = try? JSONDecoder().decode([AppShortcut].self, from: data) {
             appShortcuts = decoded

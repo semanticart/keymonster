@@ -15,9 +15,6 @@ enum HintKeyEvent: Equatable {
     /// Return or keypad Enter. Only produced when the tap's `acceptsEnter` is
     /// on (grid mode); otherwise Return passes through like any other key.
     case enter(shifted: Bool)
-    /// "!" pressed. Only produced when the tap's `capturesScreen` is on (grid
-    /// mode copies the overlay to the clipboard); otherwise it passes through.
-    case capture
     /// Anything else — a chorded shortcut, a mouse click, cmd-tab. Hint mode
     /// should get out of the way and let the event through.
     case cancel
@@ -34,12 +31,14 @@ final class HintKeyTap {
     /// When on, Return/keypad Enter is swallowed and reported as `.enter`
     /// instead of passing through (grid mode confirms with Return).
     var acceptsEnter = false
-    /// When on, "!" is swallowed and reported as `.capture` instead of passing
-    /// through (grid mode copies a screenshot of the overlay to the clipboard).
-    var capturesScreen = false
     /// Non-letter characters that still count as input (grid mode's keyboard
     /// rows include punctuation like ";" and "[", plus their shifted forms).
     var extraCharacters: Set<Character> = []
+    /// When on, any single printable key is reported verbatim as `.letter`
+    /// (un-lowercased, digits and punctuation included) instead of being
+    /// filtered to hint letters — text-jump mode's target character can be
+    /// anything typed.
+    var reportsRawCharacters = false
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
 
@@ -140,10 +139,14 @@ final class HintKeyTap {
               characters.count == 1, let character = characters.first else {
             return nil
         }
-        // "!" (shifted, so charactersIgnoringModifiers already yields it) copies
-        // the grid overlay to the clipboard in grid mode.
-        if capturesScreen, character == "!" {
-            return .capture
+        // Text-jump's first phase accepts any printable character (a letter,
+        // digit, symbol, or space) as the jump target; control keys like Return
+        // and Tab still fall through to `.cancel`.
+        if reportsRawCharacters {
+            guard let scalar = character.unicodeScalars.first, scalar.value >= 0x20 else {
+                return nil
+            }
+            return .letter(character, shifted: flags.contains(.maskShift))
         }
         guard let letter = characters.lowercased().first,
               letter.isASCII, letter.isLetter || extraCharacters.contains(letter) else {

@@ -31,13 +31,21 @@ any earlier entry from a fast, keyboard-driven panel.
   so a single combo can rotate through e.g. Slack and Chrome. Settings warns when
   a combo is bound more than once, since only the first binding can register.
 - **Click hints (vimium-style)** — press a shortcut and every clickable element
-  in the frontmost window grows a two-letter label (home-row letters first);
-  type a label to click it without touching the mouse. Works on native macOS
+  in the frontmost window grows a short label (a single home-row letter when
+  few elements are visible, two letters otherwise); type a label to click it
+  without touching the mouse. Works on native macOS
   controls and on web content in Safari, Chrome, and Electron apps (Key Monster
   asks them to expose their accessibility trees). Separate shortcuts for
   left-click and right-click hints; holding `Shift` on the final letter clicks
   with the opposite button. `Esc`, a real click, or any other chord dismisses
   the overlay. Requires Accessibility permission.
+- **Text jump (jump to character)** — press a shortcut while a text field is
+  focused, then any character; every visible occurrence of it in the field grows
+  a short label (one letter when there are only a few, two otherwise), and typing
+  a label drops the caret just before that character. Matching is case-insensitive and works on digits, punctuation, and
+  spaces too. Works in native macOS fields and in web text areas (Safari,
+  Chrome, Electron). `Delete` backs out to pick a different character; `Esc`, a
+  real click, or any other chord dismisses. Requires Accessibility permission.
 - **Password-manager aware** — respects the
   [nspasteboard.org](http://nspasteboard.org) convention and skips clipboard
   contents marked concealed, transient, or auto-generated.
@@ -116,6 +124,8 @@ Your history is stored at:
 | `Hints/HintOverlay.swift` | Transparent click-through window that draws the hint badges. |
 | `Hints/HintKeyTap.swift` | CGEvent tap that captures keystrokes while hints are showing. |
 | `Hints/MouseClicker.swift` | Synthesizes left/right clicks at a hint target's center. |
+| `Hints/TextJumpController.swift` | Orchestrates text-jump mode: arm → pick character → label occurrences → place caret. |
+| `Hints/AXFocusedText.swift` | Reads the focused text field's value/caret via AX, finds a character's on-screen occurrences, and moves the caret. |
 
 The persistence layer is kept behind the narrow `ClipStore` protocol so
 `ClipboardHistory` can be tested against an in-memory SQLite store

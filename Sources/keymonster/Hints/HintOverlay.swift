@@ -10,8 +10,29 @@ final class HintOverlay {
     /// `windowFrame` is the target window's frame in AX (top-left origin)
     /// coordinates — the same space the targets' frames are in.
     func show(targets: [HintTarget], labels: [String], windowFrame: CGRect) {
+        guard let view = install(windowFrame: windowFrame) else { return }
+        // Hint frames become view-local (the view is flipped, so it shares the
+        // AX tree's top-left origin — only the window's origin needs removing).
+        view.hints = zip(targets, labels).map { target, label in
+            HintOverlayView.Hint(
+                frame: target.frame.offsetBy(dx: -windowFrame.minX, dy: -windowFrame.minY),
+                label: label
+            )
+        }
+    }
+
+    /// Shows a centered message over the window with no hints — used to signal
+    /// that a mode is armed and waiting for input.
+    func showBanner(_ text: String, windowFrame: CGRect) {
+        install(windowFrame: windowFrame)?.banner = text
+    }
+
+    /// Lays a fresh transparent, click-through overlay window exactly over the
+    /// target window and returns its view, or nil if there's no screen.
+    @discardableResult
+    private func install(windowFrame: CGRect) -> HintOverlayView? {
         hide()
-        guard let primary = NSScreen.screens.first else { return }
+        guard let primary = NSScreen.screens.first else { return nil }
         let cocoaFrame = HintGeometry.cocoaRect(
             fromAX: windowFrame, primaryScreenHeight: primary.frame.height
         )
@@ -28,19 +49,12 @@ final class HintOverlay {
         window.isReleasedWhenClosed = false
 
         let view = HintOverlayView(frame: CGRect(origin: .zero, size: cocoaFrame.size))
-        // Hint frames become view-local (the view is flipped, so it shares the
-        // AX tree's top-left origin — only the window's origin needs removing).
-        view.hints = zip(targets, labels).map { target, label in
-            HintOverlayView.Hint(
-                frame: target.frame.offsetBy(dx: -windowFrame.minX, dy: -windowFrame.minY),
-                label: label
-            )
-        }
         window.contentView = view
         window.orderFrontRegardless()
 
         self.window = window
         self.view = view
+        return view
     }
 
     func update(typed: String) {
@@ -72,6 +86,12 @@ final class HintOverlayView: NSView {
         didSet { needsDisplay = true }
     }
 
+    /// A centered prompt drawn instead of (or alongside) badges — used to show a
+    /// mode is armed and waiting.
+    var banner: String? {
+        didSet { needsDisplay = true }
+    }
+
     override var isFlipped: Bool { true }
 
     private static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .bold)
@@ -84,6 +104,32 @@ final class HintOverlayView: NSView {
         for hint in hints where hint.label.hasPrefix(typed) {
             drawBadge(for: hint)
         }
+        if let banner {
+            drawBanner(banner)
+        }
+    }
+
+    private func drawBanner(_ text: String) {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+            .foregroundColor: Self.ink
+        ]
+        let string = NSAttributedString(string: text, attributes: attributes)
+        let textSize = string.size()
+        let padding = CGSize(width: 14, height: 8)
+        let pill = CGRect(
+            x: bounds.midX - textSize.width / 2 - padding.width,
+            y: max(0, bounds.height * 0.12),
+            width: textSize.width + padding.width * 2,
+            height: textSize.height + padding.height * 2
+        )
+        let path = NSBezierPath(roundedRect: pill, xRadius: 8, yRadius: 8)
+        Self.fill.setFill()
+        path.fill()
+        Self.stroke.setStroke()
+        path.lineWidth = 1
+        path.stroke()
+        string.draw(at: CGPoint(x: pill.minX + padding.width, y: pill.minY + padding.height))
     }
 
     private func drawBadge(for hint: Hint) {

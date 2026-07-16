@@ -13,12 +13,25 @@ enum HintLabels {
         return letters * letters
     }
 
-    /// `count` distinct two-letter labels, ordered so that home-row-only pairs
-    /// come first, then pairs mixing in the top row, then the bottom row.
+    /// `count` distinct labels, cheapest-to-type first. When they all fit in
+    /// single letters (26 or fewer), each label is one keystroke — home row
+    /// first, so a handful of targets resolve with a single press. Beyond that
+    /// they're two-letter pairs, home-row-only pairs first, then pairs mixing in
+    /// the top row, then the bottom. All labels are the same length, so no label
+    /// is a prefix of another and matching stays unambiguous.
     static func labels(count: Int) -> [String] {
+        guard count > 0 else { return [] }
         let weighted: [(letter: Character, weight: Int)] = rows.enumerated().flatMap { row, letters in
             letters.map { ($0, row) }
         }
+
+        // Few enough to name with one keystroke each.
+        if count <= weighted.count {
+            return weighted.sorted { $0.weight < $1.weight }
+                .prefix(count)
+                .map { String($0.letter) }
+        }
+
         var pairs: [(label: String, weight: Int)] = []
         for first in weighted {
             for second in weighted {
@@ -27,7 +40,7 @@ enum HintLabels {
         }
         // Stable sort: within a weight tier, pairs keep their generation order.
         return pairs.sorted { $0.weight < $1.weight }
-            .prefix(max(0, count))
+            .prefix(count)
             .map(\.label)
     }
 }

@@ -20,6 +20,7 @@ struct SettingsView: View {
         if let hintLeft = settings.hintLeftShortcut { all.append(hintLeft) }
         if let hintRight = settings.hintRightShortcut { all.append(hintRight) }
         if let grid = settings.gridShortcut { all.append(grid) }
+        if let textJump = settings.textJumpShortcut { all.append(textJump) }
         return ShortcutConflicts.conflicting(all)
     }
 
@@ -95,7 +96,7 @@ struct SettingsView: View {
             } header: {
                 Text("Click Hints")
             } footer: {
-                Text("Overlay two-letter labels on everything clickable in the active "
+                Text("Overlay short labels on everything clickable in the active "
                     + "window — including web pages — and type one to click it. Hold "
                     + "Shift on the last letter for the opposite mouse button; Esc "
                     + "cancels. Requires Accessibility permission.")
@@ -127,6 +128,33 @@ struct SettingsView: View {
                     + "zooms the next key clicks. Return clicks the center anytime — "
                     + "hold Shift to right-click. Delete zooms back out; Esc cancels. "
                     + "Requires Accessibility permission.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                HStack {
+                    Text("Jump to Character")
+                    Spacer()
+                    ShortcutRecorder(shortcut: $settings.textJumpShortcut)
+                }
+                if isConflicting(settings.textJumpShortcut) {
+                    ConflictWarning()
+                }
+                if settings.textJumpShortcut != nil && !accessTrusted {
+                    HStack {
+                        Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Button("Open Settings…") { Paster.openAccessibilitySettings() }
+                    }
+                }
+            } header: {
+                Text("Text Jump")
+            } footer: {
+                Text("In the active text field — native or web — press this shortcut, "
+                    + "then a character. Every visible occurrence gets a label; type one "
+                    + "to drop the caret just before that character. Delete picks a "
+                    + "different character; Esc cancels. Requires Accessibility permission.")
                     .foregroundStyle(.secondary)
             }
 

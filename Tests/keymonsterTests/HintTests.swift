@@ -30,6 +30,21 @@ final class HintLabelsTests: XCTestCase {
         XCTAssertTrue(HintLabels.labels(count: 0).isEmpty)
         XCTAssertTrue(HintLabels.labels(count: -1).isEmpty)
     }
+
+    func testFewTargetsGetSingleLetterLabels() {
+        let labels = HintLabels.labels(count: 5)
+        XCTAssertEqual(labels.count, 5)
+        XCTAssertEqual(Set(labels).count, 5)
+        XCTAssertTrue(labels.allSatisfy { $0.count == 1 }, "few targets should resolve in one keystroke")
+        // Home-row letters, cheapest first.
+        XCTAssertEqual(labels, ["a", "s", "d", "f", "g"])
+    }
+
+    func testSingleLetterLabelsFillTheAlphabetBeforePairing() {
+        // 26 targets still fit in one letter each; 27 tips over into pairs.
+        XCTAssertTrue(HintLabels.labels(count: 26).allSatisfy { $0.count == 1 })
+        XCTAssertTrue(HintLabels.labels(count: 27).allSatisfy { $0.count == 2 })
+    }
 }
 
 final class HintSelectionTests: XCTestCase {
@@ -48,11 +63,21 @@ final class HintSelectionTests: XCTestCase {
     }
 
     func testUnknownPrefixIsRejectedAndNotRecorded() {
-        // Only two labels exist ("aa", "as"), so "z" matches nothing.
-        var sel = selection(2)
+        // Enough labels to force two-letter pairs, so a first letter is a
+        // non-terminal prefix rather than a whole label.
+        var sel = selection(30)
         XCTAssertEqual(sel.type("z"), .rejected)
         XCTAssertEqual(sel.typed, "", "rejected letters must not advance the prefix")
-        XCTAssertEqual(sel.type("a"), .pending(matches: 2))
+        guard case .pending = sel.type("a") else {
+            return XCTFail("'a' should be a prefix of several two-letter labels")
+        }
+        XCTAssertEqual(sel.typed, "a")
+    }
+
+    func testSingleLetterLabelResolvesInOneKeystroke() {
+        // A handful of targets get one-letter labels: one press resolves it.
+        var sel = selection(5)
+        XCTAssertEqual(sel.type("a"), .matched(index: 0))
     }
 
     func testBackspaceUndoesALetter() {

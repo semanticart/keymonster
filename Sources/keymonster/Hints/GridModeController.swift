@@ -22,7 +22,6 @@ final class GridModeController {
 
     init() {
         keyTap.acceptsEnter = true
-        keyTap.capturesScreen = true
         keyTap.extraCharacters = Set(GridDivision.rows.joined().filter { !$0.isLetter })
             .union(GridDivision.shiftedAliases.keys)
         keyTap.handler = { [weak self] key in self?.handle(key) }
@@ -71,8 +70,6 @@ final class GridModeController {
             }
         case .enter(let shifted):
             click(at: CGPoint(x: current.midX, y: current.midY), shifted: shifted)
-        case .capture:
-            capture()
         case .letter(let letter, let shifted):
             guard let cell = GridDivision.cell(of: current, for: letter) else {
                 NSSound.beep()
@@ -84,20 +81,6 @@ final class GridModeController {
             } else {
                 // Already zoomed in twice: this keypress picks the final spot.
                 click(at: CGPoint(x: cell.midX, y: cell.midY), shifted: shifted)
-            }
-        }
-    }
-
-    /// Copies the whole window with the grid overlay drawn over it to the
-    /// clipboard, leaving grid mode active so keying can continue. Dispatched
-    /// off the tap callback so the capture never stalls (and trips) the tap.
-    private func capture() {
-        guard let window = regions.first else { return }
-        Task { @MainActor in
-            if WindowCapture.copyToPasteboard(bounds: window) {
-                log.debug("copied grid capture to clipboard")
-            } else {
-                NSSound.beep()
             }
         }
     }

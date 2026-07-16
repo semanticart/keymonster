@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let appFocuser = AppFocuser()
     private let hintMode = HintModeController()
     private let gridMode = GridModeController()
+    private let textJumpMode = TextJumpController()
     private var cancellables: Set<AnyCancellable> = []
     private var settingsWindow: NSWindow?
 
@@ -78,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 AppSettings.shared.$hintRightShortcut
             )
             .combineLatest(AppSettings.shared.$gridShortcut)
+            .combineLatest(AppSettings.shared.$textJumpShortcut)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.applyHotkeys()
@@ -168,6 +170,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let grid = AppSettings.shared.gridShortcut {
             bindings.append(HotkeyBinding(shortcut: grid) { [weak self] in
                 self?.gridMode.toggle()
+            })
+        }
+        if let textJump = AppSettings.shared.textJumpShortcut {
+            bindings.append(HotkeyBinding(shortcut: textJump) { [weak self] in
+                self?.textJumpMode.toggle()
             })
         }
 
