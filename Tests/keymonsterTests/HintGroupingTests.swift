@@ -156,6 +156,28 @@ final class HintGroupingTests: XCTestCase {
         }
     }
 
+    func testViewportSpanningMembersKeepTheAreaNearTheirAnchors() {
+        // Slack's date-divider hairlines: window-wide, a few points tall,
+        // stacked so their badges collide at the shared left corner. The
+        // cluster is right, but its area (the green wash, the zoom) must stay
+        // near the corner where the labels sit, not span the whole window.
+        let rows = [
+            CGRect(x: 100, y: 300, width: 891, height: 9),
+            CGRect(x: 100, y: 314, width: 891, height: 9)
+        ]
+        let groups = group(rows)
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertTrue(groups[0].isCluster)
+        let area = groups[0].area
+        // Still anchored where the badges collided, covering both corners…
+        XCTAssertEqual(area.origin, rows[0].origin)
+        XCTAssertEqual(area.maxY, rows[1].maxY)
+        // …but only a couple of badge-widths of the members' huge frames —
+        // about what the labels themselves cover, not what the frames do.
+        XCTAssertLessThanOrEqual(area.width, badgeSize.width * 2)
+        XCTAssertEqual(groups[0].badge.minX, area.minX, accuracy: 0.01)
+    }
+
     func testGroupsWithLabelsMatchCounts() {
         let (groups, labels) = HintGrouping.groupsWithLabels(
             anchors: characterRun(6) + [CGRect(x: 500, y: 100, width: 8, height: 14)],

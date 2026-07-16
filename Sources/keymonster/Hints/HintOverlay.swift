@@ -261,7 +261,10 @@ final class HintOverlayView: NSView {
             NSGraphicsContext.current?.restoreGraphicsState()
         } else {
             // No screenshot (Screen Recording permission missing): sketch the
-            // members so their arrangement still reads.
+            // members so their arrangement still reads. Clipped to the canvas
+            // because a member can reach past the magnified area.
+            NSGraphicsContext.current?.saveGraphicsState()
+            NSBezierPath(roundedRect: zoom.canvas, xRadius: 4, yRadius: 4).addClip()
             for rect in zoom.content {
                 let box = NSBezierPath(roundedRect: rect, xRadius: 4, yRadius: 4)
                 NSColor(calibratedWhite: 0.3, alpha: 1).setFill()
@@ -270,6 +273,7 @@ final class HintOverlayView: NSView {
                 box.lineWidth = 1
                 box.stroke()
             }
+            NSGraphicsContext.current?.restoreGraphicsState()
         }
 
         Self.stroke.setStroke()

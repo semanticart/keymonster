@@ -75,6 +75,27 @@ final class HintModeController {
         selection = HintSelection(labels: groupLabels)
         overlay.show(groups: groups, labels: groupLabels, windowFrame: windowFrame)
         log.debug("hint mode active with \(self.targets.count) targets in \(self.groups.count) groups")
+        logClusters()
+    }
+
+    /// Dumps every cluster's area and member frames, for chasing layout
+    /// surprises like a wash far wider than the targets it stands for.
+    private func logClusters() {
+        func describe(_ rect: CGRect) -> String {
+            "(\(Int(rect.minX)),\(Int(rect.minY)) \(Int(rect.width))x\(Int(rect.height)))"
+        }
+        for (group, label) in zip(groups, groupLabels) where group.isCluster {
+            let members = group.members
+                .map { "\(targets[$0].role ?? "?") \(describe(targets[$0].frame))" }
+                .joined(separator: ", ")
+            log.debug(
+                """
+                cluster \(label.uppercased(), privacy: .public): \
+                area \(describe(group.area), privacy: .public) \
+                members [\(members, privacy: .public)]
+                """
+            )
+        }
     }
 
     private func handle(_ key: HintKeyEvent) {

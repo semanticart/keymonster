@@ -10,7 +10,10 @@ enum HintGrouping {
     struct Group: Equatable {
         /// Indices into the original target list, ascending.
         let members: [Int]
-        /// Union of the members' frames — the area a zoomed view magnifies.
+        /// What the green wash covers and a zoomed view magnifies: the union
+        /// of the members' frames, each clipped to a neighborhood of its badge
+        /// anchor (see `areaReach`) so one oversized member can't stretch the
+        /// area far past where the labels actually sit.
         let area: CGRect
         /// Where the group's one badge is drawn: hanging off `area`'s top-left
         /// corner (or escaped nearby), kept inside `bounds`.
@@ -21,6 +24,15 @@ enum HintGrouping {
 
     /// Minimum clear space between badges before they count as colliding.
     private static let gap: CGFloat = 2
+
+    /// How much of a member's frame, in badge-sizes from its top-left corner,
+    /// counts toward its group's `area`. The area marks where the members'
+    /// labels crowd — badges anchor at that corner — so it wants the labels'
+    /// own footprint plus a sliver of the element for context, not the full
+    /// frame: a member many times bigger than a badge (Slack's window-wide
+    /// divider hairlines, say) would drag the wash and the zoom across the
+    /// whole window even though its label sits in one corner of it.
+    private static let areaReach: CGFloat = 2
 
     /// Groups `anchors` so no two badges collide. Starts with one group per
     /// anchor, places badges (escaping to free spots where possible), and
@@ -39,8 +51,12 @@ enum HintGrouping {
             let badges = placedBadges(badgeSize, areas: areas, in: bounds)
             guard let merged = mergingCollisions(members: members, areas: areas, badges: badges)
             else {
-                return zip(members, zip(areas, badges)).map {
-                    Group(members: $0, area: $1.0, badge: $1.1)
+                return zip(members, badges).map { group, badge in
+                    Group(
+                        members: group,
+                        area: displayArea(of: group, anchors: anchors, badgeSize: badgeSize),
+                        badge: badge
+                    )
                 }
             }
             (members, areas) = merged
@@ -61,6 +77,25 @@ enum HintGrouping {
             result = groups(badgeSize: badgeSize(actual), anchors: anchors, within: bounds)
         }
         return (result, HintLabels.labels(count: result.count))
+    }
+
+    /// A group's displayed area. Badge placement works on full frames; only
+    /// the reported area clips each member to `areaReach` badge-sizes from its
+    /// top-left corner. The clipped union keeps every member's corner (and so
+    /// the same top-left the group's badge hangs off) — it just stops short of
+    /// an oversized member's far edges.
+    private static func displayArea(
+        of group: [Int], anchors: [CGRect], badgeSize: CGSize
+    ) -> CGRect {
+        group.map { index in
+            let frame = anchors[index]
+            return frame.intersection(CGRect(
+                x: frame.minX,
+                y: frame.minY,
+                width: badgeSize.width * areaReach,
+                height: badgeSize.height * areaReach
+            ))
+        }.reduce(CGRect.null) { $0.union($1) }
     }
 
     /// One badge spot per area. Badges collide for two very different reasons,
