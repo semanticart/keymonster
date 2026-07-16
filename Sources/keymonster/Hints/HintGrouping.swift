@@ -25,7 +25,11 @@ enum HintGrouping {
     /// Groups `anchors` so no two badges collide. Starts with one group per
     /// anchor, places badges (escaping to free spots where possible), and
     /// repeatedly merges groups whose badges still touch until every badge
-    /// stands clear. Groups come out ordered by their first member. `bounds` is
+    /// stands clear. Merging is incremental — one partner per group per pass,
+    /// with badges re-placed in between — so a group only absorbs a neighbor
+    /// while its own badge still collides: a long chain of crowded targets
+    /// settles into several small clusters instead of accumulating into one
+    /// giant one. Groups come out ordered by their first member. `bounds` is
     /// where badges may go — typically the screen, so a badge for an element at
     /// the window's edge can hang just outside the window.
     static func groups(badgeSize: CGSize, anchors: [CGRect], within bounds: CGRect) -> [Group] {
@@ -104,44 +108,43 @@ enum HintGrouping {
         return placed.allSatisfy { !padded.intersects($0) }
     }
 
-    /// One merge pass: unions every set of transitively colliding groups, or
-    /// returns nil when no badges collide and the layout is done. Each pass
-    /// strictly shrinks the group count, so the caller's loop terminates.
+    /// One merge pass: pairs each colliding group with at most one partner (its
+    /// first colliding neighbor), or returns nil when no badges collide and the
+    /// layout is done. Merging whole chains at once would swallow every target
+    /// in a crowded row into a single group; pairing lets the caller re-place
+    /// badges between passes, so groups stop growing the moment their badges
+    /// stand clear. Each pass with a collision strictly shrinks the group
+    /// count, so the caller's loop terminates.
     private static func mergingCollisions(
         members: [[Int]], areas: [CGRect], badges: [CGRect]
     ) -> (members: [[Int]], areas: [CGRect])? {
-        var component = Array(badges.indices)
-        func root(_ index: Int) -> Int {
-            var index = index
-            while component[index] != index { index = component[index] }
-            return index
-        }
-
-        var collided = false
-        for lhs in badges.indices {
+        var partner: [Int: Int] = [:]
+        var matched: Set<Int> = []
+        for lhs in badges.indices where !matched.contains(lhs) {
             let padded = badges[lhs].insetBy(dx: -gap / 2, dy: -gap / 2)
-            for rhs in badges.indices where rhs > lhs && root(rhs) != root(lhs) {
-                if padded.intersects(badges[rhs]) {
-                    collided = true
-                    component[root(rhs)] = root(lhs)
-                }
-            }
+            guard let rhs = badges.indices.first(where: { rhs in
+                rhs > lhs && !matched.contains(rhs) && padded.intersects(badges[rhs])
+            }) else { continue }
+            partner[lhs] = rhs
+            matched.insert(lhs)
+            matched.insert(rhs)
         }
-        guard collided else { return nil }
+        guard !partner.isEmpty else { return nil }
 
-        var merged: [Int: (members: [Int], area: CGRect)] = [:]
-        for index in badges.indices {
-            let key = root(index)
-            if let existing = merged[key] {
-                merged[key] = (existing.members + members[index],
-                               existing.area.union(areas[index]))
+        // Absorbed partners vanish into the lhs slot, which keeps its position,
+        // so first-member order is preserved.
+        let absorbed = Set(partner.values)
+        var mergedMembers: [[Int]] = []
+        var mergedAreas: [CGRect] = []
+        for index in badges.indices where !absorbed.contains(index) {
+            if let rhs = partner[index] {
+                mergedMembers.append((members[index] + members[rhs]).sorted())
+                mergedAreas.append(areas[index].union(areas[rhs]))
             } else {
-                merged[key] = (members[index], areas[index])
+                mergedMembers.append(members[index])
+                mergedAreas.append(areas[index])
             }
         }
-        let groups = merged.values
-            .map { (members: $0.members.sorted(), area: $0.area) }
-            .sorted { $0.members[0] < $1.members[0] }
-        return (groups.map(\.members), groups.map(\.area))
+        return (mergedMembers, mergedAreas)
     }
 }

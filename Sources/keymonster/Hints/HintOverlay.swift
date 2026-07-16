@@ -13,7 +13,9 @@ final class HintOverlay {
 
     /// `windowFrame` is the target window's frame in AX (top-left origin)
     /// coordinates — the same space the groups' frames are in. Single-member
-    /// groups draw a normal badge; clusters draw a green area badge.
+    /// groups draw a normal badge; clusters draw a green area badge plus a
+    /// translucent green wash over the area itself, so it's clear which
+    /// targets the one label stands for.
     func show(groups: [HintGrouping.Group], labels: [String], windowFrame: CGRect) {
         guard let view = install(around: windowFrame) else { return }
         // Badge rects become view-local (the view is flipped, so it shares the
@@ -22,7 +24,8 @@ final class HintOverlay {
             HintOverlayView.Badge(
                 rect: group.badge.offsetBy(dx: -origin.x, dy: -origin.y),
                 label: label,
-                isGroup: group.isCluster,
+                area: group.isCluster
+                    ? group.area.offsetBy(dx: -origin.x, dy: -origin.y) : nil,
                 caret: HintOverlayView.caretDirection(from: group.badge, toward: group.area)
             )
         }
@@ -59,7 +62,7 @@ final class HintOverlay {
                 HintOverlayView.Badge(
                     rect: layout.badges[index],
                     label: labels[index],
-                    isGroup: false,
+                    area: nil,
                     caret: HintOverlayView.caretDirection(
                         from: layout.badges[index], toward: layout.content[index]
                     )
@@ -141,9 +144,11 @@ final class HintOverlayView: NSView {
     struct Badge {
         let rect: CGRect
         let label: String
-        /// Green: this badge stands for a whole area and opens the zoom.
-        let isGroup: Bool
+        /// Non-nil: this badge stands for this whole area (drawn green with a
+        /// translucent wash over the area) and its label opens the zoom.
+        let area: CGRect?
         let caret: CaretDirection
+        var isGroup: Bool { area != nil }
     }
 
     /// The caret aims from the badge's final spot at the labeled frame; both
@@ -222,7 +227,12 @@ final class HintOverlayView: NSView {
         if let zoom {
             drawZoom(zoom)
         } else {
-            for badge in badges where badge.label.hasPrefix(typed) {
+            let visible = badges.filter { $0.label.hasPrefix(typed) }
+            // Areas go down first so a wash never dims a neighboring badge.
+            for badge in visible {
+                if let area = badge.area { drawArea(area) }
+            }
+            for badge in visible {
                 drawBadge(badge)
             }
         }
@@ -293,6 +303,19 @@ final class HintOverlayView: NSView {
         path.lineWidth = 1
         path.stroke()
         string.draw(at: CGPoint(x: pill.minX + padding.width, y: pill.minY + padding.height))
+    }
+
+    /// A translucent green wash over a cluster's area, tying the group's one
+    /// green badge to every target it stands for.
+    private func drawArea(_ area: CGRect) {
+        let path = NSBezierPath(
+            roundedRect: area.insetBy(dx: -2, dy: -2), xRadius: 3, yRadius: 3
+        )
+        Self.groupFill.withAlphaComponent(0.25).setFill()
+        path.fill()
+        Self.groupStroke.withAlphaComponent(0.45).setStroke()
+        path.lineWidth = 1
+        path.stroke()
     }
 
     private func drawBadge(_ badge: Badge) {

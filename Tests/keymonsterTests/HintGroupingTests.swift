@@ -39,21 +39,40 @@ final class HintGroupingTests: XCTestCase {
         XCTAssertTrue(groups.allSatisfy { !$0.isCluster })
     }
 
-    func testCrowdedRunCollapsesIntoOneCluster() {
+    func testCrowdedRunSplitsIntoSeveralSmallClusters() {
+        // Groups grow one merge at a time and stop as soon as their badge
+        // stands clear, so a long crowded run breaks into a few small clusters
+        // instead of accumulating into one giant one.
         let anchors = characterRun(6)
         let groups = group(anchors)
-        XCTAssertEqual(groups.count, 1)
-        XCTAssertTrue(groups[0].isCluster)
-        XCTAssertEqual(groups[0].members, Array(0..<6))
-        // The area spans the whole run and the badge hangs off its corner.
-        let union = anchors.dropFirst().reduce(anchors[0]) { $0.union($1) }
-        XCTAssertEqual(groups[0].area, union)
-        XCTAssertEqual(groups[0].badge.minX, union.minX, accuracy: 0.01)
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertTrue(groups.allSatisfy(\.isCluster))
+        XCTAssertEqual(groups.flatMap(\.members).sorted(), Array(0..<6))
+        // Each cluster's area spans exactly its members and the badge hangs
+        // off the area's corner.
+        for grp in groups {
+            let union = grp.members.dropFirst().reduce(anchors[grp.members[0]]) {
+                $0.union(anchors[$1])
+            }
+            XCTAssertEqual(grp.area, union)
+            XCTAssertEqual(grp.badge.minX, union.minX, accuracy: 0.01)
+        }
     }
 
-    func testGroupingIsTransitive() {
+    func testRepeatedWordTargetsPairUpInsteadOfMergingIntoOne() {
+        // Like hitting `h` over the text "hi hi hi hi": each badge collides
+        // with its neighbor but not the one beyond, so the four targets settle
+        // into two pairs rather than one group spanning the whole line.
+        let anchors = (0..<4).map { CGRect(x: 100 + CGFloat($0) * 16, y: 300, width: 8, height: 14) }
+        let groups = group(anchors)
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertEqual(groups.map(\.members), [[0, 1], [2, 3]])
+        XCTAssertTrue(groups.allSatisfy(\.isCluster))
+    }
+
+    func testChainedCollisionsMergeUntilTheBadgeStandsClear() {
         // a collides with b, b with c — one cluster of three even though a and
-        // c never touch directly.
+        // c never touch directly: the pair's merged badge still lands on c's.
         let anchors = characterRun(3)
         let groups = group(anchors)
         XCTAssertEqual(groups.count, 1)
@@ -143,9 +162,9 @@ final class HintGroupingTests: XCTestCase {
             within: bounds,
             badgeSize: { _ in self.badgeSize }
         )
-        XCTAssertEqual(groups.count, 2)
-        XCTAssertEqual(labels.count, 2)
-        XCTAssertEqual(Set(labels).count, 2)
+        XCTAssertEqual(groups.count, 3)
+        XCTAssertEqual(labels.count, 3)
+        XCTAssertEqual(Set(labels).count, 3)
     }
 }
 
