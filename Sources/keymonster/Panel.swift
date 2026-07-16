@@ -4,6 +4,39 @@ import os.log
 
 private let log = Logger(subsystem: "keymonster", category: "panel")
 
+/// A panel-level action bound to a key while the history panel is up.
+enum PanelCommand: Equatable {
+    case dismiss
+    /// Move the highlight by this many rows (positive = older).
+    case moveSelection(Int)
+    /// Scroll the detail pane by this many steps (positive = down).
+    case scrollDetail(Int)
+    /// Copy the highlighted item and paste it into the prior app.
+    case activate
+
+    /// What a keystroke means to the panel, or nil to let it through to the
+    /// search field. Pure so the panel's key bindings are testable without an
+    /// NSPanel.
+    static func from(keyCode: UInt16, control: Bool) -> PanelCommand? {
+        switch keyCode {
+        case 53: // Escape
+            return .dismiss
+        case 45 where control, 125: // Ctrl-N / Down — older
+            return .moveSelection(1)
+        case 35 where control, 126: // Ctrl-P / Up — newer
+            return .moveSelection(-1)
+        case 38 where control: // Ctrl-J — scroll detail down
+            return .scrollDetail(1)
+        case 40 where control: // Ctrl-K — scroll detail up
+            return .scrollDetail(-1)
+        case 36, 76: // Return / keypad Enter
+            return .activate
+        default:
+            return nil
+        }
+    }
+}
+
 /// Hosts `MenuContent` in a borderless, floating panel that appears centered on
 /// the active screen. Toggled from the menu-bar status item; dismissed on Escape
 /// or when the user clicks away.
@@ -69,33 +102,25 @@ final class PanelController {
         let hasControl = event.modifierFlags
             .intersection(.deviceIndependentFlagsMask)
             .contains(.control)
+        guard let command = PanelCommand.from(keyCode: event.keyCode, control: hasControl) else {
+            return event
+        }
 
-        switch event.keyCode {
-        case 53: // Escape
+        switch command {
+        case .dismiss:
             hide()
-            return nil
-        case 45 where hasControl, 125: // Ctrl-N / Down — older
-            viewModel.moveSelection(by: 1)
-            return nil
-        case 35 where hasControl, 126: // Ctrl-P / Up — newer
-            viewModel.moveSelection(by: -1)
-            return nil
-        case 38 where hasControl: // Ctrl-J — scroll detail down
-            viewModel.scrollDetail(by: viewModel.detailScrollStep)
-            return nil
-        case 40 where hasControl: // Ctrl-K — scroll detail up
-            viewModel.scrollDetail(by: -viewModel.detailScrollStep)
-            return nil
-        case 36, 76: // Return / keypad Enter — copy, then paste into the prior app
+        case .moveSelection(let delta):
+            viewModel.moveSelection(by: delta)
+        case .scrollDetail(let steps):
+            viewModel.scrollDetail(by: CGFloat(steps) * viewModel.detailScrollStep)
+        case .activate:
             if viewModel.activateSelection() {
                 let target = previousApp
                 hide()
                 pasteIfEnabled(into: target)
             }
-            return nil
-        default:
-            return event
         }
+        return nil
     }
 
     /// After the selection is on the pasteboard, paste it into the prior app if
