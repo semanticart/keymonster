@@ -1,8 +1,9 @@
-.PHONY: build run test clean lint app snapshot icon
+.PHONY: build run test clean lint app snapshot icon install
 
 CONFIG ?= debug
 APP_NAME := Key Monster
 APP_DIR := .build/$(APP_NAME).app
+INSTALL_DIR ?= /Applications
 
 # Accessibility (needed for auto-paste) grants are keyed to the app's code-signing
 # identity. Ad-hoc signing ("-") produces a new identity on every rebuild, so the
@@ -16,7 +17,7 @@ override CODESIGN_IDENTITY := -
 endif
 
 build:
-	swift build
+	swift build -c $(CONFIG)
 
 # `make run` builds a proper .app bundle (icon, menu bar agent, code signature).
 # Persistence is SQLite via GRDB and needs no bundle identifier, so `swift run`
@@ -72,3 +73,12 @@ clean:
 
 lint:
 	swiftlint lint
+
+# Build a release app bundle and install it to /Applications, replacing any
+# existing copy. Override the destination with `make install INSTALL_DIR=~/Applications`.
+install:
+	$(MAKE) app CONFIG=release
+	-pkill -x keymonster
+	rm -rf "$(INSTALL_DIR)/$(APP_NAME).app"
+	cp -R "$(APP_DIR)" "$(INSTALL_DIR)/$(APP_NAME).app"
+	@echo "Installed $(APP_NAME).app to $(INSTALL_DIR)"

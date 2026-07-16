@@ -29,7 +29,7 @@ struct SettingsView: View {
         Form {
             Section {
                 HStack {
-                    Text("Global Shortcut")
+                    Text("Clipboard Shortcut")
                     Spacer()
                     ShortcutRecorder(shortcut: $settings.shortcut)
                 }

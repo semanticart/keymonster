@@ -71,7 +71,7 @@ Override explicitly with `make run CODESIGN_IDENTITY=<identity>` if needed.
 
 1. Launch Key Monster — a clipboard icon (`doc.on.clipboard`) appears in the menu bar.
    On first launch the Settings window opens automatically.
-2. Record a **Global Shortcut**. To use auto-paste, leave **Paste into the active
+2. Record a **Clipboard Shortcut**. To use auto-paste, leave **Paste into the active
    app on Return** enabled and grant **Accessibility** access when prompted
    (Key Monster links you to the right System Settings pane).
 3. Copy things as you normally would; Key Monster records them in the background.

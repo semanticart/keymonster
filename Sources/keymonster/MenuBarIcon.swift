@@ -47,11 +47,14 @@ enum MenuBarIcon {
         // Tight bounding box of the shapes above, used to fit the glyph to height.
         let box = CGRect(x: 62, y: 232, width: 900, height: 560)
         let scale = height / box.height
-        let size = NSSize(width: box.width * scale, height: height)
+        // Horizontally compress the glyph to 75% of its natural width, keeping
+        // the full menu-bar height.
+        let widthRatio: CGFloat = 0.75
+        let size = NSSize(width: box.width * scale * widthRatio, height: height)
 
         let image = NSImage(size: size, flipped: false) { _ in
             guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
-            ctx.scaleBy(x: scale, y: scale)
+            ctx.scaleBy(x: scale * widthRatio, y: scale)
             ctx.translateBy(x: -box.minX, y: -box.minY)
             NSColor.black.setFill()
             path.fill()
