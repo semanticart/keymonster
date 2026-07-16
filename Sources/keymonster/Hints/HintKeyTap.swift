@@ -12,6 +12,9 @@ enum HintKeyEvent: Equatable {
     case letter(Character, shifted: Bool)
     case escape
     case backspace
+    /// Return or keypad Enter. Only produced when the tap's `acceptsEnter` is
+    /// on (grid mode); otherwise Return passes through like any other key.
+    case enter(shifted: Bool)
     /// Anything else — a chorded shortcut, a mouse click, cmd-tab. Hint mode
     /// should get out of the way and let the event through.
     case cancel
@@ -25,6 +28,12 @@ enum HintKeyEvent: Equatable {
 @MainActor
 final class HintKeyTap {
     var handler: ((HintKeyEvent) -> Void)?
+    /// When on, Return/keypad Enter is swallowed and reported as `.enter`
+    /// instead of passing through (grid mode confirms with Return).
+    var acceptsEnter = false
+    /// Non-letter characters that still count as input (grid mode's keyboard
+    /// rows include punctuation like ";" and "[", plus their shifted forms).
+    var extraCharacters: Set<Character> = []
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
 
@@ -106,12 +115,16 @@ final class HintKeyTap {
     /// nil means the keystroke isn't hint input (chorded, non-letter) and should
     /// pass through to the app while hint mode dismisses.
     private func classify(_ event: CGEvent) -> HintKeyEvent? {
-        switch event.getIntegerValueField(.keyboardEventKeycode) {
+        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        switch keyCode {
         case 53: return .escape
         case 51: return .backspace
         default: break
         }
         let flags = event.flags
+        if acceptsEnter, keyCode == 36 || keyCode == 76 { // Return, keypad Enter
+            return .enter(shifted: flags.contains(.maskShift))
+        }
         if flags.contains(.maskCommand) || flags.contains(.maskControl) || flags.contains(.maskAlternate) {
             return nil
         }
@@ -120,7 +133,7 @@ final class HintKeyTap {
         guard let characters = NSEvent(cgEvent: event)?.charactersIgnoringModifiers?.lowercased(),
               characters.count == 1,
               let letter = characters.first,
-              letter.isASCII, letter.isLetter else {
+              letter.isASCII, letter.isLetter || extraCharacters.contains(letter) else {
             return nil
         }
         return .letter(letter, shifted: flags.contains(.maskShift))

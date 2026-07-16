@@ -79,6 +79,18 @@ enum AXHintTargetFinder {
         return Scan(targets: targets, windowFrame: windowFrame)
     }
 
+    /// The frontmost app's focused window frame in AX coordinates, for overlays
+    /// that don't need an element scan (grid mode).
+    static func focusedWindowFrame() -> CGRect? {
+        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        guard let window = focusedWindow(of: axApp) else {
+            log.info("no focused window for \(app.bundleIdentifier ?? "?")")
+            return nil
+        }
+        return frame(of: window)
+    }
+
     // MARK: - AX plumbing
 
     private static func focusedWindow(of app: AXUIElement) -> AXUIElement? {

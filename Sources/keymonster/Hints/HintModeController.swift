@@ -66,6 +66,10 @@ final class HintModeController {
         switch key {
         case .escape, .cancel:
             dismiss()
+        case .enter:
+            // Hint mode leaves the tap's `acceptsEnter` off, so this never
+            // arrives; dismissing is the sane fallback if it somehow does.
+            dismiss()
         case .backspace:
             selection?.backspace()
             overlay.update(typed: selection?.typed ?? "")

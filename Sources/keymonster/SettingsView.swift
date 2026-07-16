@@ -19,6 +19,7 @@ struct SettingsView: View {
         all.append(contentsOf: settings.appShortcuts.compactMap(\.shortcut))
         if let hintLeft = settings.hintLeftShortcut { all.append(hintLeft) }
         if let hintRight = settings.hintRightShortcut { all.append(hintRight) }
+        if let grid = settings.gridShortcut { all.append(grid) }
         return ShortcutConflicts.conflicting(all)
     }
 
@@ -98,6 +99,34 @@ struct SettingsView: View {
                     + "window — including web pages — and type one to click it. Hold "
                     + "Shift on the last letter for the opposite mouse button; Esc "
                     + "cancels. Requires Accessibility permission.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                HStack {
+                    Text("Show Grid")
+                    Spacer()
+                    ShortcutRecorder(shortcut: $settings.gridShortcut)
+                }
+                if isConflicting(settings.gridShortcut) {
+                    ConflictWarning()
+                }
+                if settings.gridShortcut != nil && !accessTrusted {
+                    HStack {
+                        Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Button("Open Settings…") { Paster.openAccessibilitySettings() }
+                    }
+                }
+            } header: {
+                Text("Grid Click")
+            } footer: {
+                Text("Overlay a grid mirroring the keyboard's letter rows (Q–/) on the "
+                    + "active window; each key zooms into that cell, and after two "
+                    + "zooms the next key clicks. Return clicks the center anytime — "
+                    + "hold Shift to right-click. Delete zooms back out; Esc cancels. "
+                    + "Requires Accessibility permission.")
                     .foregroundStyle(.secondary)
             }
 

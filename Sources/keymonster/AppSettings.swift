@@ -58,6 +58,7 @@ final class AppSettings: ObservableObject {
     static let hasLaunchedKey = "hasLaunched"
     static let hintLeftShortcutKey = "hintLeftClickShortcut"
     static let hintRightShortcutKey = "hintRightClickShortcut"
+    static let gridShortcutKey = "gridClickShortcut"
 
     @Published var launchAtLogin: Bool {
         didSet {
@@ -103,6 +104,13 @@ final class AppSettings: ObservableObject {
         didSet { persist(hintRightShortcut, forKey: Self.hintRightShortcutKey) }
     }
 
+    /// Global shortcut that overlays a home-row grid on the frontmost window;
+    /// each keypress zooms into a cell until Return (or an unsplittable cell)
+    /// clicks its center.
+    @Published var gridShortcut: Shortcut? {
+        didSet { persist(gridShortcut, forKey: Self.gridShortcutKey) }
+    }
+
     /// When on, pressing Return pastes the selection into the previously focused
     /// app instead of only copying it. Defaults on; requires Accessibility access.
     @Published var autoPaste: Bool {
@@ -116,6 +124,7 @@ final class AppSettings: ObservableObject {
         shortcut = Self.loadShortcut(defaults, key: Self.shortcutKey)
         hintLeftShortcut = Self.loadShortcut(defaults, key: Self.hintLeftShortcutKey)
         hintRightShortcut = Self.loadShortcut(defaults, key: Self.hintRightShortcutKey)
+        gridShortcut = Self.loadShortcut(defaults, key: Self.gridShortcutKey)
         if let data = defaults.data(forKey: Self.appShortcutsKey),
            let decoded = try? JSONDecoder().decode([AppShortcut].self, from: data) {
             appShortcuts = decoded

@@ -33,7 +33,7 @@ app: build
 	@echo "Built $(APP_DIR) (signed with: $(CODESIGN_IDENTITY))"
 
 run: app
-	-pkill -x keymonster
+	pkill -x keymonster || true
 	open "$(APP_DIR)"
 
 # Render the history panel headlessly against the real on-disk history and write
@@ -78,7 +78,7 @@ lint:
 # existing copy. Override the destination with `make install INSTALL_DIR=~/Applications`.
 install:
 	$(MAKE) app CONFIG=release
-	-pkill -x keymonster
+	pkill -x keymonster || true
 	rm -rf "$(INSTALL_DIR)/$(APP_NAME).app"
 	cp -R "$(APP_DIR)" "$(INSTALL_DIR)/$(APP_NAME).app"
 	@echo "Installed $(APP_NAME).app to $(INSTALL_DIR)"

@@ -37,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyManager = HotkeyManager()
     private let appFocuser = AppFocuser()
     private let hintMode = HintModeController()
+    private let gridMode = GridModeController()
     private var cancellables: Set<AnyCancellable> = []
     private var settingsWindow: NSWindow?
 
@@ -67,15 +68,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
 
         // Re-register the full hotkey set whenever the history shortcut, any of
-        // the app-focus shortcuts, or the hint shortcuts change. combineLatest
-        // emits the current values immediately, so this also performs the
-        // initial registration.
+        // the app-focus shortcuts, or the hint/grid shortcuts change.
+        // combineLatest emits the current values immediately, so this also
+        // performs the initial registration.
         AppSettings.shared.$shortcut
             .combineLatest(
                 AppSettings.shared.$appShortcuts,
                 AppSettings.shared.$hintLeftShortcut,
                 AppSettings.shared.$hintRightShortcut
             )
+            .combineLatest(AppSettings.shared.$gridShortcut)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.applyHotkeys()
@@ -161,6 +163,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let hintRight = AppSettings.shared.hintRightShortcut {
             bindings.append(HotkeyBinding(shortcut: hintRight) { [weak self] in
                 self?.hintMode.toggle(button: .right)
+            })
+        }
+        if let grid = AppSettings.shared.gridShortcut {
+            bindings.append(HotkeyBinding(shortcut: grid) { [weak self] in
+                self?.gridMode.toggle()
             })
         }
 
