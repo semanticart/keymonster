@@ -15,6 +15,9 @@ enum HintKeyEvent: Equatable {
     /// Return or keypad Enter. Only produced when the tap's `acceptsEnter` is
     /// on (grid mode); otherwise Return passes through like any other key.
     case enter(shifted: Bool)
+    /// "!" pressed. Only produced when the tap's `capturesScreen` is on (grid
+    /// mode copies the overlay to the clipboard); otherwise it passes through.
+    case capture
     /// Anything else — a chorded shortcut, a mouse click, cmd-tab. Hint mode
     /// should get out of the way and let the event through.
     case cancel
@@ -31,6 +34,9 @@ final class HintKeyTap {
     /// When on, Return/keypad Enter is swallowed and reported as `.enter`
     /// instead of passing through (grid mode confirms with Return).
     var acceptsEnter = false
+    /// When on, "!" is swallowed and reported as `.capture` instead of passing
+    /// through (grid mode copies a screenshot of the overlay to the clipboard).
+    var capturesScreen = false
     /// Non-letter characters that still count as input (grid mode's keyboard
     /// rows include punctuation like ";" and "[", plus their shifted forms).
     var extraCharacters: Set<Character> = []
@@ -130,9 +136,16 @@ final class HintKeyTap {
         }
         // NSEvent does the keycode→character mapping for the user's actual
         // keyboard layout, so hints work on Dvorak/AZERTY too.
-        guard let characters = NSEvent(cgEvent: event)?.charactersIgnoringModifiers?.lowercased(),
-              characters.count == 1,
-              let letter = characters.first,
+        guard let characters = NSEvent(cgEvent: event)?.charactersIgnoringModifiers,
+              characters.count == 1, let character = characters.first else {
+            return nil
+        }
+        // "!" (shifted, so charactersIgnoringModifiers already yields it) copies
+        // the grid overlay to the clipboard in grid mode.
+        if capturesScreen, character == "!" {
+            return .capture
+        }
+        guard let letter = characters.lowercased().first,
               letter.isASCII, letter.isLetter || extraCharacters.contains(letter) else {
             return nil
         }

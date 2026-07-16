@@ -21,8 +21,8 @@ enum GridDivision {
     /// dropped — rightmost first, then the bottom rows — until every cell is
     /// at least this big. A badge is one character, taller than it is wide,
     /// so cells can be a fair bit narrower than they are short.
-    static let minCellWidth: CGFloat = 16
-    static let minCellHeight: CGFloat = 24
+    static let minCellWidth: CGFloat = 8
+    static let minCellHeight: CGFloat = 12
 
     /// What Shift turns each unshifted key into. Shift on the deciding key
     /// requests a right-click, so the shifted symbol must still name its key.

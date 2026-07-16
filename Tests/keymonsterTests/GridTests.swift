@@ -83,29 +83,33 @@ final class GridDivisionTests: XCTestCase {
     }
 
     func testNarrowRegionsDropRightmostKeys() {
-        // 80pt fits five 16pt columns, so each row keeps its first five keys.
+        // 80pt fits ten 8pt columns, so every row keeps its first ten keys and
+        // the wider top row loses "[", "]", and "\".
         let narrow = CGRect(x: 0, y: 0, width: 80, height: 300)
         let cells = GridDivision.cells(of: narrow)
-        XCTAssertEqual(cells.map(\.key), Array("qwert") + Array("asdfg") + Array("zxcvb"))
+        XCTAssertEqual(
+            cells.map(\.key),
+            Array("qwertyuiop") + Array("asdfghjkl;") + Array("zxcvbnm,./")
+        )
         for cell in cells {
             XCTAssertGreaterThanOrEqual(cell.rect.width, GridDivision.minCellWidth)
             XCTAssertGreaterThanOrEqual(cell.rect.height, GridDivision.minCellHeight)
         }
         // Dropped keys no longer address anything.
-        XCTAssertNil(GridDivision.cell(of: narrow, for: "y"))
-        XCTAssertNil(GridDivision.cell(of: narrow, for: "/"))
+        XCTAssertNil(GridDivision.cell(of: narrow, for: "["))
+        XCTAssertNil(GridDivision.cell(of: narrow, for: "'"))
     }
 
     func testShortRegionsDropBottomRows() {
-        // 50pt fits two 24pt bands: the Q and A rows survive, the Z row goes.
-        let short = CGRect(x: 0, y: 0, width: 1300, height: 50)
+        // 30pt fits two 12pt bands: the Q and A rows survive, the Z row goes.
+        let short = CGRect(x: 0, y: 0, width: 1300, height: 30)
         let cells = GridDivision.cells(of: short)
         XCTAssertEqual(cells.map(\.key), Array("qwertyuiop[]\\") + Array("asdfghjkl;'"))
         XCTAssertNil(GridDivision.cell(of: short, for: "z"))
     }
 
     func testTinyRegionIsASingleCell() {
-        let tiny = CGRect(x: 5, y: 9, width: 20, height: 18)
+        let tiny = CGRect(x: 5, y: 9, width: 12, height: 18)
         let cells = GridDivision.cells(of: tiny)
         XCTAssertEqual(cells.count, 1)
         XCTAssertEqual(cells[0].key, "q")

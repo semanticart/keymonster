@@ -66,9 +66,10 @@ final class HintModeController {
         switch key {
         case .escape, .cancel:
             dismiss()
-        case .enter:
-            // Hint mode leaves the tap's `acceptsEnter` off, so this never
-            // arrives; dismissing is the sane fallback if it somehow does.
+        case .enter, .capture:
+            // Hint mode leaves the tap's `acceptsEnter` and `capturesScreen`
+            // off, so neither arrives; dismissing is the sane fallback if one
+            // somehow does.
             dismiss()
         case .backspace:
             selection?.backspace()
