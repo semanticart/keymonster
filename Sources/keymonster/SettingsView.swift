@@ -17,12 +17,18 @@ struct SettingsView: View {
         var all: [Shortcut] = []
         if let history = settings.shortcut { all.append(history) }
         all.append(contentsOf: settings.appShortcuts.compactMap(\.shortcut))
+        if let hintLeft = settings.hintLeftShortcut { all.append(hintLeft) }
+        if let hintRight = settings.hintRightShortcut { all.append(hintRight) }
         return ShortcutConflicts.conflicting(all)
     }
 
     private func isConflicting(_ shortcut: Shortcut?) -> Bool {
         guard let shortcut else { return false }
         return conflicts.contains(shortcut)
+    }
+
+    private var hintsConfigured: Bool {
+        settings.hintLeftShortcut != nil || settings.hintRightShortcut != nil
     }
 
     var body: some View {
@@ -57,6 +63,41 @@ struct SettingsView: View {
             } footer: {
                 Text("Bind a shortcut to one or more apps. Press it to focus the app; "
                     + "press again to cycle through the rest.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                HStack {
+                    Text("Left Click")
+                    Spacer()
+                    ShortcutRecorder(shortcut: $settings.hintLeftShortcut)
+                }
+                if isConflicting(settings.hintLeftShortcut) {
+                    ConflictWarning()
+                }
+                HStack {
+                    Text("Right Click")
+                    Spacer()
+                    ShortcutRecorder(shortcut: $settings.hintRightShortcut)
+                }
+                if isConflicting(settings.hintRightShortcut) {
+                    ConflictWarning()
+                }
+                if hintsConfigured && !accessTrusted {
+                    HStack {
+                        Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Button("Open Settings…") { Paster.openAccessibilitySettings() }
+                    }
+                }
+            } header: {
+                Text("Click Hints")
+            } footer: {
+                Text("Overlay two-letter labels on everything clickable in the active "
+                    + "window — including web pages — and type one to click it. Hold "
+                    + "Shift on the last letter for the opposite mouse button; Esc "
+                    + "cancels. Requires Accessibility permission.")
                     .foregroundStyle(.secondary)
             }
 

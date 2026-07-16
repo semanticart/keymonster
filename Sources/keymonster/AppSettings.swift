@@ -56,6 +56,8 @@ final class AppSettings: ObservableObject {
     static let appShortcutsKey = "appFocusShortcuts"
     static let autoPasteKey = "autoPaste"
     static let hasLaunchedKey = "hasLaunched"
+    static let hintLeftShortcutKey = "hintLeftClickShortcut"
+    static let hintRightShortcutKey = "hintRightClickShortcut"
 
     @Published var launchAtLogin: Bool {
         didSet {
@@ -82,12 +84,23 @@ final class AppSettings: ObservableObject {
     }
 
     @Published var shortcut: Shortcut? {
-        didSet { persist() }
+        didSet { persist(shortcut, forKey: Self.shortcutKey) }
     }
 
     /// Global shortcuts that focus (or cycle through) a set of apps.
     @Published var appShortcuts: [AppShortcut] {
         didSet { persistAppShortcuts() }
+    }
+
+    /// Global shortcut that overlays click hints on the frontmost window and
+    /// left-clicks the chosen element.
+    @Published var hintLeftShortcut: Shortcut? {
+        didSet { persist(hintLeftShortcut, forKey: Self.hintLeftShortcutKey) }
+    }
+
+    /// Same as `hintLeftShortcut`, but the chosen element is right-clicked.
+    @Published var hintRightShortcut: Shortcut? {
+        didSet { persist(hintRightShortcut, forKey: Self.hintRightShortcutKey) }
     }
 
     /// When on, pressing Return pastes the selection into the previously focused
@@ -100,10 +113,9 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         autoPaste = defaults.object(forKey: Self.autoPasteKey) as? Bool ?? true
         launchAtLogin = SMAppService.mainApp.status == .enabled
-        if let data = defaults.data(forKey: Self.shortcutKey),
-           let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
-            shortcut = decoded
-        }
+        shortcut = Self.loadShortcut(defaults, key: Self.shortcutKey)
+        hintLeftShortcut = Self.loadShortcut(defaults, key: Self.hintLeftShortcutKey)
+        hintRightShortcut = Self.loadShortcut(defaults, key: Self.hintRightShortcutKey)
         if let data = defaults.data(forKey: Self.appShortcutsKey),
            let decoded = try? JSONDecoder().decode([AppShortcut].self, from: data) {
             appShortcuts = decoded
@@ -112,11 +124,16 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    private func persist() {
-        if let value = shortcut, let data = try? JSONEncoder().encode(value) {
-            defaults.set(data, forKey: Self.shortcutKey)
+    private static func loadShortcut(_ defaults: UserDefaults, key: String) -> Shortcut? {
+        guard let data = defaults.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(Shortcut.self, from: data)
+    }
+
+    private func persist(_ shortcut: Shortcut?, forKey key: String) {
+        if let shortcut, let data = try? JSONEncoder().encode(shortcut) {
+            defaults.set(data, forKey: key)
         } else {
-            defaults.removeObject(forKey: Self.shortcutKey)
+            defaults.removeObject(forKey: key)
         }
     }
 

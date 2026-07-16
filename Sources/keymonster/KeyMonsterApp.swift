@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panelController: PanelController?
     private let hotkeyManager = HotkeyManager()
     private let appFocuser = AppFocuser()
+    private let hintMode = HintModeController()
     private var cancellables: Set<AnyCancellable> = []
     private var settingsWindow: NSWindow?
 
@@ -65,13 +66,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.menu = buildStatusMenu()
         statusItem = item
 
-        // Re-register the full hotkey set whenever the history shortcut or any of
-        // the app-focus shortcuts change. combineLatest emits the current value of
-        // both immediately, so this also performs the initial registration.
+        // Re-register the full hotkey set whenever the history shortcut, any of
+        // the app-focus shortcuts, or the hint shortcuts change. combineLatest
+        // emits the current values immediately, so this also performs the
+        // initial registration.
         AppSettings.shared.$shortcut
-            .combineLatest(AppSettings.shared.$appShortcuts)
+            .combineLatest(
+                AppSettings.shared.$appShortcuts,
+                AppSettings.shared.$hintLeftShortcut,
+                AppSettings.shared.$hintRightShortcut
+            )
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _, _ in
+            .sink { [weak self] _ in
                 self?.applyHotkeys()
             }
             .store(in: &cancellables)
@@ -144,6 +150,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let apps = entry.apps
             bindings.append(HotkeyBinding(shortcut: shortcut) { [weak self] in
                 self?.appFocuser.focus(apps)
+            })
+        }
+
+        if let hintLeft = AppSettings.shared.hintLeftShortcut {
+            bindings.append(HotkeyBinding(shortcut: hintLeft) { [weak self] in
+                self?.hintMode.toggle(button: .left)
+            })
+        }
+        if let hintRight = AppSettings.shared.hintRightShortcut {
+            bindings.append(HotkeyBinding(shortcut: hintRight) { [weak self] in
+                self?.hintMode.toggle(button: .right)
             })
         }
 

@@ -30,6 +30,14 @@ any earlier entry from a fast, keyboard-driven panel.
   to focus the app; press again while one is frontmost to cycle through the rest,
   so a single combo can rotate through e.g. Slack and Chrome. Settings warns when
   a combo is bound more than once, since only the first binding can register.
+- **Click hints (vimium-style)** — press a shortcut and every clickable element
+  in the frontmost window grows a two-letter label (home-row letters first);
+  type a label to click it without touching the mouse. Works on native macOS
+  controls and on web content in Safari, Chrome, and Electron apps (Key Monster
+  asks them to expose their accessibility trees). Separate shortcuts for
+  left-click and right-click hints; holding `Shift` on the final letter clicks
+  with the opposite button. `Esc`, a real click, or any other chord dismisses
+  the overlay. Requires Accessibility permission.
 - **Password-manager aware** — respects the
   [nspasteboard.org](http://nspasteboard.org) convention and skips clipboard
   contents marked concealed, transient, or auto-generated.
@@ -101,6 +109,13 @@ Your history is stored at:
 | `HotkeyManager.swift` | Registers/unregisters the global hotkeys (history panel + every focus shortcut). |
 | `AppFocuser.swift` | Focuses (or cycles through) the apps bound to a focus shortcut. |
 | `Paster.swift` | Accessibility trust check/request and `⌘V` synthesis for auto-paste. |
+| `Hints/HintModeController.swift` | Orchestrates hint mode: scan → overlay → keystrokes → click. |
+| `Hints/HintLabels.swift` | Two-letter label generation (home row first) and the typed-prefix state machine. |
+| `Hints/HintTargets.swift` | Pure clickability/visibility heuristics and AX↔Cocoa coordinate conversion. |
+| `Hints/AXHintTargetFinder.swift` | Walks the frontmost window's accessibility tree to find clickable elements. |
+| `Hints/HintOverlay.swift` | Transparent click-through window that draws the hint badges. |
+| `Hints/HintKeyTap.swift` | CGEvent tap that captures keystrokes while hints are showing. |
+| `Hints/MouseClicker.swift` | Synthesizes left/right clicks at a hint target's center. |
 
 The persistence layer is kept behind the narrow `ClipStore` protocol so
 `ClipboardHistory` can be tested against an in-memory SQLite store
