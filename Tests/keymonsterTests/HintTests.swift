@@ -147,9 +147,117 @@ final class HintTargetFilterTests: XCTestCase {
         let target = HintTarget(frame: CGRect(x: 10, y: 20, width: 30, height: 40))
         XCTAssertEqual(target.clickPoint, CGPoint(x: 25, y: 40))
     }
+
+    func testPaddedWrapperIsTheSameClickAsItsContent() {
+        // A link with a few points of clickable padding around it.
+        let inner = CGRect(x: 100, y: 100, width: 80, height: 30)
+        let wrapper = inner.insetBy(dx: -4, dy: -4)
+        XCTAssertTrue(HintTargetFilter.isSameClick(inner, wrapper))
+        XCTAssertTrue(HintTargetFilter.isSameClick(wrapper, inner))
+    }
+
+    func testSlightlyOffsetTwinsAreTheSameClick() {
+        let lhs = CGRect(x: 100, y: 100, width: 80, height: 30)
+        let rhs = lhs.offsetBy(dx: 3, dy: 2)
+        XCTAssertTrue(HintTargetFilter.isSameClick(lhs, rhs))
+    }
+
+    func testSmallButtonInsideABigCardIsADistinctClick() {
+        let card = CGRect(x: 100, y: 100, width: 300, height: 200)
+        let button = CGRect(x: 220, y: 180, width: 80, height: 40)
+        XCTAssertFalse(HintTargetFilter.isSameClick(card, button))
+    }
+
+    func testSideBySideNeighborsAreDistinctClicks() {
+        let lhs = CGRect(x: 100, y: 100, width: 40, height: 30)
+        let rhs = CGRect(x: 142, y: 100, width: 40, height: 30)
+        XCTAssertFalse(HintTargetFilter.isSameClick(lhs, rhs))
+    }
+
+    func testCoalescingKeepsTheInnermostOfANest() {
+        // button < link wrapper < padded group, all the same click.
+        let button = CGRect(x: 100, y: 100, width: 80, height: 30)
+        let targets = [
+            HintTarget(frame: button.insetBy(dx: -8, dy: -8)),
+            HintTarget(frame: button),
+            HintTarget(frame: button.insetBy(dx: -4, dy: -4))
+        ]
+        XCTAssertEqual(HintTargetFilter.coalesced(targets), [HintTarget(frame: button)])
+    }
+
+    func testCoalescingDropsARowAroundItsLink() {
+        // A clickable sidebar row wrapping the channel link inside it: one
+        // label, on the link.
+        let row = HintTarget(frame: CGRect(x: 0, y: 100, width: 250, height: 28), role: "AXRow")
+        let link = HintTarget(frame: CGRect(x: 30, y: 102, width: 150, height: 24), role: "AXLink")
+        XCTAssertEqual(HintTargetFilter.coalesced([row, link]), [link])
+    }
+
+    func testCoalescingDropsACardAroundItsButtons() {
+        // A pressable card whose real actions are the buttons inside it.
+        let card = HintTarget(frame: CGRect(x: 100, y: 100, width: 300, height: 200))
+        let one = HintTarget(frame: CGRect(x: 120, y: 240, width: 80, height: 30))
+        let two = HintTarget(frame: CGRect(x: 220, y: 240, width: 80, height: 30))
+        XCTAssertEqual(HintTargetFilter.coalesced([card, one, two]), [one, two])
+    }
+
+    func testCoalescingKeepsATextFieldAroundItsClearButton() {
+        // Dropping the field would make it unreachable; both stay.
+        let field = HintTarget(
+            frame: CGRect(x: 100, y: 100, width: 220, height: 28), role: "AXTextField"
+        )
+        let clear = HintTarget(frame: CGRect(x: 296, y: 106, width: 16, height: 16), role: "AXButton")
+        XCTAssertEqual(HintTargetFilter.coalesced([field, clear]), [field, clear])
+    }
+
+    func testCoalescingLeavesDistinctTargetsAloneInOrder() {
+        let targets = [
+            HintTarget(frame: CGRect(x: 100, y: 100, width: 80, height: 30)),
+            HintTarget(frame: CGRect(x: 220, y: 100, width: 80, height: 30)),
+            HintTarget(frame: CGRect(x: 500, y: 100, width: 40, height: 30))
+        ]
+        XCTAssertEqual(HintTargetFilter.coalesced(targets), targets)
+    }
 }
 
 final class HintGeometryTests: XCTestCase {
+    private let bounds = CGRect(x: 0, y: 0, width: 800, height: 600)
+    private let badgeSize = CGSize(width: 22, height: 18)
+
+    func testBadgeHangsAboveTheElementsCorner() {
+        let area = CGRect(x: 100, y: 300, width: 80, height: 30)
+        let badge = HintGeometry.badgeRect(badgeSize, labeling: area, in: bounds)
+        XCTAssertEqual(badge.minX, area.minX)
+        XCTAssertEqual(badge.maxY, area.minY - HintGeometry.caretHeight)
+    }
+
+    func testBadgeFlipsBelowAtTheTopEdge() {
+        let area = CGRect(x: 100, y: 0, width: 80, height: 30)
+        let badge = HintGeometry.badgeRect(badgeSize, labeling: area, in: bounds)
+        XCTAssertEqual(badge.minY, area.maxY + HintGeometry.caretHeight)
+        XCTAssertTrue(bounds.contains(badge))
+    }
+
+    func testBadgeIsClampedIntoBounds() {
+        let area = CGRect(x: 790, y: 300, width: 30, height: 30)
+        let badge = HintGeometry.badgeRect(badgeSize, labeling: area, in: bounds)
+        XCTAssertTrue(bounds.contains(badge))
+    }
+
+    @MainActor
+    func testCaretPointsFromTheBadgeTowardTheElement() {
+        let area = CGRect(x: 100, y: 300, width: 80, height: 30)
+        let above = CGRect(x: 100, y: 277, width: 22, height: 18)
+        let below = CGRect(x: 100, y: 335, width: 22, height: 18)
+        XCTAssertEqual(HintOverlayView.caretDirection(from: above, toward: area), .downward)
+        XCTAssertEqual(HintOverlayView.caretDirection(from: below, toward: area), .upward)
+        // Clamped on top of the element: no pointer.
+        XCTAssertEqual(
+            HintOverlayView.caretDirection(from: above.offsetBy(dx: 0, dy: 30), toward: area),
+            .hidden
+        )
+    }
+
     func testAXToCocoaFlipsVertically() {
         // A 100pt-tall window whose top edge is 50pt below the top of a 1000pt
         // primary screen sits 850pt above the Cocoa origin.

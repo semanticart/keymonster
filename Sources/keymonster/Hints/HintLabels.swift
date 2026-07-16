@@ -13,6 +13,12 @@ enum HintLabels {
         return letters * letters
     }
 
+    /// How many keystrokes each of `count` labels takes — the length
+    /// `labels(count:)` would produce.
+    static func labelLength(for count: Int) -> Int {
+        count <= rows.reduce(0, { $0 + $1.count }) ? 1 : 2
+    }
+
     /// `count` distinct labels, cheapest-to-type first. When they all fit in
     /// single letters (26 or fewer), each label is one keystroke — home row
     /// first, so a handful of targets resolve with a single press. Beyond that

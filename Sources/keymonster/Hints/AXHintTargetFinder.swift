@@ -62,7 +62,7 @@ enum AXHintTargetFinder {
                 let visible = elementFrame.intersection(windowFrame)
                 let key = "\(Int(visible.minX)),\(Int(visible.minY)),\(Int(visible.width)),\(Int(visible.height))"
                 if seenFrames.insert(key).inserted {
-                    targets.append(HintTarget(frame: visible))
+                    targets.append(HintTarget(frame: visible, role: role))
                 }
             }
 
@@ -75,8 +75,14 @@ enum AXHintTargetFinder {
             queue.append(contentsOf: children(from: values[3]))
         }
 
-        log.debug("scanned \(head) elements in \(-start.timeIntervalSinceNow)s, \(targets.count) targets")
-        return Scan(targets: targets, windowFrame: windowFrame)
+        // The set above only catches pixel-identical frames; this folds nested
+        // wrappers and near-coincident frames that are really one click.
+        let coalesced = HintTargetFilter.coalesced(targets)
+        let elapsed = -start.timeIntervalSinceNow
+        log.debug(
+            "scanned \(head) elements in \(elapsed)s, \(targets.count) targets, \(coalesced.count) coalesced"
+        )
+        return Scan(targets: coalesced, windowFrame: windowFrame)
     }
 
     /// The frontmost app's focused window frame in AX coordinates, for overlays

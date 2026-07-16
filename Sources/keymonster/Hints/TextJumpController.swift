@@ -6,8 +6,11 @@ import ApplicationServices
 /// on-screen occurrence of it gets a short label, and typing a label drops the
 /// caret just before that character.
 ///
-/// Delete backs out of the labels to pick a different character; Escape, a real
-/// click, or any non-hint keystroke dismisses.
+/// Occurrences too close together to label individually share one green area
+/// label; typing it zooms into that area, where each occurrence gets a normal
+/// label. Delete backs out of the zoom, then out of the labels to pick a
+/// different character; Escape, a real click, or any non-hint keystroke
+/// dismisses.
 @MainActor
 final class TextJumpController {
     private let overlay = HintOverlay()
@@ -19,8 +22,11 @@ final class TextJumpController {
     private var windowFrame: CGRect = .zero
 
     // Label state, non-nil only once a character has been picked and its
-    // occurrences are on screen. `hits[i]` is the caret destination for label i.
+    // occurrences are on screen. Groups map label indices to `hits`.
     private var hits: [AXFocusedText.Occurrence] = []
+    private var groups: [HintGrouping.Group] = []
+    private var groupLabels: [String] = []
+    private var zoomed: HintGrouping.Group?
     private var selection: HintSelection?
 
     var isActive: Bool { element != nil }
@@ -89,26 +95,28 @@ final class TextJumpController {
         }
     }
 
-    /// Second phase: the keystrokes spell a label, which resolves to a caret
-    /// position.
+    /// Second phase: the keystrokes spell a label — a group label first, then a
+    /// member label if the group opened a zoom.
     private func handleLabel(_ key: HintKeyEvent) {
         switch key {
         case .escape, .cancel, .enter:
             dismiss()
         case .backspace:
-            if selection?.typed.isEmpty ?? true {
-                backToCharacterPick()
-            } else {
+            if !(selection?.typed.isEmpty ?? true) {
                 selection?.backspace()
                 overlay.update(typed: selection?.typed ?? "")
+            } else if zoomed != nil {
+                exitZoom()
+            } else {
+                backToCharacterPick()
             }
         case .letter(let character, _):
-            // Labels are lowercase home-row letters; the raw keystroke may be
-            // shifted or otherwise, so fold it before matching.
+            // Labels are lowercase letters; the raw keystroke may be shifted or
+            // otherwise, so fold it before matching.
             let letter = Character(String(character).lowercased())
             switch selection?.type(letter) {
             case .matched(let index):
-                placeCursor(to: hits[index].caret)
+                pick(index)
             case .pending:
                 overlay.update(typed: selection?.typed ?? "")
             case .rejected, nil:
@@ -128,16 +136,57 @@ final class TextJumpController {
             return
         }
         hits = occurrences
-        let targets = occurrences.map { HintTarget(frame: $0.rect) }
-        let labels = HintLabels.labels(count: targets.count)
+        (groups, groupLabels) = HintGrouping.groupsWithLabels(
+            anchors: occurrences.map(\.rect),
+            within: windowFrame,
+            badgeSize: HintOverlayView.badgeSize(forLabelLength:)
+        )
+        selection = HintSelection(labels: groupLabels)
+        overlay.show(groups: groups, labels: groupLabels, windowFrame: windowFrame)
+    }
+
+    /// A full label was typed: inside the zoom it names an occurrence; outside
+    /// it names a group, which either places the caret (single) or zooms in
+    /// (cluster).
+    private func pick(_ index: Int) {
+        if let zoomed {
+            placeCursor(to: hits[zoomed.members[index]].caret)
+        } else if groups[index].isCluster {
+            enterZoom(groups[index])
+        } else {
+            placeCursor(to: hits[groups[index].members[0]].caret)
+        }
+    }
+
+    private func enterZoom(_ group: HintGrouping.Group) {
+        zoomed = group
+        let memberFrames = group.members.map { hits[$0].rect }
+        let labels = HintLabels.labels(count: memberFrames.count)
         selection = HintSelection(labels: labels)
-        overlay.show(targets: targets, labels: labels, windowFrame: windowFrame)
+        // A little context around the characters, kept on the window.
+        let area = group.area.insetBy(dx: -8, dy: -8).intersection(windowFrame)
+        overlay.showZoom(
+            area: area,
+            image: overlay.snapshotBelow(area: area),
+            memberFrames: memberFrames,
+            labels: labels,
+            windowFrame: windowFrame
+        )
+    }
+
+    private func exitZoom() {
+        zoomed = nil
+        selection = HintSelection(labels: groupLabels)
+        overlay.clearZoom()
     }
 
     /// Drops the labels and returns to waiting for a target character, keeping
     /// the field session alive.
     private func backToCharacterPick() {
         hits = []
+        groups = []
+        groupLabels = []
+        zoomed = nil
         selection = nil
         overlay.showBanner("Jump to a character…", windowFrame: windowFrame)
     }
@@ -155,6 +204,9 @@ final class TextJumpController {
         value = ""
         windowFrame = .zero
         hits = []
+        groups = []
+        groupLabels = []
+        zoomed = nil
         selection = nil
     }
 }

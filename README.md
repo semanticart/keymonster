@@ -37,15 +37,21 @@ any earlier entry from a fast, keyboard-driven panel.
   controls and on web content in Safari, Chrome, and Electron apps (Key Monster
   asks them to expose their accessibility trees). Separate shortcuts for
   left-click and right-click hints; holding `Shift` on the final letter clicks
-  with the opposite button. `Esc`, a real click, or any other chord dismisses
-  the overlay. Requires Accessibility permission.
+  with the opposite button. Elements too close together to label individually
+  share one green area label — typing it zooms into that area (a magnified
+  screenshot with Screen Recording permission, sketched outlines without) and
+  each element gets a normal label; `Delete` backs out of the zoom. `Esc`, a
+  real click, or any other chord dismisses the overlay. Requires Accessibility
+  permission.
 - **Text jump (jump to character)** — press a shortcut while a text field is
   focused, then any character; every visible occurrence of it in the field grows
   a short label (one letter when there are only a few, two otherwise), and typing
   a label drops the caret just before that character. Matching is case-insensitive and works on digits, punctuation, and
-  spaces too. Works in native macOS fields and in web text areas (Safari,
-  Chrome, Electron). `Delete` backs out to pick a different character; `Esc`, a
-  real click, or any other chord dismisses. Requires Accessibility permission.
+  spaces too. Occurrences too close together share one green area label that
+  zooms in, just like click hints. Works in native macOS fields and in web text
+  areas (Safari, Chrome, Electron). `Delete` backs out of the zoom, then back to
+  pick a different character; `Esc`, a real click, or any other chord dismisses.
+  Requires Accessibility permission.
 - **Password-manager aware** — respects the
   [nspasteboard.org](http://nspasteboard.org) convention and skips clipboard
   contents marked concealed, transient, or auto-generated.
@@ -121,7 +127,10 @@ Your history is stored at:
 | `Hints/HintLabels.swift` | Two-letter label generation (home row first) and the typed-prefix state machine. |
 | `Hints/HintTargets.swift` | Pure clickability/visibility heuristics and AX↔Cocoa coordinate conversion. |
 | `Hints/AXHintTargetFinder.swift` | Walks the frontmost window's accessibility tree to find clickable elements. |
-| `Hints/HintOverlay.swift` | Transparent click-through window that draws the hint badges. |
+| `Hints/HintOverlay.swift` | Transparent click-through window that draws the hint badges and the zoom panel. |
+| `Hints/HintGrouping.swift` | Merges targets whose labels would collide into green area groups. |
+| `Hints/HintZoom.swift` | Geometry of the zoomed view: panel placement, magnification, label spots. |
+| `Hints/WindowCapture.swift` | Screenshots the region beneath the overlay for the zoomed view. |
 | `Hints/HintKeyTap.swift` | CGEvent tap that captures keystrokes while hints are showing. |
 | `Hints/MouseClicker.swift` | Synthesizes left/right clicks at a hint target's center. |
 | `Hints/TextJumpController.swift` | Orchestrates text-jump mode: arm → pick character → label occurrences → place caret. |
