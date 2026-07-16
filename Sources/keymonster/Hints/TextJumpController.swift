@@ -19,8 +19,8 @@ final class TextJumpController {
     private var windowFrame: CGRect = .zero
 
     // Label state, non-nil only once a character has been picked and its
-    // occurrences are on screen. `offsets[i]` is the caret position for label i.
-    private var offsets: [Int] = []
+    // occurrences are on screen. `hits[i]` is the caret destination for label i.
+    private var hits: [AXFocusedText.Occurrence] = []
     private var selection: HintSelection?
 
     var isActive: Bool { element != nil }
@@ -108,7 +108,7 @@ final class TextJumpController {
             let letter = Character(String(character).lowercased())
             switch selection?.type(letter) {
             case .matched(let index):
-                placeCursor(at: offsets[index])
+                placeCursor(to: hits[index].caret)
             case .pending:
                 overlay.update(typed: selection?.typed ?? "")
             case .rejected, nil:
@@ -127,7 +127,7 @@ final class TextJumpController {
             NSSound.beep()
             return
         }
-        offsets = occurrences.map(\.offset)
+        hits = occurrences
         let targets = occurrences.map { HintTarget(frame: $0.rect) }
         let labels = HintLabels.labels(count: targets.count)
         selection = HintSelection(labels: labels)
@@ -137,15 +137,15 @@ final class TextJumpController {
     /// Drops the labels and returns to waiting for a target character, keeping
     /// the field session alive.
     private func backToCharacterPick() {
-        offsets = []
+        hits = []
         selection = nil
         overlay.showBanner("Jump to a character…", windowFrame: windowFrame)
     }
 
-    private func placeCursor(at offset: Int) {
+    private func placeCursor(to caret: AXFocusedText.Caret) {
         guard let element else { return }
         dismiss()
-        AXFocusedText.setCursor(element, to: offset)
+        AXFocusedText.setCursor(element, to: caret)
     }
 
     private func dismiss() {
@@ -154,7 +154,7 @@ final class TextJumpController {
         element = nil
         value = ""
         windowFrame = .zero
-        offsets = []
+        hits = []
         selection = nil
     }
 }
