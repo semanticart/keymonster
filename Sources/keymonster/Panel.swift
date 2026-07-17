@@ -164,9 +164,9 @@ final class PanelController {
 /// A borderless, non-activating panel with a transparent background so the
 /// SwiftUI content's rounded material shows through with a drop shadow.
 final class FloatingPanel: NSPanel {
-    init() {
+    init(contentSize: NSSize = NSSize(width: 620 * uiScale, height: 500 * uiScale)) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 620 * uiScale, height: 500 * uiScale),
+            contentRect: NSRect(origin: .zero, size: contentSize),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
             backing: .buffered,
             defer: false

@@ -70,6 +70,7 @@ final class AppSettings: ObservableObject {
     static let hintRightShortcutKey = "hintRightClickShortcut"
     static let gridShortcutKey = "gridClickShortcut"
     static let textJumpShortcutKey = "textJumpShortcut"
+    static let menuSearchShortcutKey = "menuSearchShortcut"
 
     @Published var launchAtLogin: Bool {
         didSet {
@@ -129,6 +130,12 @@ final class AppSettings: ObservableObject {
         didSet { persist(textJumpShortcut, forKey: Self.textJumpShortcutKey) }
     }
 
+    /// Global shortcut that lists the frontmost app's menu bar items in a
+    /// searchable panel; Return presses the highlighted item.
+    @Published var menuSearchShortcut: Shortcut? {
+        didSet { persist(menuSearchShortcut, forKey: Self.menuSearchShortcutKey) }
+    }
+
     /// When on, pressing Return pastes the selection into the previously focused
     /// app instead of only copying it. Defaults on; requires Accessibility access.
     @Published var autoPaste: Bool {
@@ -149,6 +156,7 @@ final class AppSettings: ObservableObject {
         hintRightShortcut = Self.loadShortcut(defaults, key: Self.hintRightShortcutKey)
         gridShortcut = Self.loadShortcut(defaults, key: Self.gridShortcutKey)
         textJumpShortcut = Self.loadShortcut(defaults, key: Self.textJumpShortcutKey)
+        menuSearchShortcut = Self.loadShortcut(defaults, key: Self.menuSearchShortcutKey)
         if let data = defaults.data(forKey: Self.appShortcutsKey),
            let decoded = try? JSONDecoder().decode([AppShortcut].self, from: data) {
             appShortcuts = decoded

@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hintMode = HintModeController()
     private let gridMode = GridModeController()
     private let textJumpMode = TextJumpController()
+    private let menuFinder = MenuFinderController()
     private var cancellables: Set<AnyCancellable> = []
     private var settingsWindow: NSWindow?
 
@@ -160,7 +161,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             (settings.hintLeftShortcut, { [weak self] in self?.hintMode.toggle(button: .left) }),
             (settings.hintRightShortcut, { [weak self] in self?.hintMode.toggle(button: .right) }),
             (settings.gridShortcut, { [weak self] in self?.gridMode.toggle() }),
-            (settings.textJumpShortcut, { [weak self] in self?.textJumpMode.toggle() })
+            (settings.textJumpShortcut, { [weak self] in self?.textJumpMode.toggle() }),
+            (settings.menuSearchShortcut, { [weak self] in self?.menuFinder.toggle() })
         ])
 
         let bindings = entries.compactMap { entry -> HotkeyBinding? in

@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
@@ -14,14 +13,13 @@ struct SettingsView: View {
     /// Key combos bound more than once across the history shortcut and every
     /// focus shortcut. Only the first registration of a duplicate actually works.
     private var conflicts: Set<Shortcut> {
-        var all: [Shortcut] = []
-        if let history = settings.shortcut { all.append(history) }
-        all.append(contentsOf: settings.appShortcuts.compactMap(\.shortcut))
-        if let hintLeft = settings.hintLeftShortcut { all.append(hintLeft) }
-        if let hintRight = settings.hintRightShortcut { all.append(hintRight) }
-        if let grid = settings.gridShortcut { all.append(grid) }
-        if let textJump = settings.textJumpShortcut { all.append(textJump) }
-        return ShortcutConflicts.conflicting(all)
+        let singles = [
+            settings.shortcut, settings.hintLeftShortcut, settings.hintRightShortcut,
+            settings.gridShortcut, settings.textJumpShortcut, settings.menuSearchShortcut
+        ]
+        return ShortcutConflicts.conflicting(
+            singles.compactMap { $0 } + settings.appShortcuts.compactMap(\.shortcut)
+        )
     }
 
     private func isConflicting(_ shortcut: Shortcut?) -> Bool {
@@ -112,6 +110,18 @@ struct SettingsView: View {
                     + "then a character. Every visible occurrence gets a label; type one "
                     + "to drop the caret just before that character. Delete picks a "
                     + "different character; Esc cancels. Requires Accessibility permission."
+            )
+
+            ShortcutSettingSection(
+                title: "Search Menus",
+                shortcut: $settings.menuSearchShortcut,
+                isConflicting: isConflicting(settings.menuSearchShortcut),
+                showAccessibilityNotice: settings.menuSearchShortcut != nil && !accessTrusted,
+                header: "Menu Search",
+                footer: "List the active app's menu bar items in a searchable panel. "
+                    + "Type to fuzzy-find, use ↑/↓ or Ctrl-N/Ctrl-P to move, and press "
+                    + "Return to run the highlighted item. Esc cancels. Requires "
+                    + "Accessibility permission."
             )
 
             Section {
@@ -342,38 +352,6 @@ private struct ShortcutSettingSection: View {
             Text(footer)
                 .foregroundStyle(.secondary)
         }
-    }
-}
-
-/// AppKit bridges for picking and displaying applications.
-enum AppPicker {
-    /// Present an open panel scoped to applications and return the chosen app's
-    /// bundle id + display name. nil if the user cancels or the bundle is unreadable.
-    @MainActor
-    static func choose() -> AppRef? {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.application]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.directoryURL = URL(fileURLWithPath: "/Applications")
-        panel.prompt = "Choose"
-        panel.message = "Choose an app to focus with this shortcut"
-        guard panel.runModal() == .OK, let url = panel.url,
-              let bundleID = Bundle(url: url)?.bundleIdentifier else {
-            return nil
-        }
-        let name = FileManager.default.displayName(atPath: url.path)
-            .replacingOccurrences(of: ".app", with: "")
-        return AppRef(bundleID: bundleID, name: name)
-    }
-
-    @MainActor
-    static func icon(for bundleID: String) -> NSImage? {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
-            return nil
-        }
-        return NSWorkspace.shared.icon(forFile: url.path)
     }
 }
 
