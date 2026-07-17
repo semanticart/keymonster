@@ -3,20 +3,28 @@ import os.log
 
 private let log = Logger(subsystem: "keymonster", category: "grid")
 
-/// Keyboard-driven clicking anywhere in the frontmost window: a hotkey overlays
-/// a grid mirroring the US keyboard's letter rows on the window, and each
-/// keypress zooms into the cell in that key's position. After two zooms the
-/// next keypress clicks its cell; Return clicks the center of the current
-/// region at any point. Shift on the deciding key right-clicks instead; Delete
-/// zooms back out; Escape, a real click, or any non-grid keystroke dismisses.
+/// Keyboard-driven clicking anywhere in the frontmost window. A hotkey overlays
+/// the initial grid: a fine grid of two-character hint labels (see `GridHints`)
+/// covering the window. Type a cell's label and grid mode zooms into it, then
+/// each further keypress narrows further — a keyboard-position grid, magnified
+/// into a loupe — until, after three zooms, the next keypress clicks. Return
+/// clicks the center of the current region at any point. Shift on the deciding
+/// key right-clicks instead; Delete steps back out; Escape, a real click, or
+/// any non-grid keystroke dismisses.
 @MainActor
 final class GridModeController {
     private let overlay = GridOverlay()
     private let keyTap = HintKeyTap()
 
-    /// Regions zoomed into so far, in AX coordinates: first is the whole
-    /// window, last is the active region. Empty while the mode is inactive.
+    /// The whole window, in AX coordinates; the base the hint grid covers.
+    private var windowFrame: CGRect = .zero
+    /// Regions zoomed into so far (AX coordinates): first is always the window,
+    /// last is the active region. Empty while grid mode is inactive.
     private var regions: [CGRect] = []
+    /// The initial hint grid and its typed-prefix matcher, live only until a
+    /// label is picked; nil once the positional grid takes over.
+    private var hintCells: [GridHints.Cell] = []
+    private var hintSelection: HintSelection?
 
     var isActive: Bool { !regions.isEmpty }
 
@@ -53,9 +61,18 @@ final class GridModeController {
             return
         }
 
+        self.windowFrame = windowFrame
         regions = [windowFrame]
-        overlay.show(windowFrame: windowFrame, current: windowFrame)
+        overlay.present(windowFrame: windowFrame)
+        startHintPhase()
         log.debug("grid mode active over \(windowFrame.debugDescription)")
+    }
+
+    /// Shows the initial hint grid over the whole window and arms its matcher.
+    private func startHintPhase() {
+        hintCells = GridHints.cells(of: windowFrame)
+        hintSelection = HintSelection(labels: hintCells.map(\.label))
+        overlay.showHints(cells: hintCells, typed: "")
     }
 
     private func handle(_ key: HintKeyEvent) {
@@ -64,24 +81,68 @@ final class GridModeController {
         case .escape, .cancel:
             dismiss()
         case .backspace:
-            if regions.count > 1 {
-                regions.removeLast()
-                overlay.update(current: regions[regions.count - 1])
-            }
+            backspace()
         case .enter(let shifted):
             click(at: CGPoint(x: current.midX, y: current.midY), shifted: shifted)
         case .letter(let letter, let shifted):
-            guard let cell = GridDivision.cell(of: current, for: letter) else {
-                NSSound.beep()
-                return
-            }
-            if regions.count <= GridDivision.maxShrinks {
-                regions.append(cell)
-                overlay.update(current: cell)
+            if hintSelection != nil {
+                pickHint(letter)
             } else {
-                // Already zoomed in twice: this keypress picks the final spot.
-                click(at: CGPoint(x: cell.midX, y: cell.midY), shifted: shifted)
+                zoomOrClick(current: current, letter: letter, shifted: shifted)
             }
+        }
+    }
+
+    /// A keystroke while the hint grid is up: narrow the matches, or on a full
+    /// label commit its cell and hand off to the positional grid.
+    private func pickHint(_ letter: Character) {
+        guard var selection = hintSelection else { return }
+        switch selection.type(letter) {
+        case .matched(let index):
+            let cell = hintCells[index].rect
+            hintSelection = nil
+            hintCells = []
+            regions.append(cell)
+            overlay.showGrid(current: cell)
+        case .pending:
+            hintSelection = selection
+            overlay.showHints(cells: hintCells, typed: selection.typed)
+        case .rejected:
+            NSSound.beep()
+        }
+    }
+
+    /// A keystroke on a positional grid: zoom into the key's cell, or once the
+    /// shrink limit is reached, click it.
+    private func zoomOrClick(current: CGRect, letter: Character, shifted: Bool) {
+        guard let cell = GridDivision.cell(of: current, for: letter) else {
+            NSSound.beep()
+            return
+        }
+        if regions.count <= GridDivision.maxShrinks {
+            regions.append(cell)
+            overlay.showGrid(current: cell)
+        } else {
+            // Already zoomed in the max times: this keypress picks the spot.
+            click(at: CGPoint(x: cell.midX, y: cell.midY), shifted: shifted)
+        }
+    }
+
+    /// Delete: drop the last typed hint letter, or step back one zoom — landing
+    /// back on the initial hint grid when the last zoom is undone.
+    private func backspace() {
+        if var selection = hintSelection {
+            selection.backspace()
+            hintSelection = selection
+            overlay.showHints(cells: hintCells, typed: selection.typed)
+            return
+        }
+        guard regions.count > 1 else { return }
+        regions.removeLast()
+        if regions.count == 1 {
+            startHintPhase()
+        } else {
+            overlay.showGrid(current: regions[regions.count - 1])
         }
     }
 
@@ -94,5 +155,7 @@ final class GridModeController {
         keyTap.stop()
         overlay.hide()
         regions = []
+        hintCells = []
+        hintSelection = nil
     }
 }

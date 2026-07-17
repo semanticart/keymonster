@@ -1,9 +1,11 @@
 import CoreGraphics
 
 /// Divides a rectangle into cells mirroring the US keyboard's three letter
-/// rows: Q…\ across the top, A…' in the middle, Z…/ along the bottom, so the
-/// key under your finger names the cell in the same position on screen. Pure
-/// logic, kept apart from the overlay/tap machinery so it can be unit tested.
+/// rows — Q… across the top, A… in the middle, Z… along the bottom — so the
+/// key under your finger names the cell in the same position on screen. Each
+/// row is capped at `maxColumns` keys (see there), so the far-right keys fall
+/// off. Pure logic, kept apart from the overlay/tap machinery so it can be
+/// unit tested.
 enum GridDivision {
     /// The unshifted US keys of each row, top to bottom. Rows have different
     /// key counts, so each horizontal band gets its own column widths.
@@ -14,13 +16,25 @@ enum GridDivision {
     ]
 
     /// A keypress zooms the region in at most this many times; once the limit
-    /// is reached the next keypress clicks its cell instead.
-    static let maxShrinks = 2
+    /// is reached the next keypress clicks its cell instead. (Return clicks the
+    /// current region's center at any point, before the limit.)
+    static let maxShrinks = 3
 
-    /// Cells smaller than this can't fit a readable key badge, so keys are
-    /// dropped — rightmost first, then the bottom rows — until every cell is
-    /// at least this big. A badge is one character, taller than it is wide,
-    /// so cells can be a fair bit narrower than they are short.
+    /// With the loupe magnifying every level to fill the window, on-screen cell
+    /// size no longer depends on the region, so readability doesn't limit the
+    /// column count. The cap now just keeps the region's width — which the
+    /// columns shrink faster than the three rows shrink its height — from
+    /// outrunning the height and narrowing to a sliver before you've picked.
+    /// Ten covers every letter plus the nearest punctuation (row lengths are
+    /// 13, 11, 10, so only "[ ] \ '" fall off) and keeps every row aligned.
+    static let maxColumns = 10
+
+    /// A region stops splitting on an axis once its cells would fall below this,
+    /// dropping keys rightmost-first, then the bottom rows. The loupe keeps
+    /// badges legible at any real size, so this no longer guards readability —
+    /// it stops the final region from narrowing into a slice too thin to read
+    /// or click (dropping an axis to one cell freezes it, as that cell spans it
+    /// all).
     static let minCellWidth: CGFloat = 8
     static let minCellHeight: CGFloat = 12
 
@@ -46,7 +60,7 @@ enum GridDivision {
         return rows.prefix(bands).enumerated().flatMap { rowIndex, keys -> [Cell] in
             let minY = rect.minY + rect.height * CGFloat(rowIndex) / CGFloat(bands)
             let maxY = rect.minY + rect.height * CGFloat(rowIndex + 1) / CGFloat(bands)
-            let columns = fitting(keys.count, into: rect.width, minimum: minCellWidth)
+            let columns = fitting(min(keys.count, maxColumns), into: rect.width, minimum: minCellWidth)
             return keys.prefix(columns).enumerated().map { column, key in
                 let minX = rect.minX + rect.width * CGFloat(column) / CGFloat(columns)
                 let maxX = rect.minX + rect.width * CGFloat(column + 1) / CGFloat(columns)

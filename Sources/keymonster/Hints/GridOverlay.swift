@@ -1,17 +1,20 @@
 import AppKit
 
-/// Highlights grid mode's active region over the frontmost window: everything
-/// outside the region is dimmed, and the region is split into eight labeled
-/// home-row cells. Transparent and click-through, like `HintOverlay`.
+/// Grid mode's overlay over the frontmost window. It shows one of two things:
+/// the initial two-character hint grid (`showHints`), or a positional keyboard
+/// grid over the active region (`showGrid`) which becomes a loupe — the
+/// region's pixels magnified to fill the window — once zoomed in. Transparent
+/// and click-through, like `HintOverlay`.
 @MainActor
 final class GridOverlay {
     private var window: NSWindow?
     private var view: GridOverlayView?
     private var windowOrigin: CGPoint = .zero
+    private var windowBounds: CGRect = .zero
 
-    /// `windowFrame` is the target window's frame in AX (top-left origin)
-    /// coordinates; `current` is the active region in the same space.
-    func show(windowFrame: CGRect, current: CGRect) {
+    /// Creates the overlay window over `windowFrame` (AX, top-left origin).
+    /// Call once when grid mode activates, then drive it with the `show*` calls.
+    func present(windowFrame: CGRect) {
         hide()
         guard let primary = NSScreen.screens.first else { return }
         let cocoaFrame = HintGeometry.cocoaRect(
@@ -36,13 +39,39 @@ final class GridOverlay {
         self.window = window
         self.view = view
         windowOrigin = windowFrame.origin
-        update(current: current)
+        windowBounds = CGRect(origin: .zero, size: cocoaFrame.size)
     }
 
-    func update(current: CGRect) {
-        // The view is flipped, so it shares the AX tree's top-left origin —
-        // only the window's origin needs removing.
-        view?.current = current.offsetBy(dx: -windowOrigin.x, dy: -windowOrigin.y)
+    /// The initial two-character hint grid (`cells` in AX coordinates). `typed`
+    /// dims the labels that no longer match what's been entered.
+    func showHints(cells: [GridHints.Cell], typed: String) {
+        view?.showHints(
+            cells: cells.map {
+                GridOverlayView.HintCell(label: $0.label, rect: inView($0.rect))
+            },
+            typed: typed
+        )
+    }
+
+    /// The positional grid over `current` (AX coordinates), drawn plainly while
+    /// it's the whole window and as a magnified loupe once zoomed in. Falls back
+    /// to the plain grid when there's nothing to magnify or Screen Recording is
+    /// off.
+    func showGrid(current: CGRect) {
+        let region = inView(current)
+        if GridZoom.scale(magnifying: region, into: windowBounds) > 1,
+           let image = WindowCapture.below(window, bounds: current) {
+            let panel = GridZoom.panel(magnifying: region, into: windowBounds)
+            view?.showGrid(region: region, panel: panel, image: image)
+        } else {
+            view?.showGrid(region: region, panel: region, image: nil)
+        }
+    }
+
+    /// AX rect to view coordinates. The view is flipped, so it shares the AX
+    /// tree's top-left origin — only the window's origin needs removing.
+    private func inView(_ rect: CGRect) -> CGRect {
+        rect.offsetBy(dx: -windowOrigin.x, dy: -windowOrigin.y)
     }
 
     func hide() {
@@ -52,11 +81,33 @@ final class GridOverlay {
     }
 }
 
-/// Draws the dimmed surroundings, the active region's grid lines, and a key
-/// badge at the center of each cell. Flipped so its coordinates match AX frames.
+/// Draws grid mode's overlay: the labelled hint grid, or the positional grid /
+/// loupe. Flipped so its coordinates match AX frames.
 final class GridOverlayView: NSView {
-    var current: CGRect = .zero {
+    struct HintCell {
+        let label: String
+        let rect: CGRect
+    }
+
+    private enum Content {
+        /// The positional grid. `region` (view coordinates) names the cells;
+        /// `panel` is where they draw — equal to `region` for the plain grid,
+        /// or a magnified rect when `image` (the region's screenshot) is set.
+        case grid(region: CGRect, panel: CGRect, image: CGImage?)
+        /// The initial hint grid; `typed` is the prefix entered so far.
+        case hints(cells: [HintCell], typed: String)
+    }
+
+    private var content: Content? {
         didSet { needsDisplay = true }
+    }
+
+    func showGrid(region: CGRect, panel: CGRect, image: CGImage?) {
+        content = .grid(region: region, panel: panel, image: image)
+    }
+
+    func showHints(cells: [HintCell], typed: String) {
+        content = .hints(cells: cells, typed: typed)
     }
 
     override var isFlipped: Bool { true }
@@ -74,36 +125,85 @@ final class GridOverlayView: NSView {
     private static let border = NSColor(calibratedRed: 1.0, green: 0.87, blue: 0.4, alpha: 0.95)
     private static let badgeStroke = NSColor(calibratedRed: 0.5, green: 0.38, blue: 0.05, alpha: 0.9)
     private static let ink = NSColor.black
+    private static let hintFill = NSColor(calibratedRed: 1.0, green: 0.85, blue: 0.35, alpha: 0.95)
+    private static let hintDimFill = NSColor(calibratedWhite: 0.55, alpha: 0.25)
+    private static let hintDimInk = NSColor(calibratedWhite: 0.0, alpha: 0.4)
 
     override func draw(_ dirtyRect: NSRect) {
-        let region = current.intersection(bounds)
-        guard !region.isEmpty else { return }
+        switch content {
+        case let .grid(region, panel, image):
+            drawGrid(region: region, panel: panel, image: image)
+        case let .hints(cells, typed):
+            drawHints(cells: cells, typed: typed)
+        case nil:
+            break
+        }
+    }
 
-        // Dim everything outside the active region.
+    // MARK: Positional grid / loupe
+
+    private func drawGrid(region: CGRect, panel rawPanel: CGRect, image: CGImage?) {
+        let panel = rawPanel.intersection(bounds)
+        guard !panel.isEmpty else { return }
+
+        // Dim everything outside the panel.
         let scrim = NSBezierPath(rect: bounds)
-        scrim.appendRect(region)
+        scrim.appendRect(panel)
         scrim.windingRule = .evenOdd
         Self.scrim.setFill()
         scrim.fill()
 
-        let cells = GridDivision.cells(of: region)
+        // The magnified screenshot of the region, when there is one, clipped to
+        // the panel so it can't spill over the dimmed surround.
+        if let image {
+            NSGraphicsContext.current?.saveGraphicsState()
+            NSBezierPath(rect: panel).addClip()
+            NSImage(cgImage: image, size: .zero).draw(
+                in: rawPanel, from: .zero, operation: .sourceOver, fraction: 1,
+                respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high.rawValue]
+            )
+            NSGraphicsContext.current?.restoreGraphicsState()
+        }
 
-        // A distinct translucent wash per cell, so keys read as separate
-        // targets before the grid lines and badges go on top.
+        // Cells come from the real region so their keys match what a press
+        // selects, then map into the panel for drawing.
+        let cells = GridDivision.cells(of: region).map {
+            GridDivision.Cell(key: $0.key, rect: mapped($0.rect, from: region, to: rawPanel))
+        }
+        // Lighter washes over a screenshot so the content stays legible.
+        drawCells(cells, in: panel, washAlpha: image == nil ? 0.28 : 0.16)
+        drawLabels(of: cells, in: panel)
+    }
+
+    /// Maps a cell rect from the real region into the (possibly magnified)
+    /// panel. Identity when the two are the same rect (the plain grid).
+    private func mapped(_ rect: CGRect, from region: CGRect, to panel: CGRect) -> CGRect {
+        guard region.width > 0, region.height > 0 else { return rect }
+        let scaleX = panel.width / region.width
+        let scaleY = panel.height / region.height
+        return CGRect(
+            x: panel.minX + (rect.minX - region.minX) * scaleX,
+            y: panel.minY + (rect.minY - region.minY) * scaleY,
+            width: rect.width * scaleX, height: rect.height * scaleY
+        )
+    }
+
+    /// A distinct translucent wash per cell so keys read as separate targets,
+    /// the cell boundaries, then a stronger border around the region itself.
+    private func drawCells(_ cells: [GridDivision.Cell], in panel: CGRect, washAlpha: CGFloat) {
         for cell in cells {
-            Self.color(for: cell.key).setFill()
+            Self.color(for: cell.key).withAlphaComponent(washAlpha).setFill()
             NSBezierPath(rect: cell.rect).fill()
         }
 
-        // Cell boundaries, then a stronger border around the region itself.
         let lines = NSBezierPath()
         lines.lineWidth = 1
         for cell in cells.dropFirst() {
-            if cell.rect.minX > region.minX {
+            if cell.rect.minX > panel.minX {
                 lines.move(to: CGPoint(x: cell.rect.minX, y: cell.rect.minY))
                 lines.line(to: CGPoint(x: cell.rect.minX, y: cell.rect.maxY))
             }
-            if cell.rect.minY > region.minY {
+            if cell.rect.minY > panel.minY {
                 lines.move(to: CGPoint(x: cell.rect.minX, y: cell.rect.minY))
                 lines.line(to: CGPoint(x: cell.rect.maxX, y: cell.rect.minY))
             }
@@ -111,12 +211,10 @@ final class GridOverlayView: NSView {
         Self.gridLine.setStroke()
         lines.stroke()
 
-        let border = NSBezierPath(rect: region)
+        let border = NSBezierPath(rect: panel)
         border.lineWidth = 2
         Self.border.setStroke()
         border.stroke()
-
-        drawLabels(of: cells, in: region)
     }
 
     /// Labels stay at a readable size rather than shrinking into the tiny cells
@@ -127,10 +225,13 @@ final class GridOverlayView: NSView {
         let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .bold)
         var deferred: [GridDivision.Cell] = []
         for cell in cells {
-            let badge = badgeRect(for: cell.key, font: font)
+            let badge = badgeSize(of: String(cell.key), font: font)
             if badge.width <= cell.rect.width && badge.height <= cell.rect.height {
                 let fill = Self.color(for: cell.key).withAlphaComponent(0.95)
-                drawBadge(key: cell.key, at: CGPoint(x: cell.rect.midX, y: cell.rect.midY), font: font, fill: fill)
+                drawBadge(
+                    text: String(cell.key), at: CGPoint(x: cell.rect.midX, y: cell.rect.midY),
+                    font: font, fill: fill, ink: Self.ink
+                )
             } else {
                 deferred.append(cell)
             }
@@ -141,14 +242,17 @@ final class GridOverlayView: NSView {
         // on the band's midline — no overlap, so no vertical stagger needed.
         let columnsPerBand = Dictionary(grouping: cells, by: { $0.rect.minY }).mapValues { $0.count }
         for cell in deferred {
-            let badge = badgeRect(for: cell.key, font: font)
+            let badge = badgeSize(of: String(cell.key), font: font)
             let columns = max(1, columnsPerBand[cell.rect.minY] ?? 1)
             let column = min(Self.column(of: cell.key), columns - 1)
             let centerX = columns == 1
                 ? region.midX
                 : region.minX - badge.width / 2 + (region.width + badge.width) * CGFloat(column) / CGFloat(columns - 1)
             let fill = Self.color(for: cell.key).withAlphaComponent(0.95)
-            drawBadge(key: cell.key, at: CGPoint(x: centerX, y: cell.rect.midY), font: font, fill: fill)
+            drawBadge(
+                text: String(cell.key), at: CGPoint(x: centerX, y: cell.rect.midY),
+                font: font, fill: fill, ink: Self.ink
+            )
         }
     }
 
@@ -158,16 +262,6 @@ final class GridOverlayView: NSView {
             if let column = keys.firstIndex(of: key) { return column }
         }
         return 0
-    }
-
-    /// The size a `key`'s badge occupies at `font`, centered on the origin.
-    private func badgeRect(for key: Character, font: NSFont) -> CGSize {
-        let text = NSAttributedString(string: String(key).uppercased(), attributes: [.font: font])
-        let textSize = text.size()
-        return CGSize(
-            width: textSize.width + font.pointSize * 0.4 * 2,
-            height: textSize.height + font.pointSize * 0.17 * 2
-        )
     }
 
     /// The wash for a cell, chosen from its (row, column) on the keyboard.
@@ -182,12 +276,64 @@ final class GridOverlayView: NSView {
         return cellColors[0]
     }
 
-    private func drawBadge(key: Character, at center: CGPoint, font: NSFont, fill: NSColor) {
-        let text = NSAttributedString(
-            string: String(key).uppercased(),
-            attributes: [.font: font, .foregroundColor: Self.ink]
+    // MARK: Hint grid
+
+    private func drawHints(cells: [HintCell], typed: String) {
+        // The same translucent per-cell washes as the positional grid, so the
+        // initial cells read as distinct tiles. Colors step by grid position
+        // (rows and columns recovered from the shared cell edges) so no two
+        // neighbors match.
+        let rowOf = index(of: cells.map(\.rect.minY))
+        let columnOf = index(of: cells.map(\.rect.minX))
+        for cell in cells {
+            let step = (rowOf[cell.rect.minY] ?? 0) * 7 + (columnOf[cell.rect.minX] ?? 0) * 3
+            Self.cellColors[step % Self.cellColors.count].setFill()
+            NSBezierPath(rect: cell.rect).fill()
+        }
+
+        let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)
+        let prefix = typed.uppercased()
+        func matches(_ cell: HintCell) -> Bool { cell.label.uppercased().hasPrefix(prefix) }
+
+        // Dimmed non-matches first, then live labels on top of them.
+        for cell in cells where !matches(cell) {
+            drawBadge(
+                text: cell.label, at: CGPoint(x: cell.rect.midX, y: cell.rect.midY),
+                font: font, fill: Self.hintDimFill, ink: Self.hintDimInk
+            )
+        }
+        for cell in cells where matches(cell) {
+            drawBadge(
+                text: cell.label, at: CGPoint(x: cell.rect.midX, y: cell.rect.midY),
+                font: font, fill: Self.hintFill, ink: Self.ink
+            )
+        }
+    }
+
+    /// Maps each distinct coordinate to its rank, so a cell's shared row/column
+    /// edge becomes a 0-based index for coloring.
+    private func index(of coordinates: [CGFloat]) -> [CGFloat: Int] {
+        Dictionary(uniqueKeysWithValues: Set(coordinates).sorted().enumerated().map { ($1, $0) })
+    }
+
+    // MARK: Badges
+
+    /// The size a badge for `text` occupies at `font`.
+    private func badgeSize(of text: String, font: NSFont) -> CGSize {
+        let attributed = NSAttributedString(string: text.uppercased(), attributes: [.font: font])
+        let textSize = attributed.size()
+        return CGSize(
+            width: textSize.width + font.pointSize * 0.4 * 2,
+            height: textSize.height + font.pointSize * 0.17 * 2
         )
-        let textSize = text.size()
+    }
+
+    private func drawBadge(text: String, at center: CGPoint, font: NSFont, fill: NSColor, ink: NSColor) {
+        let attributed = NSAttributedString(
+            string: text.uppercased(),
+            attributes: [.font: font, .foregroundColor: ink]
+        )
+        let textSize = attributed.size()
         let padding = CGSize(width: font.pointSize * 0.4, height: font.pointSize * 0.17)
         let badge = CGRect(
             x: center.x - textSize.width / 2 - padding.width,
@@ -202,6 +348,6 @@ final class GridOverlayView: NSView {
         Self.badgeStroke.setStroke()
         path.lineWidth = 1
         path.stroke()
-        text.draw(at: CGPoint(x: badge.minX + padding.width, y: badge.minY + padding.height))
+        attributed.draw(at: CGPoint(x: badge.minX + padding.width, y: badge.minY + padding.height))
     }
 }
