@@ -170,9 +170,44 @@ final class GridOverlayView: NSView {
         let cells = GridDivision.cells(of: region).map {
             GridDivision.Cell(key: $0.key, rect: mapped($0.rect, from: region, to: rawPanel))
         }
+        // Enter clicks the region's center, which maps to the panel's center;
+        // once magnified, mark that spot so you can see where a Return lands.
+        let target = image != nil ? CGPoint(x: panel.midX, y: panel.midY) : nil
         // Lighter washes over a screenshot so the content stays legible.
         drawCells(cells, in: panel, washAlpha: image == nil ? 0.28 : 0.16)
-        drawLabels(of: cells, in: panel)
+        drawLabels(of: cells, in: panel, clearing: target)
+        if let target { drawTarget(at: target) }
+    }
+
+    private static let targetRadius: CGFloat = 4
+    private static let targetFill = NSColor(calibratedRed: 1.0, green: 0.24, blue: 0.24, alpha: 0.95)
+    private static let targetRing = NSColor(calibratedWhite: 1.0, alpha: 0.95)
+
+    /// A small ringed dot on the spot a Return would click.
+    private func drawTarget(at center: CGPoint) {
+        let radius = Self.targetRadius
+        let dot = NSBezierPath(ovalIn: CGRect(
+            x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2
+        ))
+        Self.targetFill.setFill()
+        dot.fill()
+        Self.targetRing.setStroke()
+        dot.lineWidth = 1.5
+        dot.stroke()
+    }
+
+    /// Lifts a badge centered at `center` to sit just above the target dot when
+    /// the two would overlap — the dot marks the click point exactly, so a
+    /// label under it (the middle cell, when a band or column count is odd)
+    /// would otherwise be hidden. Badges the dot doesn't touch stay put.
+    private func clearing(_ center: CGPoint, badge: CGSize, dot: CGPoint?) -> CGPoint {
+        guard let dot,
+              abs(center.x - dot.x) < badge.width / 2 + Self.targetRadius,
+              abs(center.y - dot.y) < badge.height / 2 + Self.targetRadius
+        else { return center }
+        // The view is flipped, so a smaller y sits higher: park the badge's
+        // bottom edge just above the dot.
+        return CGPoint(x: center.x, y: dot.y - Self.targetRadius - 2 - badge.height / 2)
     }
 
     /// Maps a cell rect from the real region into the (possibly magnified)
@@ -221,17 +256,17 @@ final class GridOverlayView: NSView {
     /// of a zoomed-in grid; when one won't fit inside its cell it's drawn beside
     /// it instead. Besides go in a second pass so they layer on top of the cells
     /// they spill over.
-    private func drawLabels(of cells: [GridDivision.Cell], in region: CGRect) {
+    private func drawLabels(of cells: [GridDivision.Cell], in region: CGRect, clearing target: CGPoint?) {
         let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .bold)
         var deferred: [GridDivision.Cell] = []
         for cell in cells {
             let badge = badgeSize(of: String(cell.key), font: font)
             if badge.width <= cell.rect.width && badge.height <= cell.rect.height {
                 let fill = Self.color(for: cell.key).withAlphaComponent(0.95)
-                drawBadge(
-                    text: String(cell.key), at: CGPoint(x: cell.rect.midX, y: cell.rect.midY),
-                    font: font, fill: fill, ink: Self.ink
+                let center = clearing(
+                    CGPoint(x: cell.rect.midX, y: cell.rect.midY), badge: badge, dot: target
                 )
+                drawBadge(text: String(cell.key), at: center, font: font, fill: fill, ink: Self.ink)
             } else {
                 deferred.append(cell)
             }
@@ -249,10 +284,10 @@ final class GridOverlayView: NSView {
                 ? region.midX
                 : region.minX - badge.width / 2 + (region.width + badge.width) * CGFloat(column) / CGFloat(columns - 1)
             let fill = Self.color(for: cell.key).withAlphaComponent(0.95)
-            drawBadge(
-                text: String(cell.key), at: CGPoint(x: centerX, y: cell.rect.midY),
-                font: font, fill: fill, ink: Self.ink
+            let center = clearing(
+                CGPoint(x: centerX, y: cell.rect.midY), badge: badge, dot: target
             )
+            drawBadge(text: String(cell.key), at: center, font: font, fill: fill, ink: Self.ink)
         }
     }
 

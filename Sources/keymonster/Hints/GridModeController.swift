@@ -102,8 +102,7 @@ final class GridModeController {
             let cell = hintCells[index].rect
             hintSelection = nil
             hintCells = []
-            regions.append(cell)
-            overlay.showGrid(current: cell)
+            descend(into: cell)
         case .pending:
             hintSelection = selection
             overlay.showHints(cells: hintCells, typed: selection.typed)
@@ -120,11 +119,22 @@ final class GridModeController {
             return
         }
         if regions.count <= GridDivision.maxShrinks {
-            regions.append(cell)
-            overlay.showGrid(current: cell)
+            descend(into: cell, shifted: shifted)
         } else {
             // Already zoomed in the max times: this keypress picks the spot.
             click(at: CGPoint(x: cell.midX, y: cell.midY), shifted: shifted)
+        }
+    }
+
+    /// Zoom into `region` and show its grid — unless it has collapsed to a
+    /// single cell, in which case there's nothing left to disambiguate, so
+    /// click its center rather than show a one-cell grid you'd only Return on.
+    private func descend(into region: CGRect, shifted: Bool = false) {
+        regions.append(region)
+        if GridDivision.cells(of: region).count == 1 {
+            click(at: CGPoint(x: region.midX, y: region.midY), shifted: shifted)
+        } else {
+            overlay.showGrid(current: region)
         }
     }
 

@@ -111,13 +111,13 @@ final class GridDivisionTests: XCTestCase {
         XCTAssertTrue(first.contains(second))
         XCTAssertTrue(second.contains(third))
         XCTAssertTrue(window.contains(third))
-        XCTAssertEqual(GridDivision.maxShrinks, 3)
+        XCTAssertEqual(GridDivision.maxShrinks, 5)
     }
 
     func testNarrowRegionsDropRightmostKeys() {
-        // 48pt fits six 8pt columns — fewer than the cap — so every row keeps
+        // 12pt fits six 2pt columns — fewer than the cap — so every row keeps
         // just its first six keys.
-        let narrow = CGRect(x: 0, y: 0, width: 48, height: 300)
+        let narrow = CGRect(x: 0, y: 0, width: 12, height: 300)
         let cells = GridDivision.cells(of: narrow)
         XCTAssertEqual(
             cells.map(\.key),
@@ -133,16 +133,16 @@ final class GridDivisionTests: XCTestCase {
     }
 
     func testShortRegionsDropBottomRows() {
-        // 30pt fits two 12pt bands: the Q and A rows survive, the Z row goes.
+        // 8pt fits two 3pt bands: the Q and A rows survive, the Z row goes.
         // Each surviving band keeps its first `maxColumns` keys.
-        let short = CGRect(x: 0, y: 0, width: 1300, height: 30)
+        let short = CGRect(x: 0, y: 0, width: 1300, height: 8)
         let cells = GridDivision.cells(of: short)
         XCTAssertEqual(cells.map(\.key), Array("qwertyuiop") + Array("asdfghjkl;"))
         XCTAssertNil(GridDivision.cell(of: short, for: "z"))
     }
 
     func testTinyRegionIsASingleCell() {
-        let tiny = CGRect(x: 5, y: 9, width: 12, height: 18)
+        let tiny = CGRect(x: 5, y: 9, width: 3, height: 5)
         let cells = GridDivision.cells(of: tiny)
         XCTAssertEqual(cells.count, 1)
         XCTAssertEqual(cells[0].key, "q")

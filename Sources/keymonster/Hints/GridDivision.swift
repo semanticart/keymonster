@@ -17,8 +17,10 @@ enum GridDivision {
 
     /// A keypress zooms the region in at most this many times; once the limit
     /// is reached the next keypress clicks its cell instead. (Return clicks the
-    /// current region's center at any point, before the limit.)
-    static let maxShrinks = 3
+    /// current region's center at any point, before the limit.) The loupe
+    /// magnifies every level to fill the window, so extra shrinks stay legible
+    /// and buy finer aim on small targets.
+    static let maxShrinks = 5
 
     /// With the loupe magnifying every level to fill the window, on-screen cell
     /// size no longer depends on the region, so readability doesn't limit the
@@ -30,13 +32,14 @@ enum GridDivision {
     static let maxColumns = 10
 
     /// A region stops splitting on an axis once its cells would fall below this,
-    /// dropping keys rightmost-first, then the bottom rows. The loupe keeps
-    /// badges legible at any real size, so this no longer guards readability —
-    /// it stops the final region from narrowing into a slice too thin to read
-    /// or click (dropping an axis to one cell freezes it, as that cell spans it
-    /// all).
-    static let minCellWidth: CGFloat = 8
-    static let minCellHeight: CGFloat = 12
+    /// dropping keys rightmost-first, then the bottom rows. The loupe magnifies
+    /// every level to fill the window, so real cell size no longer bears on
+    /// readability — these stay small so the grid keeps subdividing for a few
+    /// more levels, buying finer aim (a click lands at the chosen cell's center,
+    /// so even a two-point cell is precise). Once both axes hit their floor the
+    /// region is a single cell and grid mode clicks it rather than zoom further.
+    static let minCellWidth: CGFloat = 2
+    static let minCellHeight: CGFloat = 3
 
     /// What Shift turns each unshifted key into. Shift on the deciding key
     /// requests a right-click, so the shifted symbol must still name its key.
