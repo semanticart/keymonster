@@ -10,15 +10,17 @@ struct SettingsView: View {
     // value live, so the warning clears on its own once the user flips the switch.
     private let trustPoll = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    /// Key combos bound more than once across the history shortcut and every
-    /// focus shortcut. Only the first registration of a duplicate actually works.
+    /// Key combos bound more than once across every shortcut. Only the first
+    /// registration of a duplicate actually works.
     private var conflicts: Set<Shortcut> {
         let singles = [
             settings.shortcut, settings.hintLeftShortcut, settings.hintRightShortcut,
             settings.gridShortcut, settings.textJumpShortcut, settings.menuSearchShortcut
         ]
         return ShortcutConflicts.conflicting(
-            singles.compactMap { $0 } + settings.appShortcuts.compactMap(\.shortcut)
+            singles.compactMap { $0 }
+                + settings.appShortcuts.compactMap(\.shortcut)
+                + settings.scriptShortcuts.compactMap(\.shortcut)
         )
     }
 
@@ -31,39 +33,97 @@ struct SettingsView: View {
         settings.hintLeftShortcut != nil || settings.hintRightShortcut != nil
     }
 
+    // General (the app's identity, no shortcuts) leads; the shortcut tabs then
+    // run clipboard core first, mouse-replacement features roughly in how often
+    // they fire, then automation. applyHotkeys registers shortcuts in that same
+    // tab order, which matters when two entries share a combo.
     var body: some View {
-        Form {
-            Section {
+        TabView {
+            generalTab
+                .tabItem { Label("General", systemImage: "gearshape") }
+            clipboardTab
+                .tabItem { Label("Clipboard", systemImage: "doc.on.clipboard") }
+            focusTab
+                .tabItem { Label("Focus", systemImage: "macwindow.on.rectangle") }
+            clickingTab
+                .tabItem { Label("Clicking", systemImage: "cursorarrow.rays") }
+            textTab
+                .tabItem { Label("Text", systemImage: "character.cursor.ibeam") }
+            menusTab
+                .tabItem { Label("Menus", systemImage: "filemenu.and.selection") }
+            scriptsTab
+                .tabItem { Label("Scripts", systemImage: "terminal") }
+        }
+        // Width is fixed; height comes from the selected tab's content. The
+        // hand-rolled SettingsSection cards (not List-backed Form) make each
+        // tab report its natural height, and AppDelegate resizes the window to
+        // follow it.
+        .frame(width: 540)
+        .onChange(of: settings.autoPaste) { _, enabled in
+            if enabled { Paster.requestAccess() }
+            accessTrusted = Paster.isTrusted
+        }
+        .onReceive(trustPoll) { _ in
+            accessTrusted = Paster.isTrusted
+        }
+    }
+
+    // MARK: - Tabs
+
+    private var clipboardTab: some View {
+        SettingsTabView(description: "Key Monster records what you copy — text, images, "
+            + "and files — and keeps it searchable. Summon the history panel from anywhere, "
+            + "type to filter, and press Return to paste an earlier item.") {
+            SettingsSection(footer: "Opens clipboard history from anywhere.") {
                 ShortcutSettingRow(
                     title: "Clipboard Shortcut",
                     shortcut: $settings.shortcut,
                     isConflicting: isConflicting(settings.shortcut)
                 )
-            } footer: {
-                Text("Opens clipboard history from anywhere.")
-                    .foregroundStyle(.secondary)
             }
 
-            Section {
+            SettingsSection(footer: "Pastes the selected item straight into the app you "
+                + "were using. Requires Accessibility permission; without it, Return "
+                + "just copies.") {
+                SettingsToggleRow(title: "Paste into the active app on Return", isOn: $settings.autoPaste)
+                if settings.autoPaste && !accessTrusted {
+                    AccessibilityNotice()
+                }
+            }
+        }
+    }
+
+    private var focusTab: some View {
+        SettingsTabView(description: "Switch apps without Cmd-Tab. Bind a shortcut to one "
+            + "or more apps: press it to focus the first, press again to cycle through the "
+            + "rest — so one combo can rotate through e.g. Slack and Chrome.") {
+            SettingsSection {
                 ForEach($settings.appShortcuts) { $entry in
                     FocusShortcutRow(entry: $entry, isConflicting: isConflicting(entry.shortcut)) {
                         settings.appShortcuts.removeAll { $0.id == entry.id }
                     }
+                    Divider()
                 }
                 Button {
                     settings.appShortcuts.append(AppShortcut())
                 } label: {
                     Label("Add Shortcut", systemImage: "plus")
                 }
-            } header: {
-                Text("Focus Shortcuts")
-            } footer: {
-                Text("Bind a shortcut to one or more apps. Press it to focus the app; "
-                    + "press again to cycle through the rest.")
-                    .foregroundStyle(.secondary)
             }
+        }
+    }
 
-            Section {
+    private var clickingTab: some View {
+        SettingsTabView(description: "Click anything on screen without touching the mouse: "
+            + "hints label everything clickable, and the grid reaches spots that have no "
+            + "element to label. Both require Accessibility permission.") {
+            SettingsSection(
+                header: "Click Hints",
+                footer: "Overlay short labels on everything clickable in the active "
+                    + "window — including web pages — and type one to click it. Hold "
+                    + "Shift on the last letter for the opposite mouse button; Esc "
+                    + "cancels."
+            ) {
                 ShortcutSettingRow(
                     title: "Left Click",
                     shortcut: $settings.hintLeftShortcut,
@@ -77,29 +137,30 @@ struct SettingsView: View {
                 if hintsConfigured && !accessTrusted {
                     AccessibilityNotice()
                 }
-            } header: {
-                Text("Click Hints")
-            } footer: {
-                Text("Overlay short labels on everything clickable in the active "
-                    + "window — including web pages — and type one to click it. Hold "
-                    + "Shift on the last letter for the opposite mouse button; Esc "
-                    + "cancels. Requires Accessibility permission.")
-                    .foregroundStyle(.secondary)
             }
 
-            ShortcutSettingSection(
-                title: "Show Grid",
-                shortcut: $settings.gridShortcut,
-                isConflicting: isConflicting(settings.gridShortcut),
-                showAccessibilityNotice: settings.gridShortcut != nil && !accessTrusted,
+            SettingsSection(
                 header: "Grid Click",
                 footer: "Overlay a grid mirroring the keyboard's letter rows (Q–/) on the "
                     + "active window; each key zooms into that cell, and after two "
                     + "zooms the next key clicks. Return clicks the center anytime — "
-                    + "hold Shift to right-click. Delete zooms back out; Esc cancels. "
-                    + "Requires Accessibility permission."
-            )
+                    + "hold Shift to right-click. Delete zooms back out; Esc cancels."
+            ) {
+                ShortcutSettingRow(
+                    title: "Show Grid",
+                    shortcut: $settings.gridShortcut,
+                    isConflicting: isConflicting(settings.gridShortcut)
+                )
+                if settings.gridShortcut != nil && !accessTrusted {
+                    AccessibilityNotice()
+                }
+            }
+        }
+    }
 
+    private var textTab: some View {
+        SettingsTabView(description: "Move the caret through text by sight instead of "
+            + "arrow keys. Requires Accessibility permission.") {
             ShortcutSettingSection(
                 title: "Jump to Character",
                 shortcut: $settings.textJumpShortcut,
@@ -109,9 +170,14 @@ struct SettingsView: View {
                 footer: "In the active text field — native or web — press this shortcut, "
                     + "then a character. Every visible occurrence gets a label; type one "
                     + "to drop the caret just before that character. Delete picks a "
-                    + "different character; Esc cancels. Requires Accessibility permission."
+                    + "different character; Esc cancels."
             )
+        }
+    }
 
+    private var menusTab: some View {
+        SettingsTabView(description: "Run any menu bar item by typing a few letters "
+            + "instead of hunting through menus. Requires Accessibility permission.") {
             ShortcutSettingSection(
                 title: "Search Menus",
                 shortcut: $settings.menuSearchShortcut,
@@ -120,108 +186,58 @@ struct SettingsView: View {
                 header: "Menu Search",
                 footer: "List the active app's menu bar items in a searchable panel. "
                     + "Type to fuzzy-find, use ↑/↓ or Ctrl-N/Ctrl-P to move, and press "
-                    + "Return to run the highlighted item. Esc cancels. Requires "
-                    + "Accessibility permission."
+                    + "Return to run the highlighted item. Esc cancels."
             )
+        }
+    }
 
-            Section {
-                Toggle("Launch at Login", isOn: $settings.launchAtLogin)
-            } footer: {
-                Text("Start Key Monster automatically when you log in.")
+    private var scriptsTab: some View {
+        SettingsTabView(description: "Run your own automation from a keystroke. Point a "
+            + "shortcut at a script file: AppleScript (.scpt, .applescript) runs via "
+            + "osascript, executables run directly (their shebang picks the interpreter), "
+            + "and anything else runs in zsh as a login shell, so your usual PATH applies.") {
+            ScriptShortcutsSection(settings: settings, isConflicting: isConflicting)
+        }
+    }
+
+    private var generalTab: some View {
+        SettingsTabView(description: "A keyboard-driven clipboard history — plus keyboard-"
+            + "only ways to focus apps, click anything, jump through text, search menus, "
+            + "and run scripts. Each tab configures one feature.") {
+            VStack(spacing: 6) {
+                AppIconView()
+                    .frame(width: 80, height: 80)
+                Text("Key Monster")
+                    .font(.title3.weight(.semibold))
+                Text("by Jeffrey Chupp")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
 
-            Section {
-                Toggle("Paste into the active app on Return", isOn: $settings.autoPaste)
-                if settings.autoPaste && !accessTrusted {
-                    AccessibilityNotice()
-                }
-            } footer: {
-                Text("Pastes the selected item straight into the app you were using. "
-                    + "Requires Accessibility permission; without it, Return just copies.")
-                    .foregroundStyle(.secondary)
+            SettingsSection(footer: "Start Key Monster automatically when you log in.") {
+                SettingsToggleRow(title: "Launch at Login", isOn: $settings.launchAtLogin)
             }
-        }
-        .formStyle(.grouped)
-        .frame(width: 380)
-        .padding(.vertical)
-        .onChange(of: settings.autoPaste) { _, enabled in
-            if enabled { Paster.requestAccess() }
-            accessTrusted = Paster.isTrusted
-        }
-        .onReceive(trustPoll) { _ in
-            accessTrusted = Paster.isTrusted
         }
     }
 }
 
-// MARK: - Recorder
-
-private struct ShortcutRecorder: View {
-    @Binding var shortcut: Shortcut?
-    @State private var isRecording = false
-    @State private var eventMonitor: Any?
+/// One Settings tab: a description of the feature up top, then its sections.
+/// A plain VStack (no Form, no scrolling) so the tab's ideal height is its
+/// content height and the window can size to it.
+private struct SettingsTabView<Content: View>: View {
+    let description: String
+    @ViewBuilder var content: Content
 
     var body: some View {
-        HStack(spacing: 6) {
-            Button(action: toggleRecording) {
-                Text(label)
-                    .monospacedDigit()
-                    .frame(minWidth: 110, alignment: .center)
-            }
-            .keyboardShortcut(.defaultAction) // suppress default button behavior
-            .buttonStyle(RecorderButtonStyle(isRecording: isRecording))
-
-            if shortcut != nil && !isRecording {
-                Button {
-                    stopRecording()
-                    shortcut = nil
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
+        VStack(alignment: .leading, spacing: 16) {
+            Text(description)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            content
         }
-        .onDisappear(perform: stopRecording)
-    }
-
-    private var label: String {
-        if isRecording { return "Type a shortcut…" }
-        return shortcut?.displayString ?? "Record Shortcut"
-    }
-
-    private func toggleRecording() {
-        if isRecording { stopRecording() } else { startRecording() }
-    }
-
-    private func startRecording() {
-        isRecording = true
-        // Suspend all global hotkeys while recording: AppSettings.shared.suspendHotkeys
-        // makes AppDelegate.applyHotkeys register an empty binding list (it re-runs via
-        // the objectWillChange subscription), so a combo captured here can't also fire
-        // as a live shortcut mid-recording.
-        AppSettings.shared.suspendHotkeys = true
-        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if event.keyCode == 53 { // Escape cancels
-                stopRecording()
-                return nil
-            }
-            let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
-            guard !flags.isEmpty else { return event }
-            shortcut = Shortcut(keyCode: UInt32(event.keyCode), carbonModifiers: carbonModifiers(from: flags))
-            stopRecording()
-            return nil
-        }
-    }
-
-    private func stopRecording() {
-        isRecording = false
-        AppSettings.shared.suspendHotkeys = false
-        if let monitor = eventMonitor {
-            NSEvent.removeMonitor(monitor)
-            eventMonitor = nil
-        }
+        .padding(20)
     }
 }
 
@@ -287,91 +303,5 @@ private struct FocusShortcutRow: View {
         if !entry.apps.contains(ref) {
             entry.apps.append(ref)
         }
-    }
-}
-
-private struct ConflictWarning: View {
-    var body: some View {
-        Label("This shortcut is used more than once; only one binding will work.",
-              systemImage: "exclamationmark.triangle.fill")
-            .font(.caption)
-            .foregroundStyle(.orange)
-    }
-}
-
-/// Shown wherever a feature needing Accessibility permission is enabled but the app isn't trusted yet.
-private struct AccessibilityNotice: View {
-    var body: some View {
-        HStack {
-            Label("Accessibility access needed", systemImage: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
-            Spacer()
-            Button("Open Settings…") { Paster.openAccessibilitySettings() }
-        }
-    }
-}
-
-/// A titled shortcut recorder plus its conflict warning, shared by every single-shortcut settings row.
-private struct ShortcutSettingRow: View {
-    let title: String
-    @Binding var shortcut: Shortcut?
-    let isConflicting: Bool
-
-    var body: some View {
-        HStack {
-            Text(title)
-            Spacer()
-            ShortcutRecorder(shortcut: $shortcut)
-        }
-        if isConflicting {
-            ConflictWarning()
-        }
-    }
-}
-
-/// A full settings section built around one `ShortcutSettingRow`, with an
-/// optional Accessibility notice and header/footer text. Covers the Grid Click
-/// and Text Jump sections, which are otherwise identical in shape.
-private struct ShortcutSettingSection: View {
-    let title: String
-    @Binding var shortcut: Shortcut?
-    let isConflicting: Bool
-    let showAccessibilityNotice: Bool
-    let header: String
-    let footer: String
-
-    var body: some View {
-        Section {
-            ShortcutSettingRow(title: title, shortcut: $shortcut, isConflicting: isConflicting)
-            if showAccessibilityNotice {
-                AccessibilityNotice()
-            }
-        } header: {
-            Text(header)
-        } footer: {
-            Text(footer)
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
-private struct RecorderButtonStyle: ButtonStyle {
-    let isRecording: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isRecording ? Color.accentColor.opacity(0.12) : Color(.controlBackgroundColor))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .strokeBorder(
-                                isRecording ? Color.accentColor : Color(.separatorColor),
-                                lineWidth: 1
-                            )
-                    )
-            )
     }
 }

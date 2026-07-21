@@ -75,6 +75,30 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertTrue(AppSettings(defaults: defaults).appShortcuts.isEmpty)
     }
 
+    func testScriptShortcutsStartEmptyWhenNothingStored() {
+        XCTAssertTrue(AppSettings(defaults: defaults).scriptShortcuts.isEmpty)
+    }
+
+    func testScriptShortcutsPersist() {
+        let settings = AppSettings(defaults: defaults)
+        let entry = ScriptShortcut(
+            shortcut: Shortcut(keyCode: 11, carbonModifiers: 0x0100),
+            path: "/Users/me/bin/toggle-dark-mode.scpt"
+        )
+        settings.scriptShortcuts = [entry]
+
+        XCTAssertEqual(AppSettings(defaults: defaults).scriptShortcuts, [entry])
+    }
+
+    func testClearingScriptShortcutsRemovesThem() {
+        let settings = AppSettings(defaults: defaults)
+        settings.scriptShortcuts = [ScriptShortcut()]
+        settings.scriptShortcuts = []
+
+        XCTAssertNil(defaults.data(forKey: AppSettings.scriptShortcutsKey))
+        XCTAssertTrue(AppSettings(defaults: defaults).scriptShortcuts.isEmpty)
+    }
+
     func testHasLaunchedStartsFalseThenPersists() {
         let settings = AppSettings(defaults: defaults)
         XCTAssertFalse(settings.hasLaunched)

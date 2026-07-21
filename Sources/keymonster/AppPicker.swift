@@ -26,6 +26,22 @@ enum AppPicker {
         return AppRef(bundleID: bundleID, name: name)
     }
 
+    /// Present an open panel for choosing a script file to bind to a shortcut.
+    /// Any file is allowed — scripts often have no extension — so the panel is
+    /// unscoped. Returns the chosen path, or nil if the user cancels.
+    @MainActor
+    static func chooseScript() -> String? {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
+        panel.prompt = "Choose"
+        panel.message = "Choose a script to run with this shortcut"
+        guard panel.runModal() == .OK, let url = panel.url else { return nil }
+        return url.path
+    }
+
     @MainActor
     static func icon(for bundleID: String) -> NSImage? {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {

@@ -86,6 +86,19 @@ pdf` reaches **File › Export › PDF…**); the closest match floats to the to
   highlighted item back in that app — no reaching for the mouse to hunt through
   menus. `Esc` cancels. Disabled items and separators are skipped. Requires
   Accessibility permission.
+- **Script shortcuts** — point a global shortcut at any script file on disk and
+  press it to run the script in the background — toggle dark mode, start a
+  timer, rearrange windows, whatever you can script. Pick the file with a
+  chooser or drag it from Finder onto the Scripts tab — onto a row to change
+  that row's script, or onto **Add Script** to create shortcuts for the
+  dropped files. How it runs is inferred
+  from the file: AppleScript (`.scpt`, `.scptd`, `.applescript`) runs via
+  `osascript`, executable files run directly (their shebang picks the
+  interpreter), and anything else runs in `zsh` as a login shell, so your usual
+  `PATH` applies. Failures (non-zero exits, with stderr) are appended to
+  `~/Library/Logs/keymonster/scripts.log`; the Scripts settings tab shows the
+  latest failure with an **Open Log** button, and everything is also logged
+  under the `keymonster` subsystem in Console.
 
 ### Convenience
 
@@ -131,11 +144,15 @@ macOS forgets the grant on every rebuild). Override explicitly with
 
 1. Launch Key Monster — the monster-keyboard glyph appears in the menu bar.
    On first launch the Settings window opens automatically.
-2. Record a **Clipboard Shortcut**. To use auto-paste, leave **Paste into the active
-   app on Return** enabled and grant **Accessibility** access when prompted
-   (Key Monster links you to the right System Settings pane).
-3. Optionally set the app-focus, click-hint, grid-click, text-jump, and
-   menu-search shortcuts, and toggle **Launch at Login**.
+2. Settings is organized into tabs, one per feature, each with a short
+   description of what it does. In the **Clipboard** tab, record a **Clipboard
+   Shortcut**. To use auto-paste, leave **Paste into the active app on Return**
+   enabled and grant **Accessibility** access when prompted (Key Monster links
+   you to the right System Settings pane).
+3. Optionally set up the other tabs — **Focus** (app switching), **Clicking**
+   (hints and grid), **Text** (jump to character), **Menus** (menu search), and
+   **Scripts** (run script files) — and toggle **Launch at Login** in the
+   **General** tab, which leads the row.
 4. Copy things as you normally would; Key Monster records them in the background.
 5. Press your shortcut (or choose **Show Clipboard History** from the menu) to open the
    panel, type to search, select an entry, and press `Return` — it pastes into
@@ -164,10 +181,14 @@ Your history is stored at:
 | `MenuBarIcon.swift`                     | Draws the monochrome template glyph shown in the menu bar.                                                                                                      |
 | `UIScale.swift`                         | The single scale factor applied to the panel and its contents.                                                                                                  |
 | `Snapshot.swift`                        | Headless renderer (`keymonster snapshot`) that writes PNGs of the panel for design iteration.                                                                   |
-| `SettingsView.swift`                    | Settings UI — shortcut recorders, focus-shortcut editor, launch-at-login, and the auto-paste toggle.                                                            |
+| `SettingsView.swift`                    | Tabbed Settings UI — one tab per feature (General, Clipboard, Focus, Clicking, Text, Menus, Scripts), each with a description.                                   |
+| `ShortcutControls.swift`                | Reusable Settings pieces: the shortcut recorder, conflict/Accessibility notices, the grouped section card, and the standard row shapes.                         |
+| `ScriptSettingsView.swift`              | The Scripts tab's rows (shortcut + script-file picker) and the last-failure notice with its Open Log button.                                                    |
 | `AppSettings.swift`                     | Persisted settings, shortcut formatting, launch-at-login registration, and conflict detection.                                                                  |
-| `HotkeyManager.swift`                   | Registers/unregisters the global hotkeys (history panel, focus, hint, grid, and text-jump shortcuts).                                                           |
+| `HotkeyManager.swift`                   | Registers/unregisters the global hotkeys (history panel, focus, hint, grid, text-jump, menu-search, and script shortcuts).                                      |
 | `AppFocuser.swift`                      | Focuses (or cycles through) the apps bound to a focus shortcut.                                                                                                 |
+| `ScriptRunner.swift`                    | `ScriptShortcut` model, the pure script-file→process mapping (`ScriptInvocation`), and the background `Process` launcher.                                       |
+| `ScriptLog.swift`                       | Appends script failures to `~/Library/Logs/keymonster/scripts.log` and publishes the latest one for the Scripts tab.                                            |
 | `Paster.swift`                          | Accessibility trust check/request and `⌘V` synthesis for auto-paste.                                                                                            |
 | `Hints/HintModeController.swift`        | Orchestrates hint mode: scan → overlay → keystrokes → click.                                                                                                    |
 | `Hints/GridModeController.swift`        | Orchestrates grid mode: initial label grid → pick a cell → keyboard-position grid, zoom per keystroke → click.                                                  |

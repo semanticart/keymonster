@@ -64,6 +64,7 @@ final class AppSettings: ObservableObject {
 
     static let shortcutKey = "globalShortcut"
     static let appShortcutsKey = "appFocusShortcuts"
+    static let scriptShortcutsKey = "scriptShortcuts"
     static let autoPasteKey = "autoPaste"
     static let hasLaunchedKey = "hasLaunched"
     static let hintLeftShortcutKey = "hintLeftClickShortcut"
@@ -102,7 +103,12 @@ final class AppSettings: ObservableObject {
 
     /// Global shortcuts that focus (or cycle through) a set of apps.
     @Published var appShortcuts: [AppShortcut] {
-        didSet { persistAppShortcuts() }
+        didSet { persistList(appShortcuts, forKey: Self.appShortcutsKey) }
+    }
+
+    /// Global shortcuts that run a script (shell or AppleScript).
+    @Published var scriptShortcuts: [ScriptShortcut] {
+        didSet { persistList(scriptShortcuts, forKey: Self.scriptShortcutsKey) }
     }
 
     /// Global shortcut that overlays click hints on the frontmost window and
@@ -157,12 +163,8 @@ final class AppSettings: ObservableObject {
         gridShortcut = Self.loadShortcut(defaults, key: Self.gridShortcutKey)
         textJumpShortcut = Self.loadShortcut(defaults, key: Self.textJumpShortcutKey)
         menuSearchShortcut = Self.loadShortcut(defaults, key: Self.menuSearchShortcutKey)
-        if let data = defaults.data(forKey: Self.appShortcutsKey),
-           let decoded = try? JSONDecoder().decode([AppShortcut].self, from: data) {
-            appShortcuts = decoded
-        } else {
-            appShortcuts = []
-        }
+        appShortcuts = Self.loadList(defaults, key: Self.appShortcutsKey)
+        scriptShortcuts = Self.loadList(defaults, key: Self.scriptShortcutsKey)
     }
 
     private static func loadShortcut(_ defaults: UserDefaults, key: String) -> Shortcut? {
@@ -178,11 +180,17 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    private func persistAppShortcuts() {
-        if appShortcuts.isEmpty {
-            defaults.removeObject(forKey: Self.appShortcutsKey)
-        } else if let data = try? JSONEncoder().encode(appShortcuts) {
-            defaults.set(data, forKey: Self.appShortcutsKey)
+    private static func loadList<T: Decodable>(_ defaults: UserDefaults, key: String) -> [T] {
+        guard let data = defaults.data(forKey: key),
+              let decoded = try? JSONDecoder().decode([T].self, from: data) else { return [] }
+        return decoded
+    }
+
+    private func persistList<T: Encodable>(_ list: [T], forKey key: String) {
+        if list.isEmpty {
+            defaults.removeObject(forKey: key)
+        } else if let data = try? JSONEncoder().encode(list) {
+            defaults.set(data, forKey: key)
         }
     }
 }
