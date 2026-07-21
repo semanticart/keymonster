@@ -7,7 +7,8 @@ private let log = Logger(subsystem: "keymonster", category: "grid")
 /// the initial grid: a fine grid of two-character hint labels (see `GridHints`)
 /// covering the window. Type a cell's label and grid mode zooms into it, then
 /// each further keypress narrows further — a keyboard-position grid, magnified
-/// into a loupe — until, after three zooms, the next keypress clicks. Return
+/// into a loupe — until the shrink limit (`GridDivision.maxShrinks`) is reached,
+/// when the next keypress clicks. Return
 /// clicks the center of the current region at any point. Shift on the deciding
 /// key right-clicks instead; Delete steps back out; Escape, a real click, or
 /// any non-grid keystroke dismisses.

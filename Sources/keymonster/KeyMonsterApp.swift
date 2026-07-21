@@ -92,7 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildStatusMenu() -> NSMenu {
         let menu = NSMenu()
-        let showItem = NSMenuItem(title: "Show History", action: #selector(toggleHistory), keyEquivalent: "")
+        let showItem = NSMenuItem(title: "Show Clipboard History", action: #selector(toggleHistory), keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
         menu.addItem(.separator())

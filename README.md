@@ -60,13 +60,16 @@ screen, and jump the caret through text, all without the mouse.
   real click, or any other chord dismisses the overlay. Requires Accessibility
   permission.
 - **Grid click** — for clicking somewhere with no element to label, a shortcut
-  overlays a grid on the frontmost window that mirrors the keyboard's three
-  letter rows (`Q`…`\`, `A`…`'`, `Z`…`/`), so the key under your finger names the
-  cell in the same spot on screen. Each keypress zooms into that cell; after two
-  zooms the next key clicks its cell. `Return` clicks the center of the current
-  region at any point, and holding `Shift` on the deciding key right-clicks
-  instead. `Delete` zooms back out; `Esc`, a real click, or any other chord
-  dismisses. Requires Accessibility permission.
+  overlays a fine grid on the frontmost window, each cell wearing a short
+  home-row label; type the label nearest your target to pick a starting cell.
+  From there the grid mirrors the keyboard's three letter rows (`Q`…`\`,
+  `A`…`'`, `Z`…`/`), so the key under your finger names the cell in the same spot
+  on screen — and each keypress zooms into that cell, magnifying it into a loupe
+  so small targets stay legible. After a few zooms the next key clicks its cell.
+  `Return` clicks the center of the current region at any point, and holding
+  `Shift` on the deciding key right-clicks instead. `Delete` zooms back out (and
+  from the first zoom, back to the initial label grid); `Esc`, a real click, or
+  any other chord dismisses. Requires Accessibility permission.
 - **Text jump (jump to character)** — press a shortcut while a text field is
   focused, then any character; every visible occurrence of it in the field grows
   a short label (one letter when there are only a few, two otherwise), and typing
@@ -78,7 +81,7 @@ screen, and jump the caret through text, all without the mouse.
   Requires Accessibility permission.
 - **Menu search** — press a shortcut to list the frontmost app's entire menu bar
   in a searchable panel. Type to fuzzy-find across the whole menu path (so `exp
-  pdf` reaches **File › Export › PDF…**); the closest match floats to the top.
+pdf` reaches **File › Export › PDF…**); the closest match floats to the top.
   Navigate with `↑` / `↓` or `Ctrl-N` / `Ctrl-P`, and press `Return` to run the
   highlighted item back in that app — no reaching for the mouse to hunt through
   menus. `Esc` cancels. Disabled items and separators are skipped. Requires
@@ -134,7 +137,7 @@ macOS forgets the grant on every rebuild). Override explicitly with
 3. Optionally set the app-focus, click-hint, grid-click, text-jump, and
    menu-search shortcuts, and toggle **Launch at Login**.
 4. Copy things as you normally would; Key Monster records them in the background.
-5. Press your shortcut (or choose **Show History** from the menu) to open the
+5. Press your shortcut (or choose **Show Clipboard History** from the menu) to open the
    panel, type to search, select an entry, and press `Return` — it pastes into
    the app you came from (or just copies, if auto-paste is off/ungranted).
 
@@ -146,50 +149,52 @@ Your history is stored at:
 
 ## Architecture
 
-| File | Responsibility |
-| --- | --- |
-| `KeyMonsterApp.swift` | App entry point and `AppDelegate` — wires up the status item, watcher, panel, hotkeys, and store. Also routes the `snapshot` argument to the headless renderer. |
-| `ClipboardWatcher.swift` | Polls `NSPasteboard` `changeCount` and reports new contents. |
-| `ClipboardHistory.swift` | Observable history model with search matching, dedup, and size cap; `ClipItem` / `ClipContent` types (headless — no AppKit). |
-| `ClipboardHistory+AppKit.swift` | The model's AppKit edge: pasteboard writer, app-icon lookup, `NSRunningApplication` convenience. |
-| `ClipStore.swift` | `ClipStore` persistence protocol and the GRDB/SQLite implementation. |
-| `HistoryViewModel.swift` | Drives the panel's search, keyboard selection, and preview-pane scrolling. |
-| `Panel.swift` | The floating panel window; `PanelCommand` maps its keys to actions. |
-| `MenuContent.swift` | SwiftUI content of the history panel: header, search, list + detail split, footer. |
-| `DetailPanel.swift` | The right-hand preview pane that shows the selected item's full content. |
-| `AppIconView.swift` | Draws the full-color app icon in code (from `icon.svg`'s geometry) for in-app and headless use. |
-| `MenuBarIcon.swift` | Draws the monochrome template glyph shown in the menu bar. |
-| `UIScale.swift` | The single scale factor applied to the panel and its contents. |
-| `Snapshot.swift` | Headless renderer (`keymonster snapshot`) that writes PNGs of the panel for design iteration. |
-| `SettingsView.swift` | Settings UI — shortcut recorders, focus-shortcut editor, launch-at-login, and the auto-paste toggle. |
-| `AppSettings.swift` | Persisted settings, shortcut formatting, launch-at-login registration, and conflict detection. |
-| `HotkeyManager.swift` | Registers/unregisters the global hotkeys (history panel, focus, hint, grid, and text-jump shortcuts). |
-| `AppFocuser.swift` | Focuses (or cycles through) the apps bound to a focus shortcut. |
-| `Paster.swift` | Accessibility trust check/request and `⌘V` synthesis for auto-paste. |
-| `Hints/HintModeController.swift` | Orchestrates hint mode: scan → overlay → keystrokes → click. |
-| `Hints/GridModeController.swift` | Orchestrates grid mode: overlay → zoom per keystroke → click. |
-| `Hints/GridDivision.swift` | Pure geometry that splits a rect into keyboard-mirroring grid cells. |
-| `Hints/GridOverlay.swift` | Transparent overlay that dims the surroundings and draws the grid's cells and key badges. |
-| `Hints/LabelSession.swift` | The labeling/zoom state machine shared by hint mode and text jump: group, type, zoom, commit. |
-| `Hints/BadgeMetrics.swift` | Badge font and box metrics, shared by grouping and the overlay view. |
-| `Hints/HintLabels.swift` | Two-letter label generation (home row first) and the typed-prefix state machine. |
-| `Hints/HintTargets.swift` | Pure clickability/visibility heuristics and AX↔Cocoa coordinate conversion. |
-| `Hints/HintScreens.swift` | Finds the screen a target window sits on, so labels can hang just outside window edges. |
-| `Hints/AXHintTargetFinder.swift` | Walks the frontmost window's accessibility tree to find clickable elements. |
-| `Hints/HintOverlay.swift` | Transparent click-through window that draws the hint badges and the zoom panel. |
-| `Hints/HintGrouping.swift` | Merges targets whose labels would collide into green area groups. |
-| `Hints/HintZoom.swift` | Geometry of the zoomed view: panel placement, magnification, label spots. |
-| `Hints/WindowCapture.swift` | Screenshots the region beneath the overlay for the zoomed view. |
-| `Hints/HintKeyTap.swift` | CGEvent tap that captures keystrokes while hints or the grid are showing. |
-| `Hints/MouseClicker.swift` | Synthesizes left/right clicks at a target's center. |
-| `Hints/TextJumpController.swift` | Orchestrates text-jump mode: arm → pick character → label occurrences → place caret. |
-| `Hints/AXFocusedText.swift` | Reads the focused text field's value/caret via AX, finds a character's on-screen occurrences, and moves the caret. |
-| `MenuFinder/MenuBarItem.swift` | The `MenuBarItem` value type plus the pure fuzzy matcher (`FuzzyMatch`) and ranked filter (`MenuItemFilter`) — no AppKit, fully tested. |
-| `MenuFinder/AXMenuBarScanner.swift` | Walks the frontmost app's menu bar via AX into actionable leaf items (with the `AXUIElement` to press for each), and presses the chosen one. |
-| `MenuFinder/MenuFinderViewModel.swift` | Drives the menu-finder panel's search, keyboard selection, and activation. |
-| `MenuFinder/MenuFinderController.swift` | The floating menu-finder panel; `MenuFinderCommand` maps its keys to actions. Scans on show, presses the item back into the prior app on Return. |
-| `MenuFinder/MenuFinderContent.swift` | SwiftUI content of the menu-finder panel: header, search, and the ranked single-column list. |
-| `AppPicker.swift` | AppKit bridges for choosing an app and fetching its icon, used by the focus-shortcut editor. |
+| File                                    | Responsibility                                                                                                                                                  |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KeyMonsterApp.swift`                   | App entry point and `AppDelegate` — wires up the status item, watcher, panel, hotkeys, and store. Also routes the `snapshot` argument to the headless renderer. |
+| `ClipboardWatcher.swift`                | Polls `NSPasteboard` `changeCount` and reports new contents.                                                                                                    |
+| `ClipboardHistory.swift`                | Observable history model with search matching, dedup, and size cap; `ClipItem` / `ClipContent` types (headless — no AppKit).                                    |
+| `ClipboardHistory+AppKit.swift`         | The model's AppKit edge: pasteboard writer, app-icon lookup, `NSRunningApplication` convenience.                                                                |
+| `ClipStore.swift`                       | `ClipStore` persistence protocol and the GRDB/SQLite implementation.                                                                                            |
+| `HistoryViewModel.swift`                | Drives the panel's search, keyboard selection, and preview-pane scrolling.                                                                                      |
+| `Panel.swift`                           | The floating panel window; `PanelCommand` maps its keys to actions.                                                                                             |
+| `MenuContent.swift`                     | SwiftUI content of the history panel: header, search, list + detail split, footer.                                                                              |
+| `DetailPanel.swift`                     | The right-hand preview pane that shows the selected item's full content.                                                                                        |
+| `AppIconView.swift`                     | Draws the full-color app icon in code (from `icon.svg`'s geometry) for in-app and headless use.                                                                 |
+| `MenuBarIcon.swift`                     | Draws the monochrome template glyph shown in the menu bar.                                                                                                      |
+| `UIScale.swift`                         | The single scale factor applied to the panel and its contents.                                                                                                  |
+| `Snapshot.swift`                        | Headless renderer (`keymonster snapshot`) that writes PNGs of the panel for design iteration.                                                                   |
+| `SettingsView.swift`                    | Settings UI — shortcut recorders, focus-shortcut editor, launch-at-login, and the auto-paste toggle.                                                            |
+| `AppSettings.swift`                     | Persisted settings, shortcut formatting, launch-at-login registration, and conflict detection.                                                                  |
+| `HotkeyManager.swift`                   | Registers/unregisters the global hotkeys (history panel, focus, hint, grid, and text-jump shortcuts).                                                           |
+| `AppFocuser.swift`                      | Focuses (or cycles through) the apps bound to a focus shortcut.                                                                                                 |
+| `Paster.swift`                          | Accessibility trust check/request and `⌘V` synthesis for auto-paste.                                                                                            |
+| `Hints/HintModeController.swift`        | Orchestrates hint mode: scan → overlay → keystrokes → click.                                                                                                    |
+| `Hints/GridModeController.swift`        | Orchestrates grid mode: initial label grid → pick a cell → keyboard-position grid, zoom per keystroke → click.                                                  |
+| `Hints/GridHints.swift`                 | Pure geometry for the initial grid: a fine, evenly tiled grid whose cells carry two-character home-row labels for the first pick.                               |
+| `Hints/GridDivision.swift`              | Pure geometry that splits a rect into keyboard-mirroring grid cells.                                                                                            |
+| `Hints/GridZoom.swift`                  | Pure geometry for the grid loupe: how far the active region magnifies to fill the window, and where it draws.                                                   |
+| `Hints/GridOverlay.swift`               | Transparent overlay that dims the surroundings and draws the grid's cells and key badges.                                                                       |
+| `Hints/LabelSession.swift`              | The labeling/zoom state machine shared by hint mode and text jump: group, type, zoom, commit.                                                                   |
+| `Hints/BadgeMetrics.swift`              | Badge font and box metrics, shared by grouping and the overlay view.                                                                                            |
+| `Hints/HintLabels.swift`                | Two-letter label generation (home row first) and the typed-prefix state machine.                                                                                |
+| `Hints/HintTargets.swift`               | Pure clickability/visibility heuristics and AX↔Cocoa coordinate conversion.                                                                                     |
+| `Hints/HintScreens.swift`               | Finds the screen a target window sits on, so labels can hang just outside window edges.                                                                         |
+| `Hints/AXHintTargetFinder.swift`        | Walks the frontmost window's accessibility tree to find clickable elements.                                                                                     |
+| `Hints/HintOverlay.swift`               | Transparent click-through window that draws the hint badges and the zoom panel.                                                                                 |
+| `Hints/HintGrouping.swift`              | Merges targets whose labels would collide into green area groups.                                                                                               |
+| `Hints/HintZoom.swift`                  | Geometry of the zoomed view: panel placement, magnification, label spots.                                                                                       |
+| `Hints/WindowCapture.swift`             | Screenshots the region beneath the overlay for the zoomed view.                                                                                                 |
+| `Hints/HintKeyTap.swift`                | CGEvent tap that captures keystrokes while hints or the grid are showing.                                                                                       |
+| `Hints/MouseClicker.swift`              | Synthesizes left/right clicks at a target's center.                                                                                                             |
+| `Hints/TextJumpController.swift`        | Orchestrates text-jump mode: arm → pick character → label occurrences → place caret.                                                                            |
+| `Hints/AXFocusedText.swift`             | Reads the focused text field's value/caret via AX, finds a character's on-screen occurrences, and moves the caret.                                              |
+| `MenuFinder/MenuBarItem.swift`          | The `MenuBarItem` value type plus the pure fuzzy matcher (`FuzzyMatch`) and ranked filter (`MenuItemFilter`) — no AppKit, fully tested.                         |
+| `MenuFinder/AXMenuBarScanner.swift`     | Walks the frontmost app's menu bar via AX into actionable leaf items (with the `AXUIElement` to press for each), and presses the chosen one.                    |
+| `MenuFinder/MenuFinderViewModel.swift`  | Drives the menu-finder panel's search, keyboard selection, and activation.                                                                                      |
+| `MenuFinder/MenuFinderController.swift` | The floating menu-finder panel; `MenuFinderCommand` maps its keys to actions. Scans on show, presses the item back into the prior app on Return.                |
+| `MenuFinder/MenuFinderContent.swift`    | SwiftUI content of the menu-finder panel: header, search, and the ranked single-column list.                                                                    |
+| `AppPicker.swift`                       | AppKit bridges for choosing an app and fetching its icon, used by the focus-shortcut editor.                                                                    |
 
 The persistence layer is kept behind the narrow `ClipStore` protocol so
 `ClipboardHistory` can be tested against an in-memory SQLite store
