@@ -24,7 +24,7 @@
     --lip: #1f7ccb;
     --text: #e8eef2;        /* crumb flecks */
     --muted: #93a5b1;       /* keyboard border grey */
-    --faint: #5c7181;
+    --faint: #71879a;       /* ≥4.5:1 on --bg for small text */
     --line: rgba(69, 179, 240, 0.13);
     --key-face: linear-gradient(#1e2b39, #141e2a);
     --display: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -128,14 +128,16 @@
   }
   .hero .lede strong { color: var(--text); font-weight: 600; }
 
-  .cta-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 30px; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 48px; }
   .install-chip {
+    flex: 1; min-width: 0;
     display: flex; align-items: center; gap: 12px;
     font-family: var(--mono); font-size: 0.95rem;
     background: var(--surface);
     border: 1px solid var(--line); border-radius: 11px;
     padding: 12px 18px;
   }
+  .install-chip #install-cmd { flex: 1; overflow-x: auto; white-space: nowrap; }
   .install-chip .dollar { color: var(--faint); user-select: none; }
   .install-chip button {
     border: 0; background: none; color: var(--faint); cursor: pointer;
@@ -156,10 +158,9 @@
     border: 1px solid rgba(69, 179, 240, 0.22);
     box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55);
   }
-
   /* keycap chord strip */
   .chord-strip {
-    display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 42px;
+    display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 26px;
     color: var(--faint); font-size: 0.85rem; align-items: center;
   }
   .chord { display: inline-flex; align-items: center; gap: 6px; }
@@ -378,31 +379,33 @@
 
 <main>
   <div class="hero">
-    <div class="wrap hero-grid">
-      <div class="hero-copy">
-        <p class="eyebrow">A menu-bar monster for macOS</p>
-        <h1>Feed it your clipboard. <span class="chomp">Ditch the mouse.</span></h1>
-        <p class="lede">Key Monster quietly remembers everything you copy — text, images, files — and hands it back from a fast, searchable panel. Then it keeps going: <strong>click anything on screen, jump the caret, run any menu item, and hop between apps</strong>, all from the keyboard.</p>
-        <div class="cta-row">
-          <div class="install-chip">
-            <span class="dollar">$</span><span id="install-cmd">git clone https://github.com/semanticart/keymonster &amp;&amp; cd keymonster &amp;&amp; make install</span>
-            <button id="copy-btn" title="Copy" aria-label="Copy install command">⧉</button>
-          </div>
+    <div class="wrap">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">A menu-bar monster for macOS</p>
+          <h1>Feed it your clipboard. <span class="chomp">Ditch the mouse.</span></h1>
+          <p class="lede">Key Monster quietly remembers everything you copy — text, images, files — and hands it back from a fast, searchable panel. Then it keeps going: <strong>click anything on screen, jump the caret, run any menu item, and hop between apps</strong>, all from the keyboard.</p>
         </div>
-        <div class="chord-strip" aria-hidden="true">
-          <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">V</kbd> history</span>
-          <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">F</kbd> click hints</span>
-          <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">G</kbd> grid</span>
-          <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">J</kbd> text jump</span>
-          <span style="opacity:0.7">— every chord is yours to pick</span>
+        <div class="hero-cast">
+          <video id="hero-cast-video" width="2280" height="1800" autoplay muted loop playsinline controls
+                 preload="metadata" poster="assets/cast/hero-poster.jpg"
+                 aria-label="Screencast: typing 'monster' filters the clipboard history live and previews matches, including a copied image full-size; click hints label every control in a window and typing 'g' clicks Publish; the click grid overlays keyboard-shaped cells and magnifies the picked cell in a loupe before clicking; text jump labels every 'm' in a note and typing one drops the caret before 'mouse'; then Menu Search fuzzy-finds Safari's 'Reopen Last Closed Tab' from the query 're'.">
+            <source src="assets/cast/hero.mp4" type="video/mp4">
+          </video>
         </div>
       </div>
-      <div class="hero-cast">
-        <video id="hero-cast-video" width="2280" height="1800" autoplay muted loop playsinline
-               preload="metadata" poster="assets/cast/hero-poster.jpg"
-               aria-label="Screencast: typing 'monster' filters the clipboard history live and previews matches, including a copied image full-size; click hints label every control in a window and typing 'g' clicks Publish; the click grid overlays keyboard-shaped cells and magnifies the picked cell in a loupe before clicking; text jump labels every 'm' in a note and typing one drops the caret before 'mouse'; then Menu Search fuzzy-finds Safari's 'Reopen Last Closed Tab' from the query 're'.">
-          <source src="assets/cast/hero.mp4" type="video/mp4">
-        </video>
+      <div class="cta-row">
+        <div class="install-chip">
+          <span class="dollar">$</span><span id="install-cmd">git clone https://github.com/semanticart/keymonster &amp;&amp; cd keymonster &amp;&amp; make install</span>
+          <button id="copy-btn" title="Copy" aria-label="Copy install command">⧉</button>
+        </div>
+      </div>
+      <div class="chord-strip" aria-hidden="true">
+        <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">V</kbd> history</span>
+        <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">F</kbd> click hints</span>
+        <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">G</kbd> grid</span>
+        <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">J</kbd> text jump</span>
+        <span>— every chord is yours to pick</span>
       </div>
     </div>
   </div>
@@ -599,12 +602,11 @@
   // Scroll reveal.
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Under reduced motion the hero screencast stays on its poster, playable on demand.
+  // Under reduced motion the hero screencast stays on its poster until asked to play.
   const cast = document.getElementById("hero-cast-video");
   if (cast && reduced) {
     cast.removeAttribute("autoplay");
     cast.pause();
-    cast.controls = true;
   }
   const targets = document.querySelectorAll("[data-reveal]");
   if (reduced || !("IntersectionObserver" in window)) {
