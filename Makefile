@@ -1,4 +1,4 @@
-.PHONY: build run test clean lint app snapshot icon install
+.PHONY: build run test clean lint app snapshot site-shots icon install
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -41,6 +41,12 @@ run: app
 SNAP_ARGS ?=
 snapshot: build
 	swift run keymonster snapshot $(SNAP_ARGS)
+
+# Regenerate the website screenshots in docs/assets/shots. Renders the real
+# panels against seeded demo content (never the on-disk clipboard history), in
+# dark and light appearance — safe to publish.
+site-shots: build
+	swift run keymonster snapshot --demo --out docs/assets/shots
 
 # Regenerate Resources/AppIcon.icns from Resources/icon.svg. Edit the SVG, then
 # run this to rebuild the bundled icon at every size macOS needs. Requires
