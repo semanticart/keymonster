@@ -105,6 +105,22 @@ pdf` reaches **File › Export › PDF…**); the closest match floats to the to
 - **Launch at login** — an optional toggle registers Key Monster to start
   automatically when you log in.
 
+## Download
+
+Grab the latest `KeyMonster-<version>.zip` from the
+[Releases](../../releases/latest) page, unzip it, and drag **Key Monster.app**
+into `/Applications`.
+
+The released build is signed ad-hoc rather than notarized with an Apple Developer
+ID, so the first launch trips Gatekeeper. Either right-click the app and choose
+**Open** (then confirm), or clear the quarantine flag once from a terminal:
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Key Monster.app"
+```
+
+Prefer to build it yourself? See [Building & Running](#building--running) below.
+
 ## Requirements
 
 - macOS 14 (Sonoma) or later
@@ -123,6 +139,7 @@ make install  # build a release bundle and copy it into /Applications
 make test     # run the test suite
 make lint     # run SwiftLint
 make icon     # regenerate Resources/AppIcon.icns from Resources/icon.svg
+make dist     # build the release .app and zip it into .build/dist/ for distribution
 make clean    # clean build artifacts
 ```
 
@@ -132,6 +149,23 @@ signature are in place. Because persistence is SQLite (via
 bundle identifier, plain `swift run` also works for day-to-day development.
 `make install` builds a release bundle and installs it to `/Applications`
 (override with `make install INSTALL_DIR=~/Applications`).
+
+### Cutting a release
+
+Releases are published by GitHub Actions
+([`.github/workflows/release.yml`](.github/workflows/release.yml)). Push a
+version tag and the workflow builds the release `.app`, stamps the tag into the
+bundle version, zips it with `make dist`, and attaches it to a GitHub Release
+with auto-generated notes:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Keep the tag in sync with `CFBundleShortVersionString` in `Resources/Info.plist`.
+You can also trigger the workflow manually from the **Actions** tab, passing the
+tag to cut.
 
 Accessibility grants (needed for auto-paste, click hints, grid click, and text
 jump) are tied to the app's code-signing identity. The `Makefile` auto-detects a

@@ -1,0 +1,63 @@
+name: Release
+
+# Publishes a GitHub Release with a downloadable Key Monster.app whenever a
+# version tag is pushed:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# The tag name (minus the leading "v") is stamped into the bundle version, the
+# release .app is built and zipped via `make dist`, and the zip is attached to a
+# release whose notes are auto-generated from the commits/PRs since the last tag.
+# You can also trigger it by hand from the Actions tab, passing the tag to cut.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # macos-15 ships Xcode 16 (Swift 6), which Package.swift requires. The app's
+    # macOS 14 deployment target is set in Package.swift, so the binary still
+    # runs on macOS 14+ regardless of the builder's OS.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Stamp version into Info.plist
+        run: |
+          /usr/libexec/PlistBuddy -c \
+            "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" \
+            Resources/Info.plist
+          /usr/libexec/PlistBuddy -c \
+            "Set :CFBundleVersion ${{ github.run_number }}" \
+            Resources/Info.plist
+
+      - name: Build and package
+        run: make dist VERSION="${{ steps.version.outputs.version }}"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            ".build/dist/KeyMonster-${{ steps.version.outputs.version }}.zip" \
+            --title "Key Monster ${{ steps.version.outputs.tag }}" \
+            --generate-notes

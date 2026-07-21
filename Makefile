@@ -1,4 +1,4 @@
-.PHONY: build run test clean lint app snapshot site-shots site-cast icon install
+.PHONY: build run test clean lint app snapshot site-shots site-cast icon install dist
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -96,6 +96,20 @@ clean:
 
 lint:
 	swiftlint lint
+
+# Package the release .app into a distributable zip in .build/dist/. This is what
+# the GitHub Releases workflow uploads. VERSION defaults to the Info.plist value
+# (CI overrides it with the git tag). ditto is used instead of `zip` so the
+# archive preserves the bundle's symlinks and code signature intact.
+DIST_DIR := .build/dist
+VERSION ?= $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist)
+DIST_ZIP := $(DIST_DIR)/KeyMonster-$(VERSION).zip
+dist:
+	$(MAKE) app CONFIG=release
+	mkdir -p "$(DIST_DIR)"
+	rm -f "$(DIST_ZIP)"
+	ditto -c -k --keepParent "$(APP_DIR)" "$(DIST_ZIP)"
+	@echo "Wrote $(DIST_ZIP)"
 
 # Build a release app bundle and install it to /Applications, replacing any
 # existing copy. Override the destination with `make install INSTALL_DIR=~/Applications`.
