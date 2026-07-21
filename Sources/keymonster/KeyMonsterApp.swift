@@ -7,12 +7,16 @@ private let log = Logger(subsystem: "keymonster", category: "app")
 
 /// Process entry point. Normally launches the full menu-bar app; with a
 /// `snapshot` argument it renders the history panel headlessly instead (see
-/// `SnapshotRunner`) so the design can be iterated on autonomously.
+/// `SnapshotRunner`) so the design can be iterated on autonomously, and with
+/// `screencast` it records the website's scripted demo video frames (see
+/// `ScreencastRunner`).
 @main
 enum Entry {
     static func main() {
         if CommandLine.arguments.dropFirst().contains("snapshot") {
             MainActor.assumeIsolated { SnapshotRunner.main() }
+        } else if CommandLine.arguments.dropFirst().contains("screencast") {
+            MainActor.assumeIsolated { ScreencastRunner.main() }
         } else {
             KeyMonsterApp.main()
         }

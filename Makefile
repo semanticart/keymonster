@@ -1,4 +1,4 @@
-.PHONY: build run test clean lint app snapshot site-shots icon install
+.PHONY: build run test clean lint app snapshot site-shots site-cast icon install
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -47,6 +47,23 @@ snapshot: build
 # dark and light appearance — safe to publish.
 site-shots: build
 	swift run keymonster snapshot --demo --out docs/assets/shots
+
+# Regenerate the website's hero screencast. Drives the real panels through a
+# scripted demo (seeded content, never the on-disk history — safe to publish),
+# captures frames headlessly, and encodes docs/assets/cast/hero.mp4 plus its
+# poster. Requires ffmpeg (`brew install ffmpeg`).
+CAST_FRAMES := .build/cast-frames
+site-cast: build
+	@command -v ffmpeg >/dev/null || { echo "ffmpeg not found: brew install ffmpeg"; exit 1; }
+	rm -rf "$(CAST_FRAMES)"
+	swift run keymonster screencast --out "$(CAST_FRAMES)"
+	mkdir -p docs/assets/cast
+	ffmpeg -y -loglevel error -framerate 30 -i "$(CAST_FRAMES)/frame-%05d.png" \
+		-c:v libx264 -pix_fmt yuv420p -crf 24 -preset slow -movflags +faststart \
+		docs/assets/cast/hero.mp4
+	ffmpeg -y -loglevel error -i "$(CAST_FRAMES)/poster.png" -qscale:v 4 \
+		docs/assets/cast/hero-poster.jpg
+	@echo "Wrote docs/assets/cast/hero.mp4 and hero-poster.jpg"
 
 # Regenerate Resources/AppIcon.icns from Resources/icon.svg. Edit the SVG, then
 # run this to rebuild the bundled icon at every size macOS needs. Requires

@@ -77,7 +77,8 @@ enum SnapshotRunner {
     /// A borderless, transparent window matching the live panel's size so the
     /// view's own rounded material and corners render as they do in the app.
     /// Positioned offscreen so nothing flashes on the user's display.
-    private static func makeWindow(
+    /// (Internal so `ScreencastRunner` can share the rendering pipeline.)
+    static func makeWindow(
         size: NSSize = NSSize(width: 620 * uiScale, height: 500 * uiScale)
     ) -> NSWindow {
         let window = NSWindow(
@@ -92,7 +93,7 @@ enum SnapshotRunner {
         return window
     }
 
-    private static func capture(_ window: NSWindow, to url: URL) -> Bool {
+    static func capture(_ window: NSWindow, to url: URL) -> Bool {
         guard let view = window.contentView else { return false }
         view.layoutSubtreeIfNeeded()
         guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
@@ -115,7 +116,7 @@ enum SnapshotRunner {
 
     /// Pump the main run loop so SwiftUI's update/layout cycle runs between
     /// selection changes (we never call `NSApplication.run()`).
-    private static func settle(_ seconds: TimeInterval) {
+    static func settle(_ seconds: TimeInterval) {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: seconds))
     }
 
@@ -187,11 +188,6 @@ enum SnapshotRunner {
             if capture(window, to: url) { written.append(url.path) }
         }
 
-        // The multi-line code snippet, so the preview pane is full.
-        select { if case .text(let text) = $0.content { return text.contains("func matches") }
-                 return false }
-        shot("clipboard-text")
-
         select { if case .image = $0.content { return true } else { return false } }
         shot("clipboard-image")
 
@@ -225,7 +221,7 @@ enum SnapshotRunner {
 
     /// Seeds plausible, entirely made-up clipboard traffic. Ordered oldest first
     /// so the panel lists them newest-on-top in this reverse order.
-    private static func seedDemoHistory(into history: ClipboardHistory) {
+    static func seedDemoHistory(into history: ClipboardHistory) {
         let finder = ("Finder", "com.apple.finder")
         let safari = ("Safari", "com.apple.Safari")
         let terminal = ("Terminal", "com.apple.Terminal")
@@ -283,7 +279,7 @@ enum SnapshotRunner {
         return rep.representation(using: .png, properties: [:])
     }
 
-    private static func demoMenuItems() -> [MenuBarItem] {
+    static func demoMenuItems() -> [MenuBarItem] {
         let entries: [(path: [String], title: String)] = [
             (["File"], "Export as PDF…"),
             (["File", "Share"], "Messages"),
@@ -303,13 +299,13 @@ enum SnapshotRunner {
 
     // MARK: - Args
 
-    private static func option(_ name: String) -> String? {
+    static func option(_ name: String) -> String? {
         let args = CommandLine.arguments
         guard let index = args.firstIndex(of: name), index + 1 < args.count else { return nil }
         return args[index + 1]
     }
 
-    private static func fail(_ message: String) -> Never {
+    static func fail(_ message: String) -> Never {
         FileHandle.standardError.write(Data("keymonster snapshot: \(message)\n".utf8))
         exit(1)
     }
