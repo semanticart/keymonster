@@ -9,8 +9,11 @@ import AppKit
 /// filled path, so the keycaps read as transparent holes. Returned as a
 /// template image so macOS tints it for light/dark menu bars.
 enum MenuBarIcon {
-    /// `badged` adds a small dot floating in the bite — the update-available
-    /// marker. It stays a template image, so the dot tints with the menu bar.
+    /// `badged` adds a small green dot floating in the bite — the
+    /// update-available marker. The badged image can't be a template (macOS
+    /// would tint the dot monochrome along with the glyph), so it draws the
+    /// keyboard in `labelColor` instead; the drawing handler re-runs per
+    /// appearance, keeping it legible in light and dark menu bars.
     static func image(height: CGFloat = 18, badged: Bool = false) -> NSImage {
         let path = NSBezierPath()
         path.windingRule = .evenOdd
@@ -58,19 +61,20 @@ enum MenuBarIcon {
             guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
             ctx.scaleBy(x: scale * widthRatio, y: scale)
             ctx.translateBy(x: -box.minX, y: -box.minY)
-            NSColor.black.setFill()
+            (badged ? NSColor.labelColor : NSColor.black).setFill()
             path.fill()
             if badged {
                 // Inside the bite's empty space (both scallop circles cover it)
                 // and under the box's top edge, so nothing clips. Drawn wider
                 // than tall to cancel the 75% horizontal compression below and
                 // come out a circle on screen.
+                NSColor.systemGreen.setFill()
                 let dot = NSBezierPath(ovalIn: CGRect(x: 775, y: 645, width: 140 / widthRatio, height: 140))
                 dot.fill()
             }
             return true
         }
-        image.isTemplate = true
+        image.isTemplate = !badged
         return image
     }
 
