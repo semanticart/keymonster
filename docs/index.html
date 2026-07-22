@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Key Monster — feed it your clipboard, ditch the mouse</title>
-<meta name="description" content="Key Monster is a keyboard-driven macOS menu bar app: searchable clipboard history, vimium-style click hints, a zooming click grid, text jump, menu search, and app-focus shortcuts.">
+<title>Key Monster — ditch the mouse, feed it your clipboard</title>
+<meta name="description" content="Key Monster is a keyboard-driven macOS menu bar app: vimium-style click hints, a zooming click grid, text jump, menu search, app-focus shortcuts, and searchable clipboard history.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <meta property="og:title" content="Key Monster">
-<meta property="og:description" content="A menu-bar monster that remembers everything you copy and gives your keyboard teeth: click, jump, search, and paste — no mouse required.">
+<meta property="og:description" content="A menu-bar monster that gives your keyboard teeth — click, jump, and search anything, no mouse required — and remembers everything you copy.">
 <meta property="og:image" content="https://semanticart.github.io/keymonster/assets/cast/hero-poster.jpg">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -366,8 +366,8 @@
     <img src="assets/icon.svg" alt="">
     <a class="wordmark" href="#">Key Monster</a>
     <nav class="links">
-      <a href="#clipboard">Clipboard</a>
       <a href="#keyboard">Keyboard tricks</a>
+      <a href="#clipboard">Clipboard</a>
       <a href="#install">Install</a>
       <a class="gh-btn" href="https://github.com/semanticart/keymonster">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
@@ -383,8 +383,8 @@
       <div class="hero-grid">
         <div class="hero-copy">
           <p class="eyebrow">A menu-bar monster for macOS</p>
-          <h1>Feed it your clipboard. <span class="chomp">Ditch the mouse.</span></h1>
-          <p class="lede">Key Monster quietly remembers everything you copy — text, images, files — and hands it back from a fast, searchable panel. Then it keeps going: <strong>click anything on screen, jump the caret, run any menu item, and hop between apps</strong>, all from the keyboard.</p>
+          <h1><span class="chomp">Ditch the mouse.</span> Feed it your clipboard.</h1>
+          <p class="lede">Key Monster hands your whole Mac to the keyboard: <strong>click anything on screen, jump the caret, run any menu item, and hop between apps</strong> — no mouse required. And it quietly remembers everything you copy — text, images, files — handing it back from a fast, searchable panel.</p>
         </div>
         <div class="hero-cast">
           <video id="hero-cast-video" width="2280" height="1800" autoplay muted loop playsinline controls
@@ -401,59 +401,21 @@
         </div>
       </div>
       <div class="chord-strip" aria-hidden="true">
-        <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">V</kbd> history</span>
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">F</kbd> click hints</span>
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">G</kbd> grid</span>
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">J</kbd> text jump</span>
-        <span>— every chord is yours to pick</span>
+        <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">V</kbd> history</span>
+        <span>— just our picks: nothing comes pre-bound, you record your own in Settings</span>
       </div>
     </div>
   </div>
 
-  <section id="clipboard" class="tinted">
-    <div class="wrap">
-      <div class="section-head" data-reveal>
-        <p class="eyebrow">Clipboard history</p>
-        <h2>Everything you copy, one chord away</h2>
-        <p>Key Monster lives in the menu bar — no Dock icon, no windows lying around. It records what you copy and gives it back the moment you ask.</p>
-      </div>
-
-      <div class="split" data-reveal>
-        <div class="copy">
-          <h3>Search first, paste faster</h3>
-          <p>One shortcut opens a centered panel with the cursor already in the search field. Matching runs across <strong>text content, file names, and the source app's name</strong> — type "safari" and see everything you copied from Safari.</p>
-          <p><strong>Return doesn't just copy — it pastes</strong>, synthesizing <span style="white-space:nowrap">⌘V</span> into the app you were just using. No switching back, no second shortcut.</p>
-          <ul class="keylist">
-            <li><span class="keys"><kbd class="key">⌃</kbd><kbd class="key">N</kbd><span class="sep">/</span><kbd class="key">⌃</kbd><kbd class="key">P</kbd></span> move the selection</li>
-            <li><span class="keys"><kbd class="key">⌃</kbd><kbd class="key">J</kbd><span class="sep">/</span><kbd class="key">⌃</kbd><kbd class="key">K</kbd></span> scroll long previews</li>
-            <li><span class="keys"><kbd class="key">↩</kbd></span> paste into the previous app</li>
-            <li><span class="keys"><kbd class="key">esc</kbd></span> vanish</li>
-          </ul>
-        </div>
-        <div class="shot-frame">
-          <img src="assets/shots/clipboard-search-dark.png" width="1860" height="1500" alt="The history panel filtered by the query 'monster': three matching items remain — a GitHub URL, a markdown file, and an email draft — with the URL previewed in full." loading="lazy">
-        </div>
-      </div>
-
-      <div class="split flip" style="margin-top: 84px" data-reveal>
-        <div class="shot-frame">
-          <img src="assets/shots/clipboard-image-dark.png" width="1860" height="1500" alt="The history panel with an image entry selected, showing a full-size preview of the copied image — Key Monster's own monster icon — in the right pane." loading="lazy">
-        </div>
-        <div class="copy">
-          <h3>Not just text</h3>
-          <p>Images from Preview or your browser, files copied in Finder, rich text with its formatting — each entry keeps <strong>the icon of the app it came from</strong>, and the preview pane shows the whole thing: the complete text, the full image, every file path.</p>
-          <p>History is stored locally in SQLite, survives restarts, deduplicates repeat copies, and keeps the last 10,000 items.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="keyboard">
+  <section id="keyboard" class="tinted">
     <div class="wrap">
       <div class="section-head" data-reveal>
         <p class="eyebrow">Keyboard tricks</p>
-        <h2>Teeth for the rest of your Mac</h2>
-        <p>The clipboard is just the appetizer. Key Monster gives every mouse-shaped chore a keyboard-shaped answer.</p>
+        <h2>Teeth for your whole Mac</h2>
+        <p>Key Monster gives every mouse-shaped chore a keyboard-shaped answer: click it, jump to it, or search for it — without leaving the home row.</p>
       </div>
       <div class="cards">
         <div class="card" data-reveal>
@@ -528,6 +490,44 @@
         </div>
         <div class="shot-frame">
           <img src="assets/shots/menu-search-dark.png" width="1620" height="1380" alt="The Menu Search panel over Safari, query 're', listing View › Reload Page, File › Share › Messages, History › Reopen Last Closed Tab, and Window › Merge All Windows." loading="lazy">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="clipboard">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">Clipboard history</p>
+        <h2>Everything you copy, one chord away</h2>
+        <p>The mouse isn't the only thing Key Monster eats. It lives in the menu bar — no Dock icon, no windows lying around — recording what you copy and giving it back the moment you ask.</p>
+      </div>
+
+      <div class="split" data-reveal>
+        <div class="copy">
+          <h3>Search first, paste faster</h3>
+          <p>One shortcut opens a centered panel with the cursor already in the search field. Matching runs across <strong>text content, file names, and the source app's name</strong> — type "safari" and see everything you copied from Safari.</p>
+          <p><strong>Return doesn't just copy — it pastes</strong>, synthesizing <span style="white-space:nowrap">⌘V</span> into the app you were just using. No switching back, no second shortcut.</p>
+          <ul class="keylist">
+            <li><span class="keys"><kbd class="key">⌃</kbd><kbd class="key">N</kbd><span class="sep">/</span><kbd class="key">⌃</kbd><kbd class="key">P</kbd></span> move the selection</li>
+            <li><span class="keys"><kbd class="key">⌃</kbd><kbd class="key">J</kbd><span class="sep">/</span><kbd class="key">⌃</kbd><kbd class="key">K</kbd></span> scroll long previews</li>
+            <li><span class="keys"><kbd class="key">↩</kbd></span> paste into the previous app</li>
+            <li><span class="keys"><kbd class="key">esc</kbd></span> vanish</li>
+          </ul>
+        </div>
+        <div class="shot-frame">
+          <img src="assets/shots/clipboard-search-dark.png" width="1860" height="1500" alt="The history panel filtered by the query 'monster': three matching items remain — a GitHub URL, a markdown file, and an email draft — with the URL previewed in full." loading="lazy">
+        </div>
+      </div>
+
+      <div class="split flip" style="margin-top: 84px" data-reveal>
+        <div class="shot-frame">
+          <img src="assets/shots/clipboard-image-dark.png" width="1860" height="1500" alt="The history panel with an image entry selected, showing a full-size preview of the copied image — Key Monster's own monster icon — in the right pane." loading="lazy">
+        </div>
+        <div class="copy">
+          <h3>Not just text</h3>
+          <p>Images from Preview or your browser, files copied in Finder, rich text with its formatting — each entry keeps <strong>the icon of the app it came from</strong>, and the preview pane shows the whole thing: the complete text, the full image, every file path.</p>
+          <p>History is stored locally in SQLite, survives restarts, deduplicates repeat copies, and keeps the last 10,000 items.</p>
         </div>
       </div>
     </div>
