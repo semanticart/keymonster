@@ -136,7 +136,9 @@ endif
 # Submit the DMG to Apple's notary service and staple the ticket so Gatekeeper
 # accepts it offline, then verify the result. Locally this uses the
 # `keymonster-notary` keychain profile (see README); CI overrides NOTARY_ARGS
-# with explicit --apple-id/--team-id/--password flags from repo secrets.
+# with --apple-id/--team-id/--password flags whose values come from repo
+# secrets. CI passes them as $$-escaped variable *references*, so the echoed
+# recipe shows names, never values — keep this recipe un-@-silenced.
 NOTARY_ARGS ?= --keychain-profile keymonster-notary
 notarize:
 	xcrun notarytool submit "$(DIST_DMG)" $(NOTARY_ARGS) --wait

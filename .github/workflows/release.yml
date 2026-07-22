@@ -41,10 +41,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The tag is passed via env (not ${{ }} interpolation into the script) and
+      # validated against the x.y.z shape, so a crafted tag name can't inject
+      # shell into this or any later step that uses these outputs.
       - name: Resolve version
         id: version
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || {
+            echo "tag '$TAG' must look like vX.Y.Z" >&2
+            exit 1
+          }
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
@@ -73,25 +81,33 @@ jobs:
           rm "$RUNNER_TEMP/cert.p12"
 
       - name: Stamp version into Info.plist
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           /usr/libexec/PlistBuddy -c \
-            "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" \
+            "Set :CFBundleShortVersionString $VERSION" \
             Resources/Info.plist
           /usr/libexec/PlistBuddy -c \
             "Set :CFBundleVersion ${{ github.run_number }}" \
             Resources/Info.plist
 
       - name: Build and package
-        run: make dist VERSION="${{ steps.version.outputs.version }}"
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: make dist VERSION="$VERSION"
 
+      # NOTARY_ARGS is single-quoted with $$-escaped variables so the secret
+      # values never appear in make's echoed command line; the recipe's shell
+      # expands them from the environment only when notarytool runs.
       - name: Notarize and staple
         env:
+          VERSION: ${{ steps.version.outputs.version }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
         run: |
-          make notarize VERSION="${{ steps.version.outputs.version }}" \
-            NOTARY_ARGS="--apple-id $APPLE_ID --team-id $APPLE_TEAM_ID --password $APP_SPECIFIC_PASSWORD"
+          make notarize VERSION="$VERSION" \
+            NOTARY_ARGS='--apple-id "$$APPLE_ID" --team-id "$$APPLE_TEAM_ID" --password "$$APP_SPECIFIC_PASSWORD"'
 
       # The DMG is attached twice: once versioned, once as a stable "KeyMonster.dmg"
       # so https://github.com/semanticart/keymonster/releases/latest/download/KeyMonster.dmg
@@ -99,11 +115,13 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          cp ".build/dist/KeyMonster-${{ steps.version.outputs.version }}.dmg" \
+          cp ".build/dist/KeyMonster-$VERSION.dmg" \
             ".build/dist/KeyMonster.dmg"
-          gh release create "${{ steps.version.outputs.tag }}" \
-            ".build/dist/KeyMonster-${{ steps.version.outputs.version }}.dmg" \
+          gh release create "$TAG" \
+            ".build/dist/KeyMonster-$VERSION.dmg" \
             ".build/dist/KeyMonster.dmg" \
-            --title "Key Monster ${{ steps.version.outputs.tag }}" \
+            --title "Key Monster $TAG" \
             --generate-notes
