@@ -6,14 +6,14 @@ private let log = Logger(subsystem: "keymonster", category: "screencast")
 
 /// Scripted, headless screencast of the real panels for the website hero.
 ///
-/// `keymonster screencast [--out DIR] [--fps N]` drives `MenuContent` and
-/// `MenuFinderContent` through a choreographed demo — type a query, walk the
-/// selection, preview an image, fuzzy-find a menu item — against the same
-/// seeded demo content as `snapshot --demo`, capturing one PNG per frame plus
-/// a `poster.png`. Nothing on screen is real user data, so the result is safe
+/// `keymonster screencast [--out DIR] [--fps N]` drives the real panels and
+/// overlays through a choreographed demo — click hints, the grid loupe, text
+/// jump, menu search, then the clipboard history — against the same seeded
+/// demo content as `snapshot --demo`, capturing one PNG per frame plus a
+/// `poster.png`. Nothing on screen is real user data, so the result is safe
 /// to publish. `make site-cast` records the frames and encodes the video.
 ///
-/// The two scenes render on a shared fixed-size canvas that paints the site's
+/// The scenes render on a shared fixed-size canvas that paints the site's
 /// hero background behind the panel, so the encoded video (which has no alpha)
 /// sits seamlessly on the page and the cut between scenes doesn't reframe.
 @MainActor
@@ -41,11 +41,11 @@ enum ScreencastRunner {
         window.orderFront(nil)
         let recorder = Recorder(window: window, outURL: outURL, fps: fps)
 
-        historyScene(recorder: recorder, window: window)
         hintScene(recorder: recorder, window: window)
         gridScene(recorder: recorder, window: window)
         textJumpScene(recorder: recorder, window: window)
         menuScene(recorder: recorder, window: window)
+        historyScene(recorder: recorder, window: window)
 
         print(outDir)
         log.info("wrote \(recorder.frames) frame(s) to \(outDir)")
@@ -84,9 +84,7 @@ enum ScreencastRunner {
             // Slightly uneven cadence so the typing reads as human.
             recorder.hold(index.isMultiple(of: 2) ? 0.16 : 0.11)
         }
-        recorder.hold(0.5)
-        recorder.poster()
-        recorder.hold(0.3)
+        recorder.hold(0.8)
 
         model.moveSelection(by: 1)
         recorder.hold(0.5)

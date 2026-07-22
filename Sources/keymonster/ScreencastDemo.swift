@@ -274,7 +274,9 @@ extension ScreencastRunner {
         recorder.hold(0.7)
 
         overlay.badges = hintBadges()
-        recorder.hold(1.5)
+        recorder.hold(1.2)
+        recorder.poster()
+        recorder.hold(0.3)
 
         // Typing the Publish button's single-letter label commits immediately.
         overlay.typed = overlay.badges.last?.label ?? ""
