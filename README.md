@@ -107,17 +107,10 @@ pdf` reaches **File › Export › PDF…**); the closest match floats to the to
 
 ## Download
 
-Grab the latest `KeyMonster-<version>.zip` from the
-[Releases](../../releases/latest) page, unzip it, and drag **Key Monster.app**
-into `/Applications`.
-
-The released build is signed ad-hoc rather than notarized with an Apple Developer
-ID, so the first launch trips Gatekeeper. Either right-click the app and choose
-**Open** (then confirm), or clear the quarantine flag once from a terminal:
-
-```sh
-xattr -dr com.apple.quarantine "/Applications/Key Monster.app"
-```
+Grab the latest `KeyMonster-<version>.dmg` from the
+[Releases](../../releases/latest) page, open it, and drag **Key Monster.app**
+into `/Applications`. Releases are signed with a Developer ID certificate and
+notarized by Apple, so it opens like any other app.
 
 Prefer to build it yourself? See [Building & Running](#building--running) below.
 
@@ -139,7 +132,8 @@ make install  # build a release bundle and copy it into /Applications
 make test     # run the test suite
 make lint     # run SwiftLint
 make icon     # regenerate Resources/AppIcon.icns from Resources/icon.svg
-make dist     # build the release .app and zip it into .build/dist/ for distribution
+make dist     # build the release .app and package it into a DMG in .build/dist/
+make notarize # submit the DMG to Apple's notary service and staple the ticket
 make clean    # clean build artifacts
 ```
 
@@ -154,9 +148,10 @@ bundle identifier, plain `swift run` also works for day-to-day development.
 
 Releases are published by GitHub Actions
 ([`.github/workflows/release.yml`](.github/workflows/release.yml)). Push a
-version tag and the workflow builds the release `.app`, stamps the tag into the
-bundle version, zips it with `make dist`, and attaches it to a GitHub Release
-with auto-generated notes:
+version tag and the workflow builds the release `.app`, signs it with the
+Developer ID certificate, stamps the tag into the bundle version, packages it
+into a DMG with `make dist`, notarizes and staples it with `make notarize`, and
+attaches it to a GitHub Release with auto-generated notes:
 
 ```sh
 git tag v0.1.0
@@ -166,6 +161,17 @@ git push origin v0.1.0
 Keep the tag in sync with `CFBundleShortVersionString` in `Resources/Info.plist`.
 You can also trigger the workflow manually from the **Actions** tab, passing the
 tag to cut.
+
+Signing and notarization credentials come from repository secrets (documented at
+the top of the workflow file). To notarize locally, store an app-specific
+password once with:
+
+```sh
+xcrun notarytool store-credentials keymonster-notary \
+  --apple-id "you@example.com" --team-id TEAMID --password "app-specific-password"
+```
+
+then run `make dist && make notarize`.
 
 Accessibility grants (needed for auto-paste, click hints, grid click, and text
 jump) are tied to the app's code-signing identity. The `Makefile` auto-detects a

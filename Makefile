@@ -1,4 +1,4 @@
-.PHONY: build run test clean lint app snapshot site-shots site-cast icon install dist
+.PHONY: build run test clean lint app snapshot site-shots site-cast icon install dist notarize
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -10,10 +10,23 @@ INSTALL_DIR ?= /Applications
 # grant is lost each time and the app keeps asking for permission. If a real
 # signing identity is in the keychain, use it: TCC then keys the grant to the
 # cert + bundle id, so it persists across rebuilds. Falls back to ad-hoc otherwise.
+# "Developer ID Application" wins over other identities: it's the only kind Apple
+# accepts for notarization, and using it locally too means dev builds and the
+# released app share one TCC grant.
 # Override explicitly with `make run CODESIGN_IDENTITY=...` if needed.
-CODESIGN_IDENTITY ?= $(shell security find-identity -v -p codesigning 2>/dev/null | awk 'match($$0, /[0-9A-F]{40}/) {print substr($$0, RSTART, RLENGTH); exit}')
+CODESIGN_IDENTITY ?= $(shell security find-identity -v -p codesigning 2>/dev/null | awk 'match($$0, /[0-9A-F]{40}/) { id = substr($$0, RSTART, RLENGTH); if (!first) first = id; if (/Developer ID Application/) { devid = id; exit } } END { print (devid ? devid : first) }')
 ifeq ($(strip $(CODESIGN_IDENTITY)),)
 override CODESIGN_IDENTITY := -
+endif
+
+# Notarization requires the hardened runtime and a secure timestamp. Ad-hoc
+# signatures can't carry a trusted timestamp, so these flags only apply when a
+# real identity is used. The app needs no entitlement exceptions: Accessibility
+# and the event tap are TCC grants, not hardened-runtime entitlements.
+ifeq ($(CODESIGN_IDENTITY),-)
+CODESIGN_FLAGS :=
+else
+CODESIGN_FLAGS := --options runtime --timestamp
 endif
 
 build:
@@ -29,7 +42,7 @@ app: build
 	cp ".build/$(CONFIG)/keymonster" "$(APP_DIR)/Contents/MacOS/keymonster"
 	cp Resources/Info.plist "$(APP_DIR)/Contents/Info.plist"
 	cp Resources/AppIcon.icns "$(APP_DIR)/Contents/Resources/AppIcon.icns"
-	codesign --force --sign "$(CODESIGN_IDENTITY)" "$(APP_DIR)"
+	codesign --force $(CODESIGN_FLAGS) --sign "$(CODESIGN_IDENTITY)" "$(APP_DIR)"
 	@echo "Built $(APP_DIR) (signed with: $(CODESIGN_IDENTITY))"
 
 run: app
@@ -97,19 +110,38 @@ clean:
 lint:
 	swiftlint lint
 
-# Package the release .app into a distributable zip in .build/dist/. This is what
+# Package the release .app into a distributable DMG in .build/dist/. This is what
 # the GitHub Releases workflow uploads. VERSION defaults to the Info.plist value
-# (CI overrides it with the git tag). ditto is used instead of `zip` so the
-# archive preserves the bundle's symlinks and code signature intact.
+# (CI overrides it with the git tag). The volume gets an /Applications symlink for
+# the usual drag-to-install layout, and the DMG itself is signed when a real
+# identity is available so it can be notarized (see `make notarize`).
 DIST_DIR := .build/dist
 VERSION ?= $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist)
-DIST_ZIP := $(DIST_DIR)/KeyMonster-$(VERSION).zip
+DIST_DMG := $(DIST_DIR)/KeyMonster-$(VERSION).dmg
+DMG_STAGING := $(DIST_DIR)/dmg-staging
 dist:
 	$(MAKE) app CONFIG=release
 	mkdir -p "$(DIST_DIR)"
-	rm -f "$(DIST_ZIP)"
-	ditto -c -k --keepParent "$(APP_DIR)" "$(DIST_ZIP)"
-	@echo "Wrote $(DIST_ZIP)"
+	rm -rf "$(DMG_STAGING)" "$(DIST_DMG)"
+	mkdir -p "$(DMG_STAGING)"
+	cp -R "$(APP_DIR)" "$(DMG_STAGING)/$(APP_NAME).app"
+	ln -s /Applications "$(DMG_STAGING)/Applications"
+	hdiutil create -volname "$(APP_NAME)" -srcfolder "$(DMG_STAGING)" -ov -format UDZO "$(DIST_DMG)"
+	rm -rf "$(DMG_STAGING)"
+ifneq ($(CODESIGN_IDENTITY),-)
+	codesign --timestamp --sign "$(CODESIGN_IDENTITY)" "$(DIST_DMG)"
+endif
+	@echo "Wrote $(DIST_DMG)"
+
+# Submit the DMG to Apple's notary service and staple the ticket so Gatekeeper
+# accepts it offline, then verify the result. Locally this uses the
+# `keymonster-notary` keychain profile (see README); CI overrides NOTARY_ARGS
+# with explicit --apple-id/--team-id/--password flags from repo secrets.
+NOTARY_ARGS ?= --keychain-profile keymonster-notary
+notarize:
+	xcrun notarytool submit "$(DIST_DMG)" $(NOTARY_ARGS) --wait
+	xcrun stapler staple "$(DIST_DMG)"
+	spctl -a -t open --context context:primary-signature -vv "$(DIST_DMG)"
 
 # Build a release app bundle and install it to /Applications, replacing any
 # existing copy. Override the destination with `make install INSTALL_DIR=~/Applications`.
