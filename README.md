@@ -59,7 +59,8 @@ screen, and jump the caret through text, all without the mouse.
   left-click and right-click hints; holding `Shift` on the final letter clicks
   with the opposite button. Elements too close together to label individually
   share one green area label — typing it zooms into that area (a magnified
-  screenshot with Screen Recording permission, sketched outlines without) and
+  screenshot; Key Monster prompts for Screen Recording permission the first
+  time and sketches outlines until it's granted) and
   each element gets a normal label; `Delete` backs out of the zoom. `Esc`, a
   real click, or any other chord dismisses the overlay. Requires Accessibility
   permission.

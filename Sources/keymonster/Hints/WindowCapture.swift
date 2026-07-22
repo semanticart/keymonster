@@ -7,14 +7,15 @@ private let log = Logger(subsystem: "keymonster", category: "hints")
 enum WindowCapture {
     /// An image of `bounds` (global display coordinates, top-left origin — the
     /// same space AX frames are in) showing what's beneath `window`, so the
-    /// overlay's own badges never appear in the shot. Returns nil when Screen
-    /// Recording permission is missing; the zoom view then sketches the member
-    /// outlines instead of showing real pixels.
+    /// overlay's own badges never appear in the shot. Without Screen Recording
+    /// permission this raises the system prompt and returns nil; the zoom view
+    /// sketches the member outlines until the grant takes effect (macOS applies
+    /// it on relaunch).
     @MainActor
     static func below(_ window: NSWindow?, bounds: CGRect) -> CGImage? {
-        guard CGPreflightScreenCaptureAccess() else {
-            log.info("no Screen Recording permission; hint zoom will sketch outlines")
-            return nil
+        if !CGPreflightScreenCaptureAccess() {
+            log.info("no Screen Recording permission; prompting")
+            guard CGRequestScreenCaptureAccess() else { return nil }
         }
         guard let window, window.windowNumber > 0 else { return nil }
         return CGWindowListCreateImage(
