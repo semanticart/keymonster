@@ -139,21 +139,15 @@
     transition: filter 0.15s ease;
   }
   .dl-btn:hover { filter: brightness(1.12); text-decoration: none; }
-  .install-chip {
-    flex: 1; min-width: 0;
-    display: flex; align-items: center; gap: 12px;
-    font-family: var(--mono); font-size: 0.95rem;
-    background: var(--surface);
-    border: 1px solid var(--line); border-radius: 11px;
-    padding: 12px 18px;
+  .build-link {
+    display: inline-flex; align-items: center;
+    padding: 12px 22px; border-radius: 11px;
+    border: 1px solid var(--line); color: var(--text);
+    font-weight: 600; font-size: 0.98rem; white-space: nowrap;
+    transition: border-color 0.15s ease, color 0.15s ease;
   }
-  .install-chip #install-cmd { flex: 1; overflow-x: auto; white-space: nowrap; }
-  .install-chip .dollar { color: var(--faint); user-select: none; }
-  .install-chip button {
-    border: 0; background: none; color: var(--faint); cursor: pointer;
-    font-size: 1rem; padding: 2px 4px; line-height: 1;
-  }
-  .install-chip button:hover { color: var(--fur); }
+  .build-link:hover { border-color: var(--fur); color: var(--fur); text-decoration: none; }
+  .cta-or { color: var(--faint); font-size: 0.95rem; user-select: none; }
 
   /* the scripted screencast — real panels driven by `make site-cast` */
   .hero-cast { position: relative; min-width: 0; }
@@ -407,10 +401,8 @@
       </div>
       <div class="cta-row">
         <a class="dl-btn" href="https://github.com/semanticart/keymonster/releases/latest/download/KeyMonster.dmg">Download for macOS</a>
-        <div class="install-chip">
-          <span class="dollar">$</span><span id="install-cmd">git clone https://github.com/semanticart/keymonster &amp;&amp; cd keymonster &amp;&amp; make install</span>
-          <button id="copy-btn" title="Copy" aria-label="Copy install command">⧉</button>
-        </div>
+        <span class="cta-or">or</span>
+        <a class="build-link" href="https://github.com/semanticart/keymonster">Build from source →</a>
       </div>
       <div class="chord-strip" aria-hidden="true">
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">F</kbd> click hints</span>
@@ -605,16 +597,6 @@
 </footer>
 
 <script>
-  // Copy the install one-liner.
-  const btn = document.getElementById("copy-btn");
-  btn.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(document.getElementById("install-cmd").textContent);
-      btn.textContent = "✓";
-      setTimeout(() => { btn.textContent = "⧉"; }, 1200);
-    } catch { /* clipboard unavailable; ignore */ }
-  });
-
   // Scroll reveal.
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
