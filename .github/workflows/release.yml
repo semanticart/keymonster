@@ -93,11 +93,17 @@ jobs:
           make notarize VERSION="${{ steps.version.outputs.version }}" \
             NOTARY_ARGS="--apple-id $APPLE_ID --team-id $APPLE_TEAM_ID --password $APP_SPECIFIC_PASSWORD"
 
+      # The DMG is attached twice: once versioned, once as a stable "KeyMonster.dmg"
+      # so https://github.com/semanticart/keymonster/releases/latest/download/KeyMonster.dmg
+      # always resolves to the newest release (the website links to that URL).
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cp ".build/dist/KeyMonster-${{ steps.version.outputs.version }}.dmg" \
+            ".build/dist/KeyMonster.dmg"
           gh release create "${{ steps.version.outputs.tag }}" \
             ".build/dist/KeyMonster-${{ steps.version.outputs.version }}.dmg" \
+            ".build/dist/KeyMonster.dmg" \
             --title "Key Monster ${{ steps.version.outputs.tag }}" \
             --generate-notes

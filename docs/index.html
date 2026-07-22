@@ -129,6 +129,16 @@
   .hero .lede strong { color: var(--text); font-weight: 600; }
 
   .cta-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 48px; }
+  /* Always points at the newest release: the workflow attaches a stable-named
+     KeyMonster.dmg to every release, and GitHub redirects /releases/latest/download/. */
+  .dl-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; border-radius: 11px;
+    background: var(--fur); color: var(--bg) !important;
+    font-weight: 650; font-size: 0.98rem; white-space: nowrap;
+    transition: filter 0.15s ease;
+  }
+  .dl-btn:hover { filter: brightness(1.12); text-decoration: none; }
   .install-chip {
     flex: 1; min-width: 0;
     display: flex; align-items: center; gap: 12px;
@@ -314,6 +324,7 @@
 
   /* ===== Install ===== */
   .install-grid { display: grid; grid-template-columns: 6fr 5fr; gap: 56px; align-items: start; }
+  .install-grid .or-build { color: var(--faint); font-size: 0.9rem; margin: 16px 0 12px; }
   pre.term {
     background: #060b11;
     border: 1px solid var(--line); border-radius: 14px;
@@ -395,6 +406,7 @@
         </div>
       </div>
       <div class="cta-row">
+        <a class="dl-btn" href="https://github.com/semanticart/keymonster/releases/latest/download/KeyMonster.dmg">Download for macOS</a>
         <div class="install-chip">
           <span class="dollar">$</span><span id="install-cmd">git clone https://github.com/semanticart/keymonster &amp;&amp; cd keymonster &amp;&amp; make install</span>
           <button id="copy-btn" title="Copy" aria-label="Copy install command">⧉</button>
@@ -560,14 +572,18 @@
     <div class="wrap">
       <div class="section-head" data-reveal>
         <p class="eyebrow">Install</p>
-        <h2>Three commands and it's yours</h2>
-        <p>Requires macOS 14 or later. Builds from source with the Swift toolchain — no binaries to trust, you can read every line first.</p>
+        <h2>One download and it's yours</h2>
+        <p>Requires macOS 14 or later. The app is signed and notarized by Apple — download it, drag it to Applications, done. Prefer no binaries to trust? Build from source and read every line first.</p>
       </div>
       <div class="install-grid" data-reveal>
-        <pre class="term"><code><span class="d">$</span> git clone https://github.com/semanticart/keymonster
+        <div>
+          <a class="dl-btn" href="https://github.com/semanticart/keymonster/releases/latest/download/KeyMonster.dmg">Download Key&nbsp;Monster.dmg</a>
+          <p class="or-build">Always the latest release · or build from source:</p>
+          <pre class="term"><code><span class="d">$</span> git clone https://github.com/semanticart/keymonster
 <span class="d">$</span> cd keymonster
 <span class="d">$</span> make install
 <span class="c"># builds a signed release .app and puts it in /Applications</span></code></pre>
+        </div>
         <div class="perms">
           <div class="perm"><span class="dot">●</span><span><strong>Accessibility</strong> — asked for on demand; powers auto-paste, click hints, the grid, and text jump.</span></div>
           <div class="perm"><span class="dot">●</span><span><strong>Screen Recording</strong> — optional; makes hint-zoom and the grid loupe magnify real pixels instead of sketched outlines.</span></div>
