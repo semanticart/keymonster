@@ -39,7 +39,7 @@ jobs:
     # runs on macOS 14+ regardless of the builder's OS.
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Resolve version
         id: version
