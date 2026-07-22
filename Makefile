@@ -1,4 +1,4 @@
-.PHONY: build run test clean lint app snapshot site-shots site-cast icon install dist notarize
+.PHONY: build run test clean lint app snapshot site-shots site-cast icon install dist notarize release
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -142,6 +142,28 @@ notarize:
 	xcrun notarytool submit "$(DIST_DMG)" $(NOTARY_ARGS) --wait
 	xcrun stapler staple "$(DIST_DMG)"
 	spctl -a -t open --context context:primary-signature -vv "$(DIST_DMG)"
+
+# Cut a release: stamp VERSION into Info.plist, commit that one file, tag
+# vVERSION, and push both — the GitHub Release workflow does the rest (build,
+# sign, notarize, publish). Run as `make release VERSION=x.y.z` from main.
+# The commit is path-limited to Info.plist, so an otherwise dirty tree is fine.
+release:
+	@test "$$(git branch --show-current)" = main || \
+		{ echo "release must be cut from main (currently on $$(git branch --show-current))"; exit 1; }
+	@current=$$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist); \
+		test "$(VERSION)" != "$$current" || \
+		{ echo "VERSION=$(VERSION) is already the current version; pass the new one, e.g. make release VERSION=x.y.z"; exit 1; }
+	@echo "$(VERSION)" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$$' || \
+		{ echo "VERSION must look like x.y.z (got '$(VERSION)')"; exit 1; }
+	@! git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null || \
+		{ echo "tag v$(VERSION) already exists"; exit 1; }
+	@git diff --quiet Resources/Info.plist || \
+		{ echo "Resources/Info.plist already has uncommitted changes; commit or revert them first"; exit 1; }
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" Resources/Info.plist
+	git commit -m "Release $(VERSION)" Resources/Info.plist
+	git tag "v$(VERSION)"
+	git push origin main "v$(VERSION)"
+	@echo "Tagged v$(VERSION) — the Release workflow builds and publishes it from here."
 
 # Build a release app bundle and install it to /Applications, replacing any
 # existing copy. Override the destination with `make install INSTALL_DIR=~/Applications`.
