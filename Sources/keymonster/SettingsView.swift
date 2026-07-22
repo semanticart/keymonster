@@ -219,6 +219,11 @@ struct SettingsView: View {
             SettingsSection(footer: "Start Key Monster automatically when you log in.") {
                 SettingsToggleRow(title: "Launch at Login", isOn: $settings.launchAtLogin)
             }
+
+            SettingsSection(footer: "Ask GitHub once a day whether a newer release exists and "
+                + "offer it in the menu bar. Nothing is downloaded or installed automatically.") {
+                SettingsToggleRow(title: "Check for Updates", isOn: $settings.checkForUpdates)
+            }
         }
     }
 }

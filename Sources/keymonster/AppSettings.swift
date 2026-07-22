@@ -66,6 +66,7 @@ final class AppSettings: ObservableObject {
     static let appShortcutsKey = "appFocusShortcuts"
     static let scriptShortcutsKey = "scriptShortcuts"
     static let autoPasteKey = "autoPaste"
+    static let checkForUpdatesKey = "checkForUpdates"
     static let hasLaunchedKey = "hasLaunched"
     static let hintLeftShortcutKey = "hintLeftClickShortcut"
     static let hintRightShortcutKey = "hintRightClickShortcut"
@@ -148,6 +149,13 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(autoPaste, forKey: Self.autoPasteKey) }
     }
 
+    /// When on (the default), the app asks GitHub once a day whether a newer
+    /// release exists and offers it in the status menu. Never downloads or
+    /// installs anything; see UpdateChecker.
+    @Published var checkForUpdates: Bool {
+        didSet { defaults.set(checkForUpdates, forKey: Self.checkForUpdatesKey) }
+    }
+
     /// True while ShortcutRecorder is capturing a key combo. Not persisted:
     /// AppDelegate registers no hotkeys while this is set, so a combo being
     /// recorded can't also trigger a live global shortcut.
@@ -156,6 +164,7 @@ final class AppSettings: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         autoPaste = defaults.object(forKey: Self.autoPasteKey) as? Bool ?? true
+        checkForUpdates = defaults.object(forKey: Self.checkForUpdatesKey) as? Bool ?? true
         launchAtLogin = SMAppService.mainApp.status == .enabled
         shortcut = Self.loadShortcut(defaults, key: Self.shortcutKey)
         hintLeftShortcut = Self.loadShortcut(defaults, key: Self.hintLeftShortcutKey)

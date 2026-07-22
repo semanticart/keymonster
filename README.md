@@ -104,6 +104,10 @@ pdf` reaches **File › Export › PDF…**); the closest match floats to the to
 
 - **Launch at login** — an optional toggle registers Key Monster to start
   automatically when you log in.
+- **Update aware** — the app checks GitHub daily and adds an "Update Available"
+  item to its menu when a newer release exists. Nothing downloads or installs
+  behind your back; the item just opens the release page. Opt out any time with
+  the "Check for Updates" toggle in Settings.
 
 ## Download
 

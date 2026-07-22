@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let textJumpMode = TextJumpController()
     private let menuFinder = MenuFinderController()
     private let scriptRunner = ScriptRunner()
+    private let updateChecker = UpdateChecker()
     private var cancellables: Set<AnyCancellable> = []
     private var settingsWindow: NSWindow?
     private var settingsSizeObservation: NSKeyValueObservation?
@@ -69,11 +70,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panelController = PanelController(history: history)
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        let icon = MenuBarIcon.image()
-        icon.accessibilityDescription = "Key Monster"
-        item.button?.image = icon
         item.menu = buildStatusMenu()
         statusItem = item
+        applyStatusIcon()
 
         // Re-register the full hotkey set on any settings change. objectWillChange
         // fires before the new value lands, so we hop to the next runloop turn
@@ -92,12 +91,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             log.info("first run: showing settings")
             showSettings()
         }
+
+        // Rebuild the status menu when an update appears (or goes away after
+        // installing one). Same next-runloop hop as the settings subscription:
+        // @Published emits before the property lands.
+        updateChecker.$availableVersion
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.statusItem?.menu = self.buildStatusMenu()
+                self.applyStatusIcon()
+            }
+            .store(in: &cancellables)
+
+        // Re-run the check when the Settings toggle flips: enabling checks
+        // right away instead of waiting for the daily timer, and disabling
+        // makes check() retract the menu item.
+        AppSettings.shared.$checkForUpdates
+            .removeDuplicates()
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in await self?.updateChecker.check() }
+            }
+            .store(in: &cancellables)
+        updateChecker.start()
     }
 
     // MARK: - Status item
 
     private func buildStatusMenu() -> NSMenu {
         let menu = NSMenu()
+        if let version = updateChecker.availableVersion {
+            let updateItem = NSMenuItem(
+                title: "Update Available — \(version)…",
+                action: #selector(openReleasesPage),
+                keyEquivalent: ""
+            )
+            updateItem.target = self
+            menu.addItem(updateItem)
+            menu.addItem(.separator())
+        }
         let showItem = NSMenuItem(title: "Show Clipboard History", action: #selector(toggleHistory), keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
@@ -110,6 +145,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quitItem.target = self
         menu.addItem(quitItem)
         return menu
+    }
+
+    /// The bitten-keyboard glyph, growing a dot in the bite while an update is
+    /// available so the state is visible without opening the menu.
+    private func applyStatusIcon() {
+        let updateAvailable = updateChecker.availableVersion != nil
+        let icon = MenuBarIcon.image(badged: updateAvailable)
+        icon.accessibilityDescription = updateAvailable
+            ? "Key Monster — update available"
+            : "Key Monster"
+        statusItem?.button?.image = icon
     }
 
     @objc private func toggleHistory() {
@@ -149,6 +195,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow = win
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func openReleasesPage() {
+        NSWorkspace.shared.open(UpdateChecker.releasesURL)
     }
 
     @objc private func quit() {
