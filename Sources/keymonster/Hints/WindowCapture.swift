@@ -76,6 +76,8 @@ enum WindowCapture {
         alert.messageText = "Zoom needs Screen Recording permission"
         alert.informativeText = """
             Key Monster magnifies a screenshot of the area you zoom into. \
+            The shot lives only in memory and is discarded when the zoom \
+            closes — nothing is saved, and no audio or video is ever recorded. \
             Until Screen Recording is granted (and Key Monster is relaunched), \
             zoom shows sketched outlines instead of real pixels.
             """
