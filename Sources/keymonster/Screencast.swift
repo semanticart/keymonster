@@ -6,12 +6,19 @@ private let log = Logger(subsystem: "keymonster", category: "screencast")
 
 /// Scripted, headless screencast of the real panels for the website hero.
 ///
-/// `keymonster screencast [--out DIR] [--fps N]` drives the real panels and
-/// overlays through a choreographed demo — click hints, the grid loupe, text
-/// jump, menu search, then the clipboard history — against the same seeded
-/// demo content as `snapshot --demo`, capturing one PNG per frame plus a
-/// `poster.png`. Nothing on screen is real user data, so the result is safe
-/// to publish. `make site-cast` records the frames and encodes the video.
+/// `keymonster screencast [--out DIR] [--fps N] [--min SCENES]` drives the
+/// real panels and overlays through a choreographed demo — click hints, the
+/// grid loupe, text jump, menu search, then the clipboard history — against
+/// the same seeded demo content as `snapshot --demo`, capturing one PNG per
+/// frame plus a `poster.png`. Nothing on screen is real user data, so the
+/// result is safe to publish. `make site-cast` records the frames and encodes
+/// the video.
+///
+/// `--min hints=5.2,grid=6.1,...` gives scenes a minimum duration: a scene
+/// shorter than its minimum holds its final frame longer before fading out.
+/// A `timings.json` manifest (fps plus each scene's start frame and length)
+/// lands next to the frames. Together these let `make site-cast-voiced` fit
+/// the video to a narration track and place each line at its scene's start.
 ///
 /// The scenes render on a shared fixed-size canvas that paints the site's
 /// hero background behind the panel, so the encoded video (which has no alpha)
@@ -40,6 +47,7 @@ enum ScreencastRunner {
         let window = SnapshotRunner.makeWindow(size: canvasSize)
         window.orderFront(nil)
         let recorder = Recorder(window: window, outURL: outURL, fps: fps)
+        recorder.minimums = parseMinimums(SnapshotRunner.option("--min"))
 
         hintScene(recorder: recorder, window: window)
         gridScene(recorder: recorder, window: window)
@@ -47,6 +55,7 @@ enum ScreencastRunner {
         menuScene(recorder: recorder, window: window)
         historyScene(recorder: recorder, window: window)
 
+        recorder.writeTimings()
         print(outDir)
         log.info("wrote \(recorder.frames) frame(s) to \(outDir)")
         exit(recorder.frames == 0 ? 1 : 0)
@@ -76,6 +85,7 @@ enum ScreencastRunner {
         // initial focus writes the binding back and re-selects the first item.
         SnapshotRunner.settle(0.5)
 
+        recorder.begin("history")
         recorder.fade(state, to: 1, over: 0.3)
         recorder.hold(0.8)
 
@@ -100,7 +110,7 @@ enum ScreencastRunner {
         }?.id
         recorder.hold(1.5)
 
-        recorder.fade(state, to: 0, over: 0.3)
+        recorder.end(fading: state)
     }
 
     /// Menu search over Safari: type "re", walk the ranked matches.
@@ -114,6 +124,7 @@ enum ScreencastRunner {
              in: window)
         SnapshotRunner.settle(0.4)
 
+        recorder.begin("menu")
         recorder.fade(state, to: 1, over: 0.3)
         recorder.hold(0.7)
 
@@ -127,7 +138,7 @@ enum ScreencastRunner {
         model.moveSelection(by: 1)
         recorder.hold(0.9)
 
-        recorder.fade(state, to: 0, over: 0.3)
+        recorder.end(fading: state)
     }
 
     static func show(_ canvas: some View, in window: NSWindow) {
@@ -139,6 +150,27 @@ enum ScreencastRunner {
 
     // MARK: - Frame recording
 
+    /// Parse `--min`'s `name=seconds,name=seconds` list into scene minimums.
+    private static func parseMinimums(_ raw: String?) -> [String: TimeInterval] {
+        guard let raw, !raw.isEmpty else { return [:] }
+        var minimums: [String: TimeInterval] = [:]
+        for entry in raw.split(separator: ",") {
+            let pair = entry.split(separator: "=", maxSplits: 1)
+            guard pair.count == 2, let seconds = TimeInterval(pair[1]) else {
+                SnapshotRunner.fail("--min entries must look like name=seconds (got '\(entry)')")
+            }
+            minimums[String(pair[0])] = seconds
+        }
+        return minimums
+    }
+
+    /// One recorded scene: its name, first frame, and length in frames.
+    struct SceneMark {
+        let name: String
+        let start: Int
+        let frames: Int
+    }
+
     /// Captures one PNG per frame while pumping the run loop, so SwiftUI's own
     /// animations (list scrolling, selection moves) land on film in between the
     /// scripted state changes.
@@ -149,10 +181,55 @@ enum ScreencastRunner {
         private let fps: Double
         private(set) var frames = 0
 
+        /// Minimum on-film seconds per scene name; `end(fading:)` pads the
+        /// scene's last held frame until the minimum is met.
+        var minimums: [String: TimeInterval] = [:]
+        private var scenes: [SceneMark] = []
+        private var currentScene: (name: String, start: Int)?
+
         init(window: NSWindow, outURL: URL, fps: Double) {
             self.window = window
             self.outURL = outURL
             self.fps = fps
+        }
+
+        /// Mark the start of a named scene; its first frame is the next capture.
+        func begin(_ name: String) {
+            currentScene = (name, frames)
+        }
+
+        /// Close the current scene: hold until its minimum duration (if one was
+        /// requested) is met once the fade completes, then fade out.
+        func end(fading state: CastState, over seconds: TimeInterval = 0.3) {
+            guard let scene = currentScene else {
+                SnapshotRunner.fail("Recorder.end called with no open scene")
+            }
+            if let minimum = minimums[scene.name] {
+                let elapsed = Double(frames - scene.start) / fps
+                let shortfall = minimum - elapsed - seconds
+                if shortfall > 0 { hold(shortfall) }
+            }
+            fade(state, to: 0, over: seconds)
+            scenes.append(SceneMark(name: scene.name, start: scene.start,
+                                    frames: frames - scene.start))
+            currentScene = nil
+        }
+
+        /// Write `timings.json` next to the frames: the fps and each scene's
+        /// name, start frame, and frame count, in play order.
+        func writeTimings() {
+            let manifest: [String: Any] = [
+                "fps": fps,
+                "scenes": scenes.map { ["name": $0.name, "start": $0.start, "frames": $0.frames] }
+            ]
+            do {
+                let data = try JSONSerialization.data(
+                    withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys]
+                )
+                try data.write(to: outURL.appendingPathComponent("timings.json"))
+            } catch {
+                SnapshotRunner.fail("could not write timings.json: \(error)")
+            }
         }
 
         /// Let `seconds` of scene time elapse, capturing every frame.

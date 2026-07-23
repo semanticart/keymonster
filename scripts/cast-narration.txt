@@ -1,0 +1,9 @@
+# The hero screencast's voiceover: one line per scene, in play order, as
+# scene-name|narration. scripts/voice-cast.sh synthesizes each line and sizes
+# its scene to fit, so edits here never desync the audio — keep the names in
+# step with the recorder.begin() calls in the Screencast sources.
+hints|Meet Key Monster. Press one hot key, and every clickable thing grows a key. Type it to click.
+grid|Nothing to label? A keyboard-shaped grid zooms in until you're right on target.
+jump|In text, you can jump the cursor straight to any character you can see.
+menu|Run any menu item by name. Just start typing.
+history|And everything you copy is remembered, searchable, and one keystroke away. That's Key Monster.

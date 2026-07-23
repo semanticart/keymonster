@@ -115,7 +115,8 @@ struct DemoWindow: View {
             Rectangle().fill(chrome)
                 .frame(width: DemoWindowLayout.sidebarWidth)
                 .padding(.top, DemoWindowLayout.titleBarHeight)
-            ForEach(Array(zip(DemoWindowLayout.sidebarRows, sidebarTitles).enumerated()),
+            let titles = [("Inbox", "12"), ("Drafts", "3"), ("Archive", "")]
+            ForEach(Array(zip(DemoWindowLayout.sidebarRows, titles).enumerated()),
                     id: \.offset) { index, pair in
                 let (rect, title) = pair
                 HStack {
@@ -132,10 +133,6 @@ struct DemoWindow: View {
                 .position(x: rect.midX, y: rect.midY)
             }
         }
-    }
-
-    private var sidebarTitles: [(String, String)] {
-        [("Inbox", "12"), ("Drafts", "3"), ("Archive", "")]
     }
 
     private var content: some View {
@@ -270,6 +267,7 @@ extension ScreencastRunner {
              in: window)
         SnapshotRunner.settle(0.4)
 
+        recorder.begin("hints")
         recorder.fade(state, to: 1, over: 0.3)
         recorder.hold(0.7)
 
@@ -286,7 +284,7 @@ extension ScreencastRunner {
         click(demo, at: DemoWindowLayout.publishCenter, recorder: recorder, pressing: true)
         recorder.hold(0.7)
 
-        recorder.fade(state, to: 0, over: 0.3)
+        recorder.end(fading: state)
     }
 
     /// Grid click over the demo window: the initial labelled grid, a two-letter
@@ -316,6 +314,7 @@ extension ScreencastRunner {
         let target = CGPoint(x: DemoWindowLayout.publishCenter.x + margin,
                              y: DemoWindowLayout.publishCenter.y + margin)
 
+        recorder.begin("grid")
         recorder.fade(state, to: 1, over: 0.3)
         recorder.hold(0.5)
 
@@ -336,7 +335,7 @@ extension ScreencastRunner {
         click(demo, at: DemoWindowLayout.publishCenter, recorder: recorder, pressing: false)
         recorder.hold(0.6)
 
-        recorder.fade(state, to: 0, over: 0.3)
+        recorder.end(fading: state)
     }
 
     /// One badge per demo target, laid just leading of what it labels — the

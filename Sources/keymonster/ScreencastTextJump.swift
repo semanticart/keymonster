@@ -100,6 +100,7 @@ extension ScreencastRunner {
              in: window)
         SnapshotRunner.settle(0.4)
 
+        recorder.begin("jump")
         recorder.fade(state, to: 1, over: 0.3)
         recorder.hold(0.6)
 
@@ -124,7 +125,7 @@ extension ScreencastRunner {
         demo.caret = target
         recorder.hold(1.0)
 
-        recorder.fade(state, to: 0, over: 0.3)
+        recorder.end(fading: state)
     }
 
     /// A hint badge floated just above one character occurrence, caret aimed

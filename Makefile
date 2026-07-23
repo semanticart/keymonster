@@ -1,4 +1,4 @@
-.PHONY: build run test clean lint app snapshot site-shots site-cast icon install dist notarize release
+.PHONY: build run test clean lint app snapshot site-shots site-cast site-cast-voiced icon install dist notarize release
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -77,6 +77,13 @@ site-cast: build
 	ffmpeg -y -loglevel error -i "$(CAST_FRAMES)/poster.png" -qscale:v 4 \
 		docs/assets/cast/hero-poster.jpg
 	@echo "Wrote docs/assets/cast/hero.mp4 and hero-poster.jpg"
+
+# Narrated variant of the hero screencast: synthesizes a voiceover from
+# scripts/cast-narration.txt with the best installed macOS voice, re-records
+# the screencast with each scene sized to its line, and muxes
+# docs/assets/cast/hero-voiced.mp4. The silent hero.mp4 stays untouched.
+site-cast-voiced: build
+	scripts/voice-cast.sh
 
 # Regenerate Resources/AppIcon.icns from Resources/icon.svg. Edit the SVG, then
 # run this to rebuild the bundled icon at every size macOS needs. Requires
