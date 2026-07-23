@@ -136,6 +136,15 @@ final class HintModeController {
             MouseClicker.clickOnceOverlaySettles(at: target.clickPoint, button: button)
         case .unwound:
             break // nothing typed and no zoom: backspace has nothing to undo
+        case .zoomIn:
+            // Zoom magnifies a screenshot; without Screen Recording there is
+            // nothing meaningful to show, so drop the mode and let the prompt
+            // (or Settings alert) take over.
+            guard WindowCapture.ensureAccess() else {
+                dismiss()
+                return
+            }
+            overlay.apply(effect)
         default:
             overlay.apply(effect)
         }

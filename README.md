@@ -59,8 +59,8 @@ screen, and jump the caret through text, all without the mouse.
   left-click and right-click hints; holding `Shift` on the final letter clicks
   with the opposite button. Elements too close together to label individually
   share one green area label — typing it zooms into that area (a magnified
-  screenshot; Key Monster prompts for Screen Recording permission the first
-  time and sketches outlines until it's granted) and
+  screenshot; this needs Screen Recording permission — Key Monster prompts the
+  first time, and zoom stays unavailable until it's granted) and
   each element gets a normal label; `Delete` backs out of the zoom. `Esc`, a
   real click, or any other chord dismisses the overlay. Requires Accessibility
   permission.
@@ -74,7 +74,9 @@ screen, and jump the caret through text, all without the mouse.
   `Return` clicks the center of the current region at any point, and holding
   `Shift` on the deciding key right-clicks instead. `Delete` zooms back out (and
   from the first zoom, back to the initial label grid); `Esc`, a real click, or
-  any other chord dismisses. Requires Accessibility permission.
+  any other chord dismisses. Requires Accessibility permission; the zoomed
+  loupe needs Screen Recording (prompted on first use, and zooming stays
+  unavailable until it's granted).
 - **Text jump (jump to character)** — press a shortcut while a text field is
   focused, then any character; every visible occurrence of it in the field grows
   a short label (one letter when there are only a few, two otherwise), and typing

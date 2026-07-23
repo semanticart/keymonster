@@ -9,7 +9,7 @@ enum HintZoom {
         /// The whole panel, border included.
         let panel: CGRect
         /// Where the magnified area maps, inset within the panel — the
-        /// screenshot (or member sketches) draw here.
+        /// screenshot draws here.
         let canvas: CGRect
         let scale: CGFloat
         /// The member frames magnified onto the canvas, in input order.

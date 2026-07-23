@@ -135,6 +135,13 @@ final class GridModeController {
         if GridDivision.cells(of: region).count == 1 {
             click(at: CGPoint(x: region.midX, y: region.midY), shifted: shifted)
         } else {
+            // The loupe magnifies a screenshot; without Screen Recording there
+            // is nothing meaningful to show, so drop the mode and let the
+            // prompt (or Settings alert) take over.
+            guard WindowCapture.ensureAccess() else {
+                dismiss()
+                return
+            }
             overlay.showGrid(current: region)
         }
     }

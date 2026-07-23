@@ -55,8 +55,7 @@ final class GridOverlay {
 
     /// The positional grid over `current` (AX coordinates), drawn plainly while
     /// it's the whole window and as a magnified loupe once zoomed in. Falls back
-    /// to the plain grid when there's nothing to magnify or Screen Recording is
-    /// off.
+    /// to the plain grid when there's nothing to magnify or the capture fails.
     func showGrid(current: CGRect) {
         let region = inView(current)
         if GridZoom.scale(magnifying: region, into: windowBounds) > 1,

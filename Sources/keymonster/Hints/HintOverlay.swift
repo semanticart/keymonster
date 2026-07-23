@@ -39,9 +39,9 @@ final class HintOverlay {
 
     /// Magnifies `area` (AX coordinates) in a panel over the same window, with
     /// one normal badge per member frame. Screenshots what's beneath the
-    /// overlay itself; without Screen Recording permission the member outlines
-    /// are sketched instead. Call while the overlay is already showing;
-    /// `clearZoom` restores the group badges untouched.
+    /// overlay itself; callers gate on `WindowCapture.ensureAccess()`, so a
+    /// nil image only means the capture itself failed. Call while the overlay
+    /// is already showing; `clearZoom` restores the group badges untouched.
     func zoomIn(area: CGRect, memberFrames: [CGRect], labels: [String]) {
         guard let view else { return }
         let image = WindowCapture.below(window, bounds: area)
@@ -177,8 +177,8 @@ final class HintOverlayView: NSView {
         let panel: CGRect
         let canvas: CGRect
         let image: CGImage?
-        /// Member frames magnified onto the canvas — sketched when there is no
-        /// screenshot to show.
+        /// Member frames magnified onto the canvas — the badge carets aim at
+        /// them.
         let content: [CGRect]
         let badges: [Badge]
     }
@@ -245,6 +245,8 @@ final class HintOverlayView: NSView {
         NSColor(calibratedWhite: 0.13, alpha: 0.98).setFill()
         panel.fill()
 
+        // Zoom only opens with Screen Recording granted, so a nil image is a
+        // rare capture failure; the badges still draw over the dark panel.
         if let image = zoom.image {
             NSGraphicsContext.current?.saveGraphicsState()
             NSBezierPath(roundedRect: zoom.canvas, xRadius: 4, yRadius: 4).addClip()
@@ -253,21 +255,6 @@ final class HintOverlayView: NSView {
                 respectFlipped: true,
                 hints: [.interpolation: NSImageInterpolation.high.rawValue]
             )
-            NSGraphicsContext.current?.restoreGraphicsState()
-        } else {
-            // No screenshot (Screen Recording permission missing): sketch the
-            // members so their arrangement still reads. Clipped to the canvas
-            // because a member can reach past the magnified area.
-            NSGraphicsContext.current?.saveGraphicsState()
-            NSBezierPath(roundedRect: zoom.canvas, xRadius: 4, yRadius: 4).addClip()
-            for rect in zoom.content {
-                let box = NSBezierPath(roundedRect: rect, xRadius: 4, yRadius: 4)
-                NSColor(calibratedWhite: 0.3, alpha: 1).setFill()
-                box.fill()
-                Self.fill.setStroke()
-                box.lineWidth = 1
-                box.stroke()
-            }
             NSGraphicsContext.current?.restoreGraphicsState()
         }
 

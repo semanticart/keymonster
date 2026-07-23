@@ -135,6 +135,15 @@ final class TextJumpController {
             placeCursor(to: hits[index].caret, element: field.element)
         case .unwound:
             backToCharacterPick(field)
+        case .zoomIn:
+            // Zoom magnifies a screenshot; without Screen Recording there is
+            // nothing meaningful to show, so drop the mode and let the prompt
+            // (or Settings alert) take over.
+            guard WindowCapture.ensureAccess() else {
+                dismiss()
+                return
+            }
+            overlay.apply(effect)
         default:
             overlay.apply(effect)
         }
