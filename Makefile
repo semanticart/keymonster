@@ -81,7 +81,8 @@ site-cast: build
 # Narrated variant of the hero screencast: synthesizes a voiceover from
 # scripts/cast-narration.txt with the best installed macOS voice, re-records
 # the screencast with each scene sized to its line, and muxes
-# docs/assets/cast/hero-voiced.mp4. The silent hero.mp4 stays untouched.
+# docs/assets/cast/hero-voiced.mp4 — the cut the website's hero embeds. The
+# silent hero.mp4 from `make site-cast` remains for contexts without audio.
 site-cast-voiced: build
 	scripts/voice-cast.sh
 

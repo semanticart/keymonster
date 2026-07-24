@@ -5,8 +5,9 @@
 # synthesized first, then the screencast is re-recorded with --min so every
 # scene lasts at least as long as its line (plus a lead-in and a breath at the
 # end), and finally ffmpeg places each clip at its scene's start — taken from
-# the recorder's timings.json — and muxes one file. The silent hero.mp4 the
-# website autoplays is untouched.
+# the recorder's timings.json — and muxes one file. The website's hero embeds
+# this cut (autoplay keeps it muted until the viewer unmutes); the silent
+# hero.mp4 from `make site-cast` sticks around for contexts without audio.
 #
 # Overrides: VOICE=<name> picks the say voice, RATE=<wpm> the speaking rate.
 set -euo pipefail
