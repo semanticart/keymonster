@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import AppKit
 
@@ -396,3 +397,4 @@ extension ScreencastRunner {
         demo.ripple = nil
     }
 }
+#endif

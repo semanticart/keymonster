@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import AppKit
 import os.log
@@ -310,3 +311,4 @@ enum SnapshotRunner {
         exit(1)
     }
 }
+#endif

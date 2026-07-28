@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import AppKit
 import os.log
@@ -330,3 +331,4 @@ enum ScreencastRunner {
         }
     }
 }
+#endif

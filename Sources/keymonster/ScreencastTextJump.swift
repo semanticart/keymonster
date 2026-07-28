@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import AppKit
 
@@ -148,3 +149,4 @@ extension ScreencastRunner {
         )
     }
 }
+#endif

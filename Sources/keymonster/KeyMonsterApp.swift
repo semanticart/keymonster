@@ -10,9 +10,15 @@ private let log = Logger(subsystem: "keymonster", category: "app")
 /// `SnapshotRunner`) so the design can be iterated on autonomously, and with
 /// `screencast` it records the website's scripted demo video frames (see
 /// `ScreencastRunner`).
+///
+/// Those two are development tooling, so they and everything they drag in — the
+/// seeded demo content, the cast scenes, the frame recorder — compile only in
+/// debug. The released app is the menu-bar app and nothing else. `make
+/// site-shots` and `make site-cast` build debug, so they still work.
 @main
 enum Entry {
     static func main() {
+        #if DEBUG
         if CommandLine.arguments.dropFirst().contains("snapshot") {
             MainActor.assumeIsolated { SnapshotRunner.main() }
         } else if CommandLine.arguments.dropFirst().contains("screencast") {
@@ -20,6 +26,9 @@ enum Entry {
         } else {
             KeyMonsterApp.main()
         }
+        #else
+        KeyMonsterApp.main()
+        #endif
     }
 }
 
