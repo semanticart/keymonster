@@ -150,9 +150,15 @@ struct SettingsSection<Content: View>: View {
                     )
             )
             if let footer {
+                // Without fixedSize a long footer reports a one-line ideal
+                // height (its ideal width is the string unwrapped), so the
+                // stack lays it out one line tall and it truncates mid-sentence
+                // — this demands the wrapped height at the width it gets.
                 Text(footer)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
