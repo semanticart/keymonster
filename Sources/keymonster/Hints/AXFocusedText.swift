@@ -49,7 +49,7 @@ enum AXFocusedText {
     }
 
     /// How to drop the caret before a matched character.
-    enum Caret {
+    enum Caret: Equatable {
         /// Native fields: a zero-length `AXSelectedTextRange` at this UTF-16 offset.
         case offset(Int)
         /// Web fields: a synthesized click at this point (the character's left edge).

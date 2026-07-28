@@ -31,6 +31,26 @@ final class TextMatchesTests: XCTestCase {
     }
 }
 
+@MainActor
+final class TextJumpOutcomeTests: XCTestCase {
+    private func occurrence(offset: Int) -> AXFocusedText.Occurrence {
+        AXFocusedText.Occurrence(rect: CGRect(x: 0, y: 0, width: 8, height: 16), caret: .offset(offset))
+    }
+
+    func testNoMatchStaysArmedForAnotherCharacter() {
+        XCTAssertEqual(TextJumpController.outcome(for: []), .noMatch)
+    }
+
+    func testLoneMatchJumpsWithoutLabeling() {
+        XCTAssertEqual(TextJumpController.outcome(for: [occurrence(offset: 7)]), .jump(.offset(7)))
+    }
+
+    func testSeveralMatchesGetLabels() {
+        let hits = [occurrence(offset: 1), occurrence(offset: 4)]
+        XCTAssertEqual(TextJumpController.outcome(for: hits), .label)
+    }
+}
+
 final class TextJumpSettingsTests: XCTestCase {
     @MainActor
     func testTextJumpShortcutPersistsAcrossInstances() {

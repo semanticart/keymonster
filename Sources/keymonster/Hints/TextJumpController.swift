@@ -4,7 +4,8 @@ import ApplicationServices
 /// Keyboard-driven caret placement inside the focused text field (native or
 /// web). A hotkey arms the mode; the next key names a target character, every
 /// on-screen occurrence of it gets a short label, and typing a label drops the
-/// caret just before that character.
+/// caret just before that character. A lone occurrence skips the label and
+/// takes the caret immediately.
 ///
 /// Occurrences too close together to label individually share one green area
 /// label; typing it zooms into that area, where each occurrence gets a normal
@@ -32,6 +33,25 @@ final class TextJumpController {
         case armed(Field)
         /// Labels are on screen; `hits` are what `labels` commits index into.
         case labeling(Field, hits: [AXFocusedText.Occurrence], labels: LabelSession)
+    }
+
+    /// What a target character's matches call for. Split out of `showLabels` so
+    /// the rules are testable without a live accessibility tree.
+    enum Outcome: Equatable {
+        /// Nothing visible matched; stay armed so another character can be tried.
+        case noMatch
+        /// A lone match has nothing to disambiguate, so take the caret straight there.
+        case jump(AXFocusedText.Caret)
+        /// Several matches; label them and wait for a pick.
+        case label
+    }
+
+    static func outcome(for occurrences: [AXFocusedText.Occurrence]) -> Outcome {
+        switch occurrences.count {
+        case 0: return .noMatch
+        case 1: return .jump(occurrences[0].caret)
+        default: return .label
+        }
     }
 
     private let overlay = HintOverlay()
@@ -153,10 +173,15 @@ final class TextJumpController {
         let occurrences = AXFocusedText.occurrences(
             of: character, in: field.value, element: field.element, within: field.windowFrame
         )
-        guard !occurrences.isEmpty else {
-            // No visible match; stay armed so another character can be tried.
+        switch Self.outcome(for: occurrences) {
+        case .noMatch:
             NSSound.beep()
             return
+        case .jump(let caret):
+            placeCursor(to: caret, element: field.element)
+            return
+        case .label:
+            break
         }
         // Badges may go anywhere on the window's screen; see HintScreens.
         let labels = LabelSession(
