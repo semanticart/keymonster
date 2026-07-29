@@ -45,7 +45,8 @@ All paths are relative to `Sources/keymonster/`.
 | `Hints/HintKeyTap.swift`                | CGEvent tap that captures keystrokes while hints or the grid are showing.                                                                                       |
 | `Hints/MouseClicker.swift`              | Synthesizes left/right clicks at a target's center.                                                                                                             |
 | `Hints/TextJumpController.swift`        | Orchestrates text-jump mode: arm → pick character → label occurrences → place caret.                                                                            |
-| `Hints/AXFocusedText.swift`             | Reads the focused text field's value/caret via AX, finds a character's on-screen occurrences, and moves the caret.                                              |
+| `Hints/AXFocusedText.swift`             | Reads the focused text field's value/caret via AX and moves the caret; `LiveAXTextTree` is the live tree the search below reads.                                |
+| `Hints/TextOccurrences.swift`           | Pure occurrence search over the `AXTextTree` protocol: native path (bounds on the field) with a leaf-node fallback for web content.                             |
 | `MenuFinder/MenuBarItem.swift`          | The `MenuBarItem` value type plus the pure fuzzy matcher (`FuzzyMatch`) and ranked filter (`MenuItemFilter`) — no AppKit, fully tested.                         |
 | `MenuFinder/AXMenuBarScanner.swift`     | Walks the frontmost app's menu bar via AX into actionable leaf items (with the `AXUIElement` to press for each), and presses the chosen one.                    |
 | `MenuFinder/MenuFinderViewModel.swift`  | Drives the menu-finder panel's search, keyboard selection, and activation.                                                                                      |
@@ -56,3 +57,27 @@ All paths are relative to `Sources/keymonster/`.
 The persistence layer is kept behind the narrow `ClipStore` protocol so
 `ClipboardHistory` can be tested against an in-memory SQLite store
 (`SQLiteClipStore.inMemory()`). Tests live in `Tests/keymonsterTests/`.
+
+## Testing against accessibility trees
+
+Text jump's behaviour depends entirely on what shape of accessibility tree a
+field turns out to have, and those shapes vary wildly between apps — a native
+AppKit field answers per-character bounds, Chromium's editable containers answer
+a degenerate rect and hide the real geometry on leaf `AXStaticText` nodes, and
+Chrome's omnibox answers no geometry at all. Two layers cover that:
+
+- **Recorded trees** (`TextOccurrenceTests`) — the search runs over the
+  `AXTextTree` protocol, so tests feed it trees captured by hand from real apps.
+  This is the only way to cover Chromium, and it runs in CI. When a new app
+  misbehaves, capture its shape and add it here.
+- **A live fixture** (`Sources/axfixture`, driven by `AXLiveTreeTests`) — a
+  window of real controls, including a mimic of Chrome's geometry-less omnibox
+  and a `WKWebView`. `make fixture` opens it to poke at by hand; `make axtest`
+  runs the tests against it. Reading any accessibility tree needs the
+  Accessibility grant — an untrusted process can't even read its own — so these
+  skip unless whatever runs `swift test` has been granted it, and CI always
+  skips them. The fixture is a separate executable target and never ships.
+
+A fixture can't stand in for Chromium: `WKWebView` answers real bounds on the
+container, so it takes the native path, while Chromium takes the leaf path. That
+divergence is why the Chromium shapes live as recorded trees.

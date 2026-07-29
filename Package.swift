@@ -17,6 +17,14 @@ let package = Package(
             ],
             path: "Sources/keymonster"
         ),
+        // A window of text fields to point text jump at by hand. Development
+        // tooling: a separate executable, so it is never linked into the app
+        // (`make app` copies only the keymonster binary into the bundle) and
+        // never ships. See `make fixture`.
+        .executableTarget(
+            name: "axfixture",
+            path: "Sources/axfixture"
+        ),
         .testTarget(
             name: "keymonsterTests",
             dependencies: ["keymonster"],

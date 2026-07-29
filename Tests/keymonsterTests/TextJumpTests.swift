@@ -33,8 +33,8 @@ final class TextMatchesTests: XCTestCase {
 
 @MainActor
 final class TextJumpOutcomeTests: XCTestCase {
-    private func occurrence(offset: Int) -> AXFocusedText.Occurrence {
-        AXFocusedText.Occurrence(rect: CGRect(x: 0, y: 0, width: 8, height: 16), caret: .offset(offset))
+    private func occurrence(offset: Int) -> TextOccurrence {
+        TextOccurrence(rect: CGRect(x: 0, y: 0, width: 8, height: 16), caret: .offset(offset))
     }
 
     func testNoMatchStaysArmedForAnotherCharacter() {

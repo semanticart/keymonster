@@ -1,4 +1,4 @@
-.PHONY: build run test clean lint app snapshot site-shots site-cast site-cast-voiced icon install dist notarize release
+.PHONY: build run test axtest fixture clean lint app snapshot site-shots site-cast site-cast-voiced icon install dist notarize release
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -110,6 +110,23 @@ icon:
 
 test:
 	swift test
+
+# Launch the AX fixture: one window of text fields covering every accessibility
+# shape text jump has to handle (native field, text view, search field, a mimic
+# of Chrome's geometry-less omnibox, and a WKWebView). Point text jump at it by
+# hand to check a change against a real AX server. Never ships — separate target.
+fixture: build
+	.build/$(CONFIG)/axfixture
+
+# The live-AX integration tests, which drive that fixture. Reading any
+# accessibility tree needs the Accessibility grant, and an untrusted process
+# can't even read its own, so these skip themselves unless whatever runs
+# `swift test` — your terminal — has been granted Accessibility in System
+# Settings. `make test` and CI therefore skip them; this target is the local
+# run. A skipped run is reported as passing, so check for "skipped" if a
+# failure you expected didn't appear.
+axtest:
+	swift test --filter AXLiveTreeTests
 
 clean:
 	swift package clean

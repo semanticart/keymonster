@@ -32,7 +32,7 @@ final class TextJumpController {
         /// Waiting for the keystroke that names the target character.
         case armed(Field)
         /// Labels are on screen; `hits` are what `labels` commits index into.
-        case labeling(Field, hits: [AXFocusedText.Occurrence], labels: LabelSession)
+        case labeling(Field, hits: [TextOccurrence], labels: LabelSession)
     }
 
     /// What a target character's matches call for. Split out of `showLabels` so
@@ -41,12 +41,12 @@ final class TextJumpController {
         /// Nothing visible matched; stay armed so another character can be tried.
         case noMatch
         /// A lone match has nothing to disambiguate, so take the caret straight there.
-        case jump(AXFocusedText.Caret)
+        case jump(TextCaret)
         /// Several matches; label them and wait for a pick.
         case label
     }
 
-    static func outcome(for occurrences: [AXFocusedText.Occurrence]) -> Outcome {
+    static func outcome(for occurrences: [TextOccurrence]) -> Outcome {
         switch occurrences.count {
         case 0: return .noMatch
         case 1: return .jump(occurrences[0].caret)
@@ -131,7 +131,7 @@ final class TextJumpController {
     /// member label if the group opened a zoom.
     private func handleLabel(
         _ key: HintKeyEvent, field: Field,
-        hits: [AXFocusedText.Occurrence], labels: LabelSession
+        hits: [TextOccurrence], labels: LabelSession
     ) {
         var labels = labels
         let effect: LabelSession.Effect
@@ -203,7 +203,7 @@ final class TextJumpController {
         overlay.showBanner("Jump to a character…", windowFrame: field.windowFrame)
     }
 
-    private func placeCursor(to caret: AXFocusedText.Caret, element: AXUIElement) {
+    private func placeCursor(to caret: TextCaret, element: AXUIElement) {
         dismiss()
         AXFocusedText.setCursor(element, to: caret)
     }
