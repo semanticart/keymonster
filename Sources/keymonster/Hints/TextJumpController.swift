@@ -183,12 +183,16 @@ final class TextJumpController {
         case .label:
             break
         }
-        // Badges may go anywhere on the window's screen; see HintScreens.
+        // Badges may go anywhere on the window's screen; see HintScreens. They
+        // center on their glyph rather than hanging off its left edge — an
+        // anchor here is a few points wide against an ~18pt badge, so a
+        // left-aligned badge reads as pointing a character too far right.
         let labels = LabelSession(
             anchors: occurrences.map(\.rect),
             windowFrame: field.windowFrame,
             screenBounds: HintScreens.bounds(around: field.windowFrame),
-            badgeSize: BadgeMetrics.size(forLabelLength:)
+            badgeSize: BadgeMetrics.size(forLabelLength:),
+            alignment: .centered
         )
         phase = .labeling(field, hits: occurrences, labels: labels)
         overlay.show(

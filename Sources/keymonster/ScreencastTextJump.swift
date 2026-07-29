@@ -144,7 +144,7 @@ extension ScreencastRunner {
             width: size.width, height: size.height
         )
         return HintOverlayView.Badge(
-            rect: badge, label: label, area: nil,
+            rect: badge, label: label, target: char,
             caret: HintOverlayView.caretDirection(from: badge, toward: char)
         )
     }

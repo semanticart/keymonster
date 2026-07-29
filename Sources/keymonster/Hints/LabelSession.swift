@@ -37,17 +37,20 @@ struct LabelSession {
 
     /// `screenBounds` is where badges may go (the window's screen, so edge
     /// labels can hang outside the window); zoom areas stay clipped to
-    /// `windowFrame` itself.
+    /// `windowFrame` itself. `alignment` is how a badge lines up with its
+    /// anchor — element-sized anchors want `.leading`, single glyphs
+    /// `.centered`.
     init(
         anchors: [CGRect],
         windowFrame: CGRect,
         screenBounds: CGRect,
-        badgeSize: (Int) -> CGSize
+        badgeSize: (Int) -> CGSize,
+        alignment: HintGeometry.BadgeAlignment = .leading
     ) {
         self.anchors = anchors
         self.windowFrame = windowFrame
         (groups, groupLabels) = HintGrouping.groupsWithLabels(
-            anchors: anchors, within: screenBounds, badgeSize: badgeSize
+            anchors: anchors, within: screenBounds, badgeSize: badgeSize, alignment: alignment
         )
         selection = HintSelection(labels: groupLabels)
     }

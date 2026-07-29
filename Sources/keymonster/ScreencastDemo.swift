@@ -365,7 +365,7 @@ extension ScreencastRunner {
             )
             return HintOverlayView.Badge(
                 rect: badge, label: label,
-                area: target.cluster ? shifted : nil,
+                target: shifted, isGroup: target.cluster,
                 caret: HintOverlayView.caretDirection(from: badge, toward: shifted)
             )
         }

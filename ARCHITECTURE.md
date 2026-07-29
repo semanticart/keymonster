@@ -38,7 +38,8 @@ All paths are relative to `Sources/keymonster/`.
 | `Hints/HintTargets.swift`               | Pure clickability/visibility heuristics and AX↔Cocoa coordinate conversion.                                                                                     |
 | `Hints/HintScreens.swift`               | Finds the screen a target window sits on, so labels can hang just outside window edges.                                                                         |
 | `Hints/AXHintTargetFinder.swift`        | Walks the frontmost window's accessibility tree to find clickable elements.                                                                                     |
-| `Hints/HintOverlay.swift`               | Transparent click-through window that draws the hint badges and the zoom panel.                                                                                 |
+| `Hints/HintOverlay.swift`               | Transparent click-through window that hosts the badges and the zoom panel.                                                                                      |
+| `Hints/HintOverlayView.swift`           | The overlay's drawing: badges, caret pointers, cluster washes, banner, zoom panel.                                                                              |
 | `Hints/HintGrouping.swift`              | Merges targets whose labels would collide into green area groups.                                                                                               |
 | `Hints/HintZoom.swift`                  | Geometry of the zoomed view: panel placement, magnification, label spots.                                                                                       |
 | `Hints/WindowCapture.swift`             | Screenshots the region beneath the overlay for the zoomed view.                                                                                                 |

@@ -286,6 +286,57 @@ final class HintGeometryTests: XCTestCase {
         XCTAssertFalse(candidates.contains { $0.maxX <= area.minX })
     }
 
+    func testCenteredBadgeSitsOverTheMiddleOfWhatItLabels() {
+        // A text-jump anchor: one glyph, far narrower than its badge. Left
+        // aligning would leave the badge sitting most of a character to the
+        // right of the thing it points at.
+        let glyph = CGRect(x: 100, y: 300, width: 7, height: 16)
+        let badge = HintGeometry.badgeRect(badgeSize, labeling: glyph, in: bounds, alignment: .centered)
+        XCTAssertEqual(badge.midX, glyph.midX)
+        XCTAssertEqual(badge.maxY, glyph.minY - HintGeometry.caretHeight)
+        // Escapes line up the same way and stay inside bounds.
+        let candidates = HintGeometry.badgeCandidates(
+            badgeSize, labeling: glyph, in: bounds, alignment: .centered
+        )
+        XCTAssertEqual(candidates[0], badge)
+        XCTAssertEqual(candidates[1].midX, glyph.midX)
+        XCTAssertTrue(candidates.allSatisfy { bounds.contains($0) })
+    }
+
+    func testCenteredBadgesStillGroupAndStayClampedAtTheEdge() {
+        // Centering may push a badge past the left edge; it clamps back in.
+        let glyph = CGRect(x: 1, y: 300, width: 7, height: 16)
+        let badge = HintGeometry.badgeRect(badgeSize, labeling: glyph, in: bounds, alignment: .centered)
+        XCTAssertTrue(bounds.contains(badge))
+        XCTAssertEqual(badge.minX, bounds.minX)
+        // Grouping honors the alignment: two glyphs a badge-width apart don't
+        // collide, and each badge centers on its own glyph.
+        let glyphs = [glyph.offsetBy(dx: 200, dy: 0), glyph.offsetBy(dx: 200 + badgeSize.width + 4, dy: 0)]
+        let groups = HintGrouping.groups(
+            badgeSize: badgeSize, anchors: glyphs, within: bounds, alignment: .centered
+        )
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertEqual(groups[0].badge.midX, glyphs[0].midX)
+        XCTAssertEqual(groups[1].badge.midX, glyphs[1].midX)
+    }
+
+    @MainActor
+    func testCaretAimsAtNarrowTargetsAndHugsTheCornerOfWideOnes() {
+        let badge = CGRect(x: 100, y: 280, width: 22, height: 18)
+        // A glyph narrower than the badge: the pointer aims at its middle.
+        let glyph = CGRect(x: 107, y: 300, width: 7, height: 16)
+        XCTAssertEqual(HintOverlayView.caretAim(along: badge, at: glyph, halfBase: 4), glyph.midX)
+        // A wide element: unchanged — the pointer stays in from the badge's
+        // leading edge, over the element's own corner.
+        let element = CGRect(x: 100, y: 300, width: 80, height: 30)
+        XCTAssertEqual(HintOverlayView.caretAim(along: badge, at: element, halfBase: 4), badge.minX + 8)
+        // A clamped badge can't put its pointer past its own rounded corner.
+        let offGlyph = CGRect(x: 100, y: 300, width: 2, height: 16)
+        XCTAssertEqual(
+            HintOverlayView.caretAim(along: badge, at: offGlyph, halfBase: 4), badge.minX + 5
+        )
+    }
+
     func testBestContainerPicksTheFrameSharingTheMostArea() {
         let screens = [
             CGRect(x: 0, y: 0, width: 800, height: 600),

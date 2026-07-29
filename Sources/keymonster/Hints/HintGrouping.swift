@@ -44,11 +44,14 @@ enum HintGrouping {
     /// giant one. Groups come out ordered by their first member. `bounds` is
     /// where badges may go — typically the screen, so a badge for an element at
     /// the window's edge can hang just outside the window.
-    static func groups(badgeSize: CGSize, anchors: [CGRect], within bounds: CGRect) -> [Group] {
+    static func groups(
+        badgeSize: CGSize, anchors: [CGRect], within bounds: CGRect,
+        alignment: HintGeometry.BadgeAlignment = .leading
+    ) -> [Group] {
         var members: [[Int]] = anchors.indices.map { [$0] }
         var areas: [CGRect] = anchors
         while true {
-            let badges = placedBadges(badgeSize, areas: areas, in: bounds)
+            let badges = placedBadges(badgeSize, areas: areas, in: bounds, alignment: alignment)
             guard let merged = mergingCollisions(members: members, areas: areas, badges: badges)
             else {
                 return zip(members, badges).map { group, badge in
@@ -68,13 +71,18 @@ enum HintGrouping {
     /// changes the length (say 30 targets collapse into a dozen groups), the
     /// grouping is redone at the right size.
     static func groupsWithLabels(
-        anchors: [CGRect], within bounds: CGRect, badgeSize: (Int) -> CGSize
+        anchors: [CGRect], within bounds: CGRect, badgeSize: (Int) -> CGSize,
+        alignment: HintGeometry.BadgeAlignment = .leading
     ) -> (groups: [Group], labels: [String]) {
         let guessed = HintLabels.labelLength(for: anchors.count)
-        var result = groups(badgeSize: badgeSize(guessed), anchors: anchors, within: bounds)
+        var result = groups(
+            badgeSize: badgeSize(guessed), anchors: anchors, within: bounds, alignment: alignment
+        )
         let actual = HintLabels.labelLength(for: result.count)
         if actual != guessed {
-            result = groups(badgeSize: badgeSize(actual), anchors: anchors, within: bounds)
+            result = groups(
+                badgeSize: badgeSize(actual), anchors: anchors, within: bounds, alignment: alignment
+            )
         }
         return (result, HintLabels.labels(count: result.count))
     }
@@ -111,19 +119,24 @@ enum HintGrouping {
     ///   spot another badge prefers; only when no such gap exists do they
     ///   cluster. Displaced badges place last, so they yield to natural ones.
     private static func placedBadges(
-        _ size: CGSize, areas: [CGRect], in bounds: CGRect
+        _ size: CGSize, areas: [CGRect], in bounds: CGRect,
+        alignment: HintGeometry.BadgeAlignment
     ) -> [CGRect] {
-        let preferred = areas.map { HintGeometry.badgeRect(size, labeling: $0, in: bounds) }
+        let preferred = areas.map {
+            HintGeometry.badgeRect(size, labeling: $0, in: bounds, alignment: alignment)
+        }
         let displaced = areas.indices.map { index in
             preferred[index].origin != CGPoint(
-                x: areas[index].minX,
+                x: alignment.x(labeling: areas[index], width: size.width),
                 y: areas[index].minY - size.height - HintGeometry.caretHeight
             )
         }
         var placed = preferred
         var taken = areas.indices.compactMap { displaced[$0] ? nil : preferred[$0] }
         for index in areas.indices where displaced[index] {
-            let candidates = HintGeometry.badgeCandidates(size, labeling: areas[index], in: bounds)
+            let candidates = HintGeometry.badgeCandidates(
+                size, labeling: areas[index], in: bounds, alignment: alignment
+            )
             let spot = candidates.first { candidate in
                 guard isFree(candidate, avoiding: taken) else { return false }
                 if candidate == preferred[index] { return true }

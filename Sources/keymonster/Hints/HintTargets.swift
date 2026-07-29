@@ -120,14 +120,38 @@ enum HintGeometry {
     /// Height of the caret pointer drawn between a badge and what it labels.
     static let caretHeight: CGFloat = 5
 
+    /// How a badge lines up horizontally with what it labels.
+    enum BadgeAlignment {
+        /// Left edges flush. Right for hint mode, where the target is a button
+        /// or link far wider than the badge: the label reads as belonging to
+        /// the thing starting underneath it.
+        case leading
+        /// Centers match. Right for text jump, where the target is a single
+        /// glyph a few points wide — a badge is ~18pt, so hanging it off the
+        /// glyph's left edge leaves it visibly sitting a character to the
+        /// right of the thing it points at.
+        case centered
+
+        /// The badge's left edge for a badge of `width` labeling `area`.
+        func x(labeling area: CGRect, width: CGFloat) -> CGFloat {
+            switch self {
+            case .leading: return area.minX
+            case .centered: return area.midX - width / 2
+            }
+        }
+    }
+
     /// Where a badge of `size` prefers to sit for an element at `area`: hanging
-    /// above the element's top-left corner, caret pointing down at it, so the
-    /// label covers as little of the element as possible. Flips underneath the
-    /// element when the top of `bounds` leaves no room, and is always kept
-    /// inside `bounds`.
-    static func badgeRect(_ size: CGSize, labeling area: CGRect, in bounds: CGRect) -> CGRect {
+    /// above the element, `alignment` deciding how it lines up horizontally,
+    /// caret pointing down at it, so the label covers as little of the element
+    /// as possible. Flips underneath the element when the top of `bounds`
+    /// leaves no room, and is always kept inside `bounds`.
+    static func badgeRect(
+        _ size: CGSize, labeling area: CGRect, in bounds: CGRect,
+        alignment: BadgeAlignment = .leading
+    ) -> CGRect {
         var rect = CGRect(
-            x: area.minX,
+            x: alignment.x(labeling: area, width: size.width),
             y: area.minY - size.height - caretHeight,
             width: size.width,
             height: size.height
@@ -146,10 +170,12 @@ enum HintGeometry {
     /// `bounds` on its own side of the element; clamping one back over the
     /// element would defeat the point.
     static func badgeCandidates(
-        _ size: CGSize, labeling area: CGRect, in bounds: CGRect
+        _ size: CGSize, labeling area: CGRect, in bounds: CGRect,
+        alignment: BadgeAlignment = .leading
     ) -> [CGRect] {
-        let preferred = badgeRect(size, labeling: area, in: bounds)
-        let clampedX = min(max(area.minX, bounds.minX), max(bounds.minX, bounds.maxX - size.width))
+        let preferred = badgeRect(size, labeling: area, in: bounds, alignment: alignment)
+        let alignedX = alignment.x(labeling: area, width: size.width)
+        let clampedX = min(max(alignedX, bounds.minX), max(bounds.minX, bounds.maxX - size.width))
         let sideY = min(
             max(area.midY - size.height / 2, bounds.minY),
             max(bounds.minY, bounds.maxY - size.height)
