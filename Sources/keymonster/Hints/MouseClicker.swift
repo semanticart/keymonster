@@ -23,6 +23,25 @@ enum MouseClicker {
         }
     }
 
+    /// Like `clickOnceOverlaySettles`, but puts the pointer back where it
+    /// started once the click has landed. For modes whose click is only a
+    /// caret-placement vehicle, not a destination the user meant to point at.
+    ///
+    /// The restore waits its own beat: the posted click events each carry the
+    /// click point, and if the warp raced ahead of the window server processing
+    /// them, they would drag the pointer right back to the field.
+    @MainActor
+    static func clickOnceOverlaySettlesThenRestorePointer(at point: CGPoint, button: Button) {
+        let original = CGEvent(source: nil)?.location
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            click(at: point, button: button)
+            guard let original else { return }
+            try? await Task.sleep(for: .milliseconds(50))
+            CGWarpMouseCursorPosition(original)
+        }
+    }
+
     static func click(at point: CGPoint, button: Button) {
         let phases: [CGEventType] = button == .left
             ? [.leftMouseDown, .leftMouseUp]

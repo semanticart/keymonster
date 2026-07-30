@@ -76,8 +76,9 @@ enum AXFocusedText {
             // The caller dismissed first, but the overlay's window needs a beat
             // to actually leave the screen — clicking now would land on the
             // departing badges instead of the field. Same reason hint mode
-            // clicks its targets this way.
-            MouseClicker.clickOnceOverlaySettles(at: point, button: .left)
+            // clicks its targets this way. Unlike hint mode, the click is only
+            // how the caret gets placed, so the pointer goes back afterward.
+            MouseClicker.clickOnceOverlaySettlesThenRestorePointer(at: point, button: .left)
         }
     }
 
