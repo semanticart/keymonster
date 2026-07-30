@@ -15,7 +15,8 @@ struct SettingsView: View {
     private var conflicts: Set<Shortcut> {
         let singles = [
             settings.shortcut, settings.hintLeftShortcut, settings.hintRightShortcut,
-            settings.gridShortcut, settings.textJumpShortcut, settings.menuSearchShortcut
+            settings.gridShortcut, settings.scrollShortcut, settings.textJumpShortcut,
+            settings.menuSearchShortcut
         ]
         return ShortcutConflicts.conflicting(
             singles.compactMap { $0 }
@@ -114,9 +115,10 @@ struct SettingsView: View {
     }
 
     private var clickingTab: some View {
-        SettingsTabView(description: "Click anything on screen without touching the mouse: "
-            + "hints label everything clickable, and the grid reaches spots that have no "
-            + "element to label. Both require Accessibility permission.") {
+        SettingsTabView(description: "Use the mouse without touching it: hints label "
+            + "everything clickable, the grid reaches spots that have no element to "
+            + "label, and scroll panes puts J/K behind the scroll wheel. All require "
+            + "Accessibility permission.") {
             SettingsSection(
                 header: "Click Hints",
                 footer: "Overlay short labels on everything clickable in the active "
@@ -152,6 +154,23 @@ struct SettingsView: View {
                     isConflicting: isConflicting(settings.gridShortcut)
                 )
                 if settings.gridShortcut != nil && !accessTrusted {
+                    AccessibilityNotice()
+                }
+            }
+
+            SettingsSection(
+                header: "Scroll Panes",
+                footer: "Outline every scrollable pane in the active window and type a "
+                    + "pane's letter to start scrolling it with J and K — a lone pane "
+                    + "starts scrolling right away. Delete returns to the pane pick; "
+                    + "Esc stops."
+            ) {
+                ShortcutSettingRow(
+                    title: "Scroll",
+                    shortcut: $settings.scrollShortcut,
+                    isConflicting: isConflicting(settings.scrollShortcut)
+                )
+                if settings.scrollShortcut != nil && !accessTrusted {
                     AccessibilityNotice()
                 }
             }

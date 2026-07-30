@@ -64,6 +64,15 @@ final class HintOverlayView: NSView {
         return min(max(aim, badge.minY + halfBase + 1), badge.maxY - halfBase - 1)
     }
 
+    /// A scrollable pane scroll mode is showing. With a label, the pane is a
+    /// candidate: washed, outlined, and badged in its center for picking. With
+    /// no label it's the active pane being scrolled — outline only, so the
+    /// content stays readable while it moves.
+    struct Pane {
+        let rect: CGRect
+        let label: String?
+    }
+
     struct Zoom {
         let panel: CGRect
         let canvas: CGRect
@@ -80,6 +89,10 @@ final class HintOverlayView: NSView {
     var windowRegion: CGRect = .zero
 
     var badges: [Badge] = [] {
+        didSet { needsDisplay = true }
+    }
+
+    var panes: [Pane] = [] {
         didSet { needsDisplay = true }
     }
 
@@ -113,6 +126,9 @@ final class HintOverlayView: NSView {
         if let zoom {
             drawZoom(zoom)
         } else {
+            for pane in panes where pane.label?.hasPrefix(typed) ?? true {
+                drawPane(pane)
+            }
             let visible = badges.filter { $0.label.hasPrefix(typed) }
             // Areas go down first so a wash never dims a neighboring badge.
             for badge in visible where badge.isGroup {
@@ -180,6 +196,32 @@ final class HintOverlayView: NSView {
         path.lineWidth = 1
         path.stroke()
         string.draw(at: CGPoint(x: pill.minX + padding.width, y: pill.minY + padding.height))
+    }
+
+    /// The outline sits just inside the pane's edge so neighboring panes'
+    /// outlines never merge into one stroke.
+    private func drawPane(_ pane: Pane) {
+        let accent = NSColor.controlAccentColor
+        let path = NSBezierPath(
+            roundedRect: pane.rect.insetBy(dx: 2, dy: 2), xRadius: 6, yRadius: 6
+        )
+        if let label = pane.label {
+            accent.withAlphaComponent(0.12).setFill()
+            path.fill()
+            accent.withAlphaComponent(0.7).setStroke()
+            path.lineWidth = 2
+            path.stroke()
+            let size = BadgeMetrics.size(forLabelLength: label.count)
+            let rect = CGRect(
+                x: pane.rect.midX - size.width / 2, y: pane.rect.midY - size.height / 2,
+                width: size.width, height: size.height
+            )
+            drawBadge(Badge(rect: rect, label: label, target: pane.rect, caret: .hidden))
+        } else {
+            accent.withAlphaComponent(0.9).setStroke()
+            path.lineWidth = 3
+            path.stroke()
+        }
     }
 
     /// A translucent green wash over a cluster's area, tying the group's one

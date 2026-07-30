@@ -37,6 +37,21 @@ final class HintOverlay {
         install(around: windowFrame)?.banner = text
     }
 
+    /// Outlines scroll mode's panes (AX coordinates, like `show`). A labeled
+    /// pane is a pick candidate; a nil label marks the active pane being
+    /// scrolled. `banner` is the mode's key legend, drawn low on the window.
+    func showPanes(
+        _ panes: [(rect: CGRect, label: String?)], windowFrame: CGRect, banner: String? = nil
+    ) {
+        guard let view = install(around: windowFrame) else { return }
+        view.panes = panes.map {
+            HintOverlayView.Pane(
+                rect: $0.rect.offsetBy(dx: -origin.x, dy: -origin.y), label: $0.label
+            )
+        }
+        view.banner = banner
+    }
+
     /// Magnifies `area` (AX coordinates) in a panel over the same window, with
     /// one normal badge per member frame. Screenshots what's beneath the
     /// overlay itself; callers gate on `WindowCapture.ensureAccess()`, so a

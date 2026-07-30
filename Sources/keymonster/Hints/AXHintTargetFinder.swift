@@ -98,8 +98,10 @@ enum AXHintTargetFinder {
     }
 
     // MARK: - AX plumbing
+    // Internal (not private) so AXScrollPaneFinder can walk the same tree
+    // without duplicating the plumbing.
 
-    private static func focusedWindow(of app: AXUIElement) -> AXUIElement? {
+    static func focusedWindow(of app: AXUIElement) -> AXUIElement? {
         if let focused = element(of: app, attribute: kAXFocusedWindowAttribute) {
             return focused
         }
@@ -111,7 +113,7 @@ enum AXHintTargetFinder {
         return children(from: value).first
     }
 
-    private static func element(of parent: AXUIElement, attribute: String) -> AXUIElement? {
+    static func element(of parent: AXUIElement, attribute: String) -> AXUIElement? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(parent, attribute as CFString, &value) == .success,
               let value, CFGetTypeID(value) == AXUIElementGetTypeID() else {
@@ -121,14 +123,14 @@ enum AXHintTargetFinder {
 
     }
 
-    private static func frame(of element: AXUIElement) -> CGRect? {
+    static func frame(of element: AXUIElement) -> CGRect? {
         let values = attributes(of: element, [kAXPositionAttribute as String, kAXSizeAttribute as String])
         return frame(position: values[0], size: values[1])
     }
 
     /// Fetches several attributes in one IPC round trip. Failed attributes come
     /// back as nil entries; a failed call comes back as all-nil.
-    private static func attributes(of element: AXUIElement, _ names: [String]) -> [Any?] {
+    static func attributes(of element: AXUIElement, _ names: [String]) -> [Any?] {
         var values: CFArray?
         let error = AXUIElementCopyMultipleAttributeValues(
             element, names as CFArray, AXCopyMultipleAttributeOptions(), &values
@@ -146,7 +148,7 @@ enum AXHintTargetFinder {
         }
     }
 
-    private static func frame(position: Any?, size: Any?) -> CGRect? {
+    static func frame(position: Any?, size: Any?) -> CGRect? {
         guard let position = position as AnyObject?, let size = size as AnyObject?,
               CFGetTypeID(position) == AXValueGetTypeID(),
               CFGetTypeID(size) == AXValueGetTypeID() else {
@@ -163,7 +165,7 @@ enum AXHintTargetFinder {
         return CGRect(origin: point, size: dimensions)
     }
 
-    private static func children(from value: Any?) -> [AXUIElement] {
+    static func children(from value: Any?) -> [AXUIElement] {
         guard let array = value as? [AnyObject] else { return [] }
         return array.compactMap {
             guard CFGetTypeID($0) == AXUIElementGetTypeID() else { return nil }

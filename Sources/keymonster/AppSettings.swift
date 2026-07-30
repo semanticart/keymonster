@@ -71,6 +71,7 @@ final class AppSettings: ObservableObject {
     static let hintLeftShortcutKey = "hintLeftClickShortcut"
     static let hintRightShortcutKey = "hintRightClickShortcut"
     static let gridShortcutKey = "gridClickShortcut"
+    static let scrollShortcutKey = "scrollPanesShortcut"
     static let textJumpShortcutKey = "textJumpShortcut"
     static let menuSearchShortcutKey = "menuSearchShortcut"
 
@@ -130,6 +131,13 @@ final class AppSettings: ObservableObject {
         didSet { persist(gridShortcut, forKey: Self.gridShortcutKey) }
     }
 
+    /// Global shortcut that outlines every scrollable pane in the frontmost
+    /// window; picking one (automatic when there's only one) lets j/k scroll
+    /// it until Escape.
+    @Published var scrollShortcut: Shortcut? {
+        didSet { persist(scrollShortcut, forKey: Self.scrollShortcutKey) }
+    }
+
     /// Global shortcut that, over the focused text field, labels every
     /// occurrence of the next character typed; picking a label places the caret
     /// just before that character.
@@ -170,6 +178,7 @@ final class AppSettings: ObservableObject {
         hintLeftShortcut = Self.loadShortcut(defaults, key: Self.hintLeftShortcutKey)
         hintRightShortcut = Self.loadShortcut(defaults, key: Self.hintRightShortcutKey)
         gridShortcut = Self.loadShortcut(defaults, key: Self.gridShortcutKey)
+        scrollShortcut = Self.loadShortcut(defaults, key: Self.scrollShortcutKey)
         textJumpShortcut = Self.loadShortcut(defaults, key: Self.textJumpShortcutKey)
         menuSearchShortcut = Self.loadShortcut(defaults, key: Self.menuSearchShortcutKey)
         appShortcuts = Self.loadList(defaults, key: Self.appShortcutsKey)

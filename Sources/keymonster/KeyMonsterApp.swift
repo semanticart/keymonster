@@ -23,6 +23,12 @@ enum Entry {
             MainActor.assumeIsolated { SnapshotRunner.main() }
         } else if CommandLine.arguments.dropFirst().contains("screencast") {
             MainActor.assumeIsolated { ScreencastRunner.main() }
+        } else if CommandLine.arguments.dropFirst().contains("axdump") {
+            MainActor.assumeIsolated { AXDumpRunner.main() }
+        } else if CommandLine.arguments.dropFirst().contains("scrollscan") {
+            MainActor.assumeIsolated { ScrollScanRunner.main() }
+        } else if CommandLine.arguments.dropFirst().contains("scrolltest") {
+            MainActor.assumeIsolated { ScrollTestRunner.main() }
         } else {
             KeyMonsterApp.main()
         }
@@ -51,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let appFocuser = AppFocuser()
     private let hintMode = HintModeController()
     private let gridMode = GridModeController()
+    private let scrollMode = ScrollModeController()
     private let textJumpMode = TextJumpController()
     private let menuFinder = MenuFinderController()
     private let scriptRunner = ScriptRunner()
@@ -242,6 +249,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             (settings.hintLeftShortcut, { [weak self] in self?.hintMode.toggle(button: .left) }),
             (settings.hintRightShortcut, { [weak self] in self?.hintMode.toggle(button: .right) }),
             (settings.gridShortcut, { [weak self] in self?.gridMode.toggle() }),
+            (settings.scrollShortcut, { [weak self] in self?.scrollMode.toggle() }),
             (settings.textJumpShortcut, { [weak self] in self?.textJumpMode.toggle() }),
             (settings.menuSearchShortcut, { [weak self] in self?.menuFinder.toggle() })
         ])
