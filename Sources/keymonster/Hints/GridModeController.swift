@@ -56,6 +56,7 @@ final class GridModeController {
             NSSound.beep()
             return
         }
+        guard !SecureInput.blocksHintInput(windowFrame: windowFrame) else { return }
         guard keyTap.start() else {
             log.error("could not create event tap (Accessibility revoked?)")
             NSSound.beep()

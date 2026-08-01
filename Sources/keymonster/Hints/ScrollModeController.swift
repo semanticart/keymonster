@@ -59,6 +59,7 @@ final class ScrollModeController {
             NSSound.beep()
             return
         }
+        guard !SecureInput.blocksHintInput(windowFrame: scan.windowFrame) else { return }
         let session = Session(panes: scan.panes, windowFrame: scan.windowFrame)
         switch ScrollActivation.forPaneCount(scan.panes.count) {
         case .none:

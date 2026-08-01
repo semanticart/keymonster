@@ -60,6 +60,7 @@ final class HintModeController {
             NSSound.beep()
             return
         }
+        guard !SecureInput.blocksHintInput(windowFrame: scan.windowFrame) else { return }
         guard keyTap.start() else {
             log.error("could not create event tap (Accessibility revoked?)")
             NSSound.beep()

@@ -92,6 +92,7 @@ final class TextJumpController {
             NSSound.beep()
             return
         }
+        guard !SecureInput.blocksHintInput(windowFrame: windowFrame) else { return }
         guard keyTap.start() else {
             NSSound.beep()
             return
