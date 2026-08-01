@@ -108,6 +108,17 @@ final class HintOverlayView: NSView {
         didSet { needsDisplay = true }
     }
 
+    /// Which window edge the banner pill hugs. Prompts that precede input sit
+    /// high, where the eye starts; scroll mode's key legend sits low, clear of
+    /// the content being scrolled.
+    enum BannerEdge {
+        case top, bottom
+    }
+
+    var bannerEdge: BannerEdge = .top {
+        didSet { needsDisplay = true }
+    }
+
     /// When set, the group badges hide and this magnified panel draws instead.
     var zoom: Zoom? {
         didSet { needsDisplay = true }
@@ -183,11 +194,14 @@ final class HintOverlayView: NSView {
         let textSize = string.size()
         let padding = CGSize(width: 14, height: 8)
         let region = windowRegion.isEmpty ? bounds : windowRegion
+        let height = textSize.height + padding.height * 2
+        // Flipped view: minY is the window's top edge.
+        let inset = region.height * 0.12
         let pill = CGRect(
             x: region.midX - textSize.width / 2 - padding.width,
-            y: region.minY + region.height * 0.12,
+            y: bannerEdge == .top ? region.minY + inset : region.maxY - inset - height,
             width: textSize.width + padding.width * 2,
-            height: textSize.height + padding.height * 2
+            height: height
         )
         let path = NSBezierPath(roundedRect: pill, xRadius: 8, yRadius: 8)
         Self.fill.setFill()

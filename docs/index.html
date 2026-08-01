@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Key Monster — ditch the mouse, feed it your clipboard</title>
-<meta name="description" content="Key Monster is a keyboard-driven macOS menu bar app: vimium-style click hints, a zooming click grid, text jump, menu search, app-focus shortcuts, and searchable clipboard history.">
+<meta name="description" content="Key Monster is a keyboard-driven macOS menu bar app: vimium-style click hints, a zooming click grid, keyboard scrolling, text jump, menu search, app-focus shortcuts, and searchable clipboard history.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <meta property="og:title" content="Key Monster">
-<meta property="og:description" content="A menu-bar monster that gives your keyboard teeth — click, jump, and search anything, no mouse required — and remembers everything you copy.">
+<meta property="og:description" content="A menu-bar monster that gives your keyboard teeth — click, scroll, jump, and search anything, no mouse required — and remembers everything you copy.">
 <meta property="og:image" content="https://semanticart.github.io/keymonster/assets/cast/hero-poster.jpg">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -225,8 +225,11 @@
   }
 
   /* ===== Cards ===== */
-  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  /* Flex, not grid: with an odd card count the straggler centers itself
+     instead of leaving a hole in the last row. */
+  .cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 22px; }
   .card {
+    flex: 0 1 calc((100% - 44px) / 3);
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 16px;
@@ -286,6 +289,15 @@
     display: flex; align-items: center; justify-content: center;
     font-family: var(--mono); font-weight: 700; font-size: 20px; color: var(--fur);
   }
+
+  /* card art: scroll panes */
+  .art .pane {
+    position: absolute; border-radius: 5px;
+    border: 1.5px solid rgba(69, 179, 240, 0.65);
+    background: rgba(69, 179, 240, 0.1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .art .pane .badge { position: static; }
 
   /* card art: text jump */
   .art .textline {
@@ -354,12 +366,12 @@
     .hero-grid { grid-template-columns: 1fr; gap: 40px; }
     .split, .split.flip { grid-template-columns: 1fr; gap: 30px; }
     .split.flip .shot-frame { order: -1; }
-    .cards { grid-template-columns: 1fr 1fr; }
+    .card { flex-basis: calc((100% - 22px) / 2); }
     .privacy { grid-template-columns: 1fr; }
     .install-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 560px) {
-    .cards { grid-template-columns: 1fr; }
+    .card { flex-basis: 100%; }
     nav.links a:not(.gh-btn) { display: none; }
   }
 </style>
@@ -389,12 +401,12 @@
         <div class="hero-copy">
           <p class="eyebrow">A menu-bar monster for macOS</p>
           <h1><span class="chomp">Ditch the mouse.</span> Feed it your clipboard.</h1>
-          <p class="lede">Key Monster hands your whole Mac to the keyboard: <strong>click anything on screen, jump the caret, run any menu item, and hop between apps</strong> — no mouse required. And it quietly remembers everything you copy — text, images, files — handing it back from a fast, searchable panel.</p>
+          <p class="lede">Key Monster hands your whole Mac to the keyboard: <strong>click anything on screen, scroll any pane, jump the caret, run any menu item, and hop between apps</strong> — no mouse required. And it quietly remembers everything you copy — text, images, files — handing it back from a fast, searchable panel.</p>
         </div>
         <div class="hero-cast">
           <video id="hero-cast-video" width="2280" height="1800" autoplay muted loop playsinline controls
                  preload="metadata" poster="assets/cast/hero-poster.jpg"
-                 aria-label="Narrated screencast (starts muted — unmute for the voiceover): click hints label every control in a window and typing 'g' clicks Publish; the click grid overlays keyboard-shaped cells and magnifies the picked cell in a loupe before clicking; text jump labels every 'm' in a note and typing one drops the caret before 'mouse'; Menu Search fuzzy-finds Safari's 'Reopen Last Closed Tab' from the query 're'; then typing 'monster' filters the clipboard history live and previews matches, including a copied image full-size.">
+                 aria-label="Narrated screencast (starts muted — unmute for the voiceover): click hints label every control in a window and typing 'g' clicks Publish; the click grid overlays keyboard-shaped cells and magnifies the picked cell in a loupe before clicking; scroll mode outlines the window's scrollable panes with letters and, once picked, the J key scrolls its checklist in wheel-like pulses; text jump labels every 'm' in a note and typing one drops the caret before 'mouse'; Menu Search fuzzy-finds Safari's 'Reopen Last Closed Tab' from the query 're'; then typing 'monster' filters the clipboard history live and previews matches, including a copied image full-size.">
             <source src="assets/cast/hero-voiced.mp4" type="video/mp4">
           </video>
         </div>
@@ -407,6 +419,7 @@
       <div class="chord-strip" aria-hidden="true">
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">F</kbd> click hints</span>
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">G</kbd> grid</span>
+        <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">S</kbd> scroll</span>
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">J</kbd> text jump</span>
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">V</kbd> history</span>
         <span>— just our picks: nothing comes pre-bound, you record your own in Settings</span>
@@ -449,6 +462,17 @@
           </div>
           <h3>Grid click</h3>
           <p>No element to label? Overlay a grid where each cell mirrors your keyboard — the key under your finger names the cell in the same spot on screen. Each press zooms in like a loupe until the click lands, pixel-precise.</p>
+        </div>
+        <div class="card" data-reveal>
+          <div class="art" aria-hidden="true">
+            <div class="mini-win">
+              <div class="bar"><i></i><i></i><i></i></div>
+              <span class="pane" style="left:5%; top:24%; width:27%; height:66%"><span class="badge">F</span></span>
+              <span class="pane" style="left:38%; top:24%; width:57%; height:66%"><span class="badge">J</span></span>
+            </div>
+          </div>
+          <h3>Scroll panes</h3>
+          <p>Every scrollable pane in the window gets an outline and a letter — pick one and <strong>J and K become the scroll wheel</strong>. Works even in apps that hide their scroll bars from the keyboard, Electron included.</p>
         </div>
         <div class="card" data-reveal>
           <div class="art" aria-hidden="true">
@@ -577,7 +601,7 @@
 <span class="c"># builds a signed release .app and puts it in /Applications</span></code></pre>
         </div>
         <div class="perms">
-          <div class="perm"><span class="dot">●</span><span><strong>Accessibility</strong> — asked for on demand; powers auto-paste, click hints, the grid, and text jump.</span></div>
+          <div class="perm"><span class="dot">●</span><span><strong>Accessibility</strong> — asked for on demand; powers auto-paste, click hints, the grid, scroll panes, and text jump.</span></div>
           <div class="perm"><span class="dot">●</span><span><strong>Screen Recording</strong> — asked for when you first zoom; the grid loupe and hint zoom stay off until it's granted. Captures are single still frames kept only in memory, never saved — and despite the permission's name, no audio is ever recorded.</span></div>
           <div class="perm"><span class="dot">●</span><span><strong>Everything is configurable</strong> — each feature has its own shortcut recorder in Settings, and features you don't bind stay out of your way.</span></div>
         </div>

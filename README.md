@@ -8,7 +8,7 @@ A keyboard-driven macOS utility built around your clipboard. Key Monster lives i
 the menu bar, quietly records what you copy, and lets you search back through it
 and paste any earlier entry from a fast, centered panel — plus a set of
 keyboard-only ways to drive the rest of your Mac: focus apps, click anything on
-screen, and jump the caret through text, all without the mouse.
+screen, scroll any pane, and jump the caret through text, all without the mouse.
 
 ## Features
 
@@ -77,6 +77,13 @@ screen, and jump the caret through text, all without the mouse.
   any other chord dismisses. Requires Accessibility permission; the zoomed
   loupe needs Screen Recording (prompted on first use, and zooming stays
   unavailable until it's granted).
+- **Scroll panes** — press a shortcut and every scrollable pane in the frontmost
+  window is outlined with a letter badge; type a pane's letter and `J` / `K`
+  scroll it (hold for key repeat) until `Esc`, a real click, or any other chord
+  dismisses. A window with a single scrollable pane skips the pick and scrolls
+  immediately; `Delete` returns to the pane pick. Works on native scroll areas
+  and on web content in Safari, Chrome, and Electron apps, even when the pane
+  hides its scroll bars. Requires Accessibility permission.
 - **Text jump (jump to character)** — press a shortcut while a text field is
   focused, then any character; every visible occurrence of it in the field grows
   a short label (one letter when there are only a few, two otherwise), and typing

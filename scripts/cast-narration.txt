@@ -4,6 +4,7 @@
 # step with the recorder.begin() calls in the Screencast sources.
 hints|Meet Key Monster. Press one hot key, and every clickable thing grows a key. Type it to click.
 grid|Nothing to label? A keyboard-shaped grid zooms in until you're right on target.
+scroll|Scrolling too: pick any pane by letter, and J and K stand in for the wheel.
 jump|In text, you can jump the cursor straight to any character you can see.
 menu|Run any menu item by name. Just start typing.
 history|And everything you copy is remembered, searchable, and one keystroke away. That's Key Monster.

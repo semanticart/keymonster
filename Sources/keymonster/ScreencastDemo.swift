@@ -25,6 +25,16 @@ enum DemoWindowLayout {
     static let link = CGRect(x: 232, y: 300, width: 320, height: 20)
     static let publishButton = CGRect(x: 796, y: 582, width: 100, height: 34)
 
+    /// The two scrollable panes the scroll scene outlines: everything below the
+    /// title bar, split at the sidebar's edge.
+    static var sidebarPane: CGRect {
+        CGRect(x: 0, y: titleBarHeight, width: sidebarWidth, height: size.height - titleBarHeight)
+    }
+    static var contentPane: CGRect {
+        CGRect(x: sidebarWidth, y: titleBarHeight,
+               width: size.width - sidebarWidth, height: size.height - titleBarHeight)
+    }
+
     static var publishCenter: CGPoint { CGPoint(x: publishButton.midX, y: publishButton.midY) }
 
     /// The window's rect in overlay-view coordinates (shifted by the margin).
@@ -49,6 +59,8 @@ final class DemoWindowModel: ObservableObject {
     @Published var editorMode = false
     /// The editor's caret as (line, column) into `DemoEditorLayout.lines`.
     @Published var caret: (line: Int, column: Int)?
+    /// How far the content pane's copy has scrolled up, in points; the Publish button stays put.
+    @Published var contentScroll: CGFloat = 0
 }
 
 struct DemoWindow: View {
@@ -138,24 +150,7 @@ struct DemoWindow: View {
 
     private var content: some View {
         ZStack(alignment: .topLeading) {
-            Text("Launch checklist")
-                .font(.system(size: 20, weight: .bold)).foregroundStyle(text)
-                .position(x: 232 + 82, y: 84)
-            ForEach(Array(checklist.enumerated()), id: \.offset) { index, line in
-                HStack(spacing: 10) {
-                    Text(line.done ? "✓" : "▢")
-                        .font(.system(size: 13)).foregroundStyle(line.done ? accent : faint)
-                    Text(line.title).font(.system(size: 13)).foregroundStyle(text)
-                        .strikethrough(line.done, color: faint)
-                }
-                .frame(width: 400, height: 24, alignment: .leading)
-                .position(x: 232 + 200, y: 132 + CGFloat(index) * 34)
-            }
-            Text("github.com/semanticart/keymonster")
-                .font(.system(size: 13)).underline().foregroundStyle(linkBlue)
-                .frame(width: DemoWindowLayout.link.width,
-                       height: DemoWindowLayout.link.height, alignment: .leading)
-                .position(x: DemoWindowLayout.link.midX, y: DemoWindowLayout.link.midY)
+            scrollingCopy.offset(y: -model.contentScroll)
             Text("Publish")
                 .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
                 .frame(width: DemoWindowLayout.publishButton.width,
@@ -165,15 +160,15 @@ struct DemoWindow: View {
                 .position(x: DemoWindowLayout.publishButton.midX,
                           y: DemoWindowLayout.publishButton.midY)
         }
-    }
-
-    private var checklist: [(title: String, done: Bool)] {
-        [
-            ("write the README", true),
-            ("record the hero screencast", true),
-            ("tag v1.0 and open the gates", false),
-            ("feed the monster something nice", false)
-        ]
+        // Clip to the content pane so scrolled-away copy (and the below-the-fold
+        // rows waiting for the scroll scene) never leak into the chrome.
+        .mask(
+            Rectangle()
+                .frame(width: DemoWindowLayout.contentPane.width,
+                       height: DemoWindowLayout.contentPane.height)
+                .position(x: DemoWindowLayout.contentPane.midX,
+                          y: DemoWindowLayout.contentPane.midY)
+        )
     }
 }
 
@@ -184,8 +179,10 @@ struct DemoWindow: View {
 @MainActor
 final class HintOverlayModel: ObservableObject {
     @Published var badges: [HintOverlayView.Badge] = []
+    @Published var panes: [HintOverlayView.Pane] = []
     @Published var typed = ""
     @Published var banner: String?
+    @Published var bannerEdge: HintOverlayView.BannerEdge = .top
 }
 
 struct HintOverlayHost: NSViewRepresentable {
@@ -199,8 +196,10 @@ struct HintOverlayHost: NSViewRepresentable {
 
     func updateNSView(_ view: HintOverlayView, context: Context) {
         view.badges = model.badges
+        view.panes = model.panes
         view.typed = model.typed
         view.banner = model.banner
+        view.bannerEdge = model.bannerEdge
     }
 }
 

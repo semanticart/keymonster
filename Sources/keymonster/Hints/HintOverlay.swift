@@ -49,6 +49,7 @@ final class HintOverlay {
                 rect: $0.rect.offsetBy(dx: -origin.x, dy: -origin.y), label: $0.label
             )
         }
+        view.bannerEdge = .bottom
         view.banner = banner
     }
 

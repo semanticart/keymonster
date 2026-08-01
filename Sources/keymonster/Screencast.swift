@@ -9,7 +9,8 @@ private let log = Logger(subsystem: "keymonster", category: "screencast")
 ///
 /// `keymonster screencast [--out DIR] [--fps N] [--min SCENES]` drives the
 /// real panels and overlays through a choreographed demo — click hints, the
-/// grid loupe, text jump, menu search, then the clipboard history — against
+/// grid loupe, scroll panes, text jump, menu search, then the clipboard
+/// history — against
 /// the same seeded demo content as `snapshot --demo`, capturing one PNG per
 /// frame plus a `poster.png`. Nothing on screen is real user data, so the
 /// result is safe to publish. `make site-cast` records the frames and encodes
@@ -52,6 +53,7 @@ enum ScreencastRunner {
 
         hintScene(recorder: recorder, window: window)
         gridScene(recorder: recorder, window: window)
+        scrollScene(recorder: recorder, window: window)
         textJumpScene(recorder: recorder, window: window)
         menuScene(recorder: recorder, window: window)
         historyScene(recorder: recorder, window: window)
