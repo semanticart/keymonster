@@ -1,5 +1,8 @@
 import AppKit
 import CoreGraphics
+import os.log
+
+private let log = Logger(subsystem: "keymonster", category: "hints.keytap")
 
 /// Smuggles a non-Sendable value across an isolation boundary that is known to
 /// stay on one thread (the tap callback and its handling both run on main).
@@ -100,16 +103,20 @@ final class HintKeyTap {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             // The system disables taps that stall; re-arm and carry on.
+            log.error("tap disabled (\(type.rawValue)); re-arming")
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return false
         case .leftMouseDown, .rightMouseDown:
             handler?(.cancel)
             return false
         case .keyDown:
+            let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
             if let key = classify(event) {
+                log.debug("keyDown \(keyCode): swallowed as hint input")
                 handler?(key)
                 return true // this keystroke belongs to hint mode
             }
+            log.debug("keyDown \(keyCode): not hint input, passing through")
             handler?(.cancel)
             return false
         default:

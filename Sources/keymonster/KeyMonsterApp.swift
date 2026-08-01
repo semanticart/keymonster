@@ -29,6 +29,8 @@ enum Entry {
             MainActor.assumeIsolated { ScrollScanRunner.main() }
         } else if CommandLine.arguments.dropFirst().contains("scrolltest") {
             MainActor.assumeIsolated { ScrollTestRunner.main() }
+        } else if CommandLine.arguments.dropFirst().contains("keysim") {
+            MainActor.assumeIsolated { KeySimRunner.main() }
         } else {
             KeyMonsterApp.main()
         }
