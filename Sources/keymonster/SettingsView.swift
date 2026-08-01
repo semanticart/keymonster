@@ -46,8 +46,8 @@ struct SettingsView: View {
                 .tabItem { Label("Clipboard", systemImage: "doc.on.clipboard") }
             focusTab
                 .tabItem { Label("Focus", systemImage: "macwindow.on.rectangle") }
-            clickingTab
-                .tabItem { Label("Clicking", systemImage: "cursorarrow.rays") }
+            mouseTab
+                .tabItem { Label("Mouse", systemImage: "cursorarrow.rays") }
             textTab
                 .tabItem { Label("Text", systemImage: "character.cursor.ibeam") }
             menusTab
@@ -114,7 +114,7 @@ struct SettingsView: View {
         }
     }
 
-    private var clickingTab: some View {
+    private var mouseTab: some View {
         SettingsTabView(description: "Use the mouse without touching it: hints label "
             + "everything clickable, the grid reaches spots that have no element to "
             + "label, and scroll panes puts J/K behind the scroll wheel. All require "
