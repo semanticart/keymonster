@@ -80,10 +80,7 @@ final class TextJumpController {
     }
 
     private func activate() {
-        guard Paster.isTrusted else {
-            Paster.requestAccess()
-            return
-        }
+        guard KeyTapAccess.ensureGranted() else { return }
         guard let focus = AXFocusedText.focused() else {
             NSSound.beep()
             return

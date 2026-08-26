@@ -50,11 +50,7 @@ final class HintModeController {
     }
 
     private func activate(button: MouseClicker.Button) {
-        guard Paster.isTrusted else {
-            log.info("hint mode needs Accessibility; prompting")
-            Paster.requestAccess()
-            return
-        }
+        guard KeyTapAccess.ensureGranted() else { return }
         guard let scan = AXHintTargetFinder.scan(), !scan.targets.isEmpty else {
             log.info("no hint targets in the frontmost window")
             NSSound.beep()

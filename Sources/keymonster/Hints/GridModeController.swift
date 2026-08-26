@@ -46,11 +46,7 @@ final class GridModeController {
     }
 
     private func activate() {
-        guard Paster.isTrusted else {
-            log.info("grid mode needs Accessibility; prompting")
-            Paster.requestAccess()
-            return
-        }
+        guard KeyTapAccess.ensureGranted() else { return }
         guard let windowFrame = AXHintTargetFinder.focusedWindowFrame(), !windowFrame.isEmpty else {
             log.info("no focused window for grid mode")
             NSSound.beep()

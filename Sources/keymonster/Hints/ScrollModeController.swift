@@ -50,11 +50,7 @@ final class ScrollModeController {
     }
 
     private func activate() {
-        guard Paster.isTrusted else {
-            log.info("scroll mode needs Accessibility; prompting")
-            Paster.requestAccess()
-            return
-        }
+        guard KeyTapAccess.ensureGranted() else { return }
         guard let scan = AXScrollPaneFinder.scan() else {
             NSSound.beep()
             return

@@ -1,4 +1,4 @@
-.PHONY: build run test axtest fixture clean lint app snapshot site-shots site-cast site-cast-voiced icon install dist notarize release
+.PHONY: build run test axtest fixture clean lint app snapshot site-shots site-cast site-cast-voiced icon install dist notarize release secinput
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -48,6 +48,14 @@ app: build
 run: app
 	pkill -x keymonster || true
 	open "$(APP_DIR)"
+
+# Live monitor for Secure Keyboard Entry, to find what's blocking key taps on a
+# machine. Leave it running and quit suspects until it reports `off`. The named
+# holder is the frontmost app, NOT reliably the enabler — trust the on/off flag.
+# `make secinput SEC_ARGS=once` for a one-shot; `SEC_ARGS=hold:5` to self-test.
+SEC_ARGS ?=
+secinput: build
+	swift run keymonster secinput $(SEC_ARGS)
 
 # Render the history panel headlessly against the real on-disk history and write
 # one PNG per selection state. Override args, e.g. `make snapshot SNAP_ARGS="--out /tmp/shots --count 8"`.
