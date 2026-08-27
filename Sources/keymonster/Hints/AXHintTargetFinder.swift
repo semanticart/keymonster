@@ -19,6 +19,19 @@ enum AXHintTargetFinder {
     /// simply don't get hints.
     private static let maxElements = 3000
     private static let timeBudget: TimeInterval = 0.5
+    /// How long to keep retrying a web-backed app whose content tree hasn't
+    /// materialized yet (see `scan`). A fallback for activating hint mode before
+    /// `AXPrewarmer` has finished; bounded so a native-only window in a web app,
+    /// or a blank page, can't stall activation.
+    private static let tenacityBudget: TimeInterval = 1.0
+
+    /// One breadth-first pass over the window; `foundWebContent` reports whether
+    /// a populated `AXWebArea` was seen, which tells `scan` the web tree has been
+    /// built (as opposed to only the native chrome).
+    struct Walk {
+        var targets: [HintTarget]
+        var foundWebContent: Bool
+    }
 
     static func scan() -> Scan? {
         guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
@@ -26,22 +39,52 @@ enum AXHintTargetFinder {
 
         // Browsers and Electron apps only build an accessibility tree for their
         // web content once an assistive client asks for it. These app-level
-        // attributes are the conventional ask: WebKit/AppKit honor the first,
-        // Chromium and Electron the second. Apps that don't understand them
-        // return an error, which is fine to ignore.
+        // attributes are that ask: WebKit/AppKit honor the first, Chromium and
+        // Electron the second. (Chromium returns an error from the set yet still
+        // acts on it, so the return value is not a usable signal — we classify
+        // the app by its bundle instead. `AXPrewarmer` normally makes this ask on
+        // app switch, so the tree is usually already built by now.)
         AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
         AXUIElementSetAttributeValue(axApp, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+        let webBacked = WebApp.isWebBacked(app)
 
         guard let window = focusedWindow(of: axApp), let windowFrame = frame(of: window) else {
             log.info("no focused window for \(app.bundleIdentifier ?? "?")")
             return nil
         }
 
+        // The first pass on a freshly-enabled Chromium/Electron window often sees
+        // only the native chrome (toolbar, traffic lights) because the AXWebArea
+        // hasn't been built yet. Re-walk until the web content shows up, bounded
+        // so a native window or an empty page can't stall activation.
+        let deadline = Date().addingTimeInterval(tenacityBudget)
+        var result = walk(window: window, windowFrame: windowFrame)
+        var attempts = 1
+        while webBacked, !result.foundWebContent, Date() < deadline {
+            usleep(50_000)
+            result = walk(window: window, windowFrame: windowFrame)
+            attempts += 1
+        }
+
+        // The walk only dedupes pixel-identical frames; this folds nested
+        // wrappers and near-coincident frames that are really one click.
+        let coalesced = HintTargetFilter.coalesced(result.targets)
+        log.debug("""
+            scan: \(result.targets.count) targets (\(coalesced.count) coalesced) in \
+            \(attempts) walk(s), webBacked=\(webBacked), webContent=\(result.foundWebContent)
+            """)
+        return Scan(targets: coalesced, windowFrame: windowFrame)
+    }
+
+    /// A single breadth-first sweep of `window` for clickable, on-screen targets.
+    /// Internal so the `hintscan` debug runner can measure a lone pass.
+    static func walk(window: AXUIElement, windowFrame: CGRect) -> Walk {
         let start = Date()
         var targets: [HintTarget] = []
         var seenFrames: Set<String> = []
         var queue: [AXUIElement] = [window]
         var head = 0
+        var foundWebContent = false
 
         while head < queue.count, head < maxElements, Date().timeIntervalSince(start) < timeBudget {
             let element = queue[head]
@@ -55,6 +98,13 @@ enum AXHintTargetFinder {
             ])
             let role = values[0] as? String
             let elementFrame = frame(position: values[1], size: values[2])
+            let childElements = children(from: values[3])
+
+            // A web area with children means Chromium/WebKit has built the
+            // content subtree — the signal `scan` waits for.
+            if role == "AXWebArea", !childElements.isEmpty {
+                foundWebContent = true
+            }
 
             if let elementFrame,
                HintTargetFilter.isVisible(frame: elementFrame, within: windowFrame),
@@ -72,17 +122,9 @@ enum AXHintTargetFinder {
             if let elementFrame, !elementFrame.isEmpty, !elementFrame.intersects(windowFrame) {
                 continue
             }
-            queue.append(contentsOf: children(from: values[3]))
+            queue.append(contentsOf: childElements)
         }
-
-        // The set above only catches pixel-identical frames; this folds nested
-        // wrappers and near-coincident frames that are really one click.
-        let coalesced = HintTargetFilter.coalesced(targets)
-        let elapsed = -start.timeIntervalSinceNow
-        log.debug(
-            "scanned \(head) elements in \(elapsed)s, \(targets.count) targets, \(coalesced.count) coalesced"
-        )
-        return Scan(targets: coalesced, windowFrame: windowFrame)
+        return Walk(targets: targets, foundWebContent: foundWebContent)
     }
 
     /// The frontmost app's focused window frame in AX coordinates, for overlays

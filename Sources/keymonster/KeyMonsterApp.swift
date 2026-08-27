@@ -33,6 +33,8 @@ enum Entry {
             MainActor.assumeIsolated { KeySimRunner.main() }
         } else if CommandLine.arguments.dropFirst().contains("secinput") {
             MainActor.assumeIsolated { SecInputRunner.main() }
+        } else if CommandLine.arguments.dropFirst().contains("hintscan") {
+            MainActor.assumeIsolated { HintScanRunner.main() }
         } else {
             KeyMonsterApp.main()
         }
@@ -71,11 +73,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var settingsSizeObservation: NSKeyValueObservation?
     private var secureInputWindow: NSWindow?
     private let secureInputMonitor = SecureInputMonitor()
+    private let axPrewarmer = AXPrewarmer()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.info("applicationDidFinishLaunching")
         NSApp.setActivationPolicy(.accessory)
         KeyTapAccess.logStatus()
+        axPrewarmer.start()
 
         do {
             let store = try SQLiteClipStore(url: SQLiteClipStore.defaultURL())
