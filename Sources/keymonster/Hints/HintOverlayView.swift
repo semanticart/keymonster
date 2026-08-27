@@ -185,33 +185,6 @@ final class HintOverlayView: NSView {
         }
     }
 
-    private func drawBanner(_ text: String) {
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
-            .foregroundColor: Self.ink
-        ]
-        let string = NSAttributedString(string: text, attributes: attributes)
-        let textSize = string.size()
-        let padding = CGSize(width: 14, height: 8)
-        let region = windowRegion.isEmpty ? bounds : windowRegion
-        let height = textSize.height + padding.height * 2
-        // Flipped view: minY is the window's top edge.
-        let inset = region.height * 0.12
-        let pill = CGRect(
-            x: region.midX - textSize.width / 2 - padding.width,
-            y: bannerEdge == .top ? region.minY + inset : region.maxY - inset - height,
-            width: textSize.width + padding.width * 2,
-            height: height
-        )
-        let path = NSBezierPath(roundedRect: pill, xRadius: 8, yRadius: 8)
-        Self.fill.setFill()
-        path.fill()
-        Self.stroke.setStroke()
-        path.lineWidth = 1
-        path.stroke()
-        string.draw(at: CGPoint(x: pill.minX + padding.width, y: pill.minY + padding.height))
-    }
-
     /// The outline sits just inside the pane's edge so neighboring panes'
     /// outlines never merge into one stroke.
     private func drawPane(_ pane: Pane) {
@@ -325,5 +298,51 @@ final class HintOverlayView: NSView {
         stroke.setStroke()
         edges.lineWidth = 1
         edges.stroke()
+    }
+}
+
+private extension HintOverlayView {
+    /// A centered pill message hugging `bannerEdge`. Wraps to multiple lines,
+    /// capping its width so a long prompt never runs past a narrow window.
+    func drawBanner(_ text: String) {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineSpacing = 2
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+            .foregroundColor: Self.ink,
+            .paragraphStyle: paragraph
+        ]
+        let string = NSAttributedString(string: text, attributes: attributes)
+        let padding = CGSize(width: 14, height: 8)
+        let region = windowRegion.isEmpty ? bounds : windowRegion
+        let maxTextWidth = min(max(region.width * 0.8, 240), 560)
+        let measured = string.boundingRect(
+            with: CGSize(width: maxTextWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading]
+        )
+        let textSize = CGSize(width: ceil(measured.width), height: ceil(measured.height))
+        let height = textSize.height + padding.height * 2
+        // Flipped view: minY is the window's top edge.
+        let inset = region.height * 0.12
+        let pill = CGRect(
+            x: region.midX - textSize.width / 2 - padding.width,
+            y: bannerEdge == .top ? region.minY + inset : region.maxY - inset - height,
+            width: textSize.width + padding.width * 2,
+            height: height
+        )
+        let path = NSBezierPath(roundedRect: pill, xRadius: 8, yRadius: 8)
+        Self.fill.setFill()
+        path.fill()
+        Self.stroke.setStroke()
+        path.lineWidth = 1
+        path.stroke()
+        string.draw(
+            with: CGRect(
+                x: pill.minX + padding.width, y: pill.minY + padding.height,
+                width: textSize.width, height: textSize.height
+            ),
+            options: [.usesLineFragmentOrigin, .usesFontLeading]
+        )
     }
 }

@@ -86,8 +86,14 @@ enum SecureInput {
         guard snapshot.enabled else { return false }
 
         let message = snapshot.attributableHolderName.map {
-            "\($0) is holding Secure Keyboard Entry — keys can't reach Key Monster"
-        } ?? "Secure Keyboard Entry is active — keys can't reach Key Monster"
+            """
+            \($0) is holding Secure Keyboard Entry — keys can't reach Key Monster.
+            Quit it (or any keystroke viewer) to release it.
+            """
+        } ?? """
+            Secure Keyboard Entry is on — keys can't reach Key Monster.
+            Quit any keystroke viewer, like Karabiner-Elements' Event Viewer, to release it.
+            """
 
         log.error("""
             secure keyboard entry is on (reported pid \(snapshot.holderPID ?? -1), \

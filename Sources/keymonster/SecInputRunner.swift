@@ -44,6 +44,12 @@ enum SecInputRunner {
             exit(0)
         }
 
+        if rest.first == "banner" {
+            let dir = rest.count > 1 ? rest[1] : NSTemporaryDirectory() + "keymonster-secinput-shots"
+            renderBanners(into: dir)
+            exit(0)
+        }
+
         if rest.contains("once") {
             print(header)
             print("\(timestamp())  \(stateDescription())")
@@ -152,6 +158,44 @@ enum SecInputRunner {
             window.orderFront(nil)
             SnapshotRunner.settle(0.5)
             let url = outURL.appendingPathComponent("secinput-\(suffix).png")
+            if SnapshotRunner.capture(window, to: url) { print(url.path) }
+            window.orderOut(nil)
+        }
+        exit(0)
+    }
+
+    /// Render the block banner over a mock window region, both message variants,
+    /// so the two-line wrap can be eyeballed without triggering secure input live.
+    private static func renderBanners(into dir: String) {
+        NSApplication.shared.setActivationPolicy(.accessory)
+        let outURL = URL(fileURLWithPath: dir, isDirectory: true)
+        try? FileManager.default.createDirectory(at: outURL, withIntermediateDirectories: true)
+        let size = NSSize(width: 900, height: 260)
+        let messages = [
+            ("named", """
+                Karabiner-EventViewer is holding Secure Keyboard Entry — keys can't reach Key Monster.
+                Quit it (or any keystroke viewer) to release it.
+                """),
+            ("generic", """
+                Secure Keyboard Entry is on — keys can't reach Key Monster.
+                Quit any keystroke viewer, like Karabiner-Elements' Event Viewer, to release it.
+                """)
+        ]
+        for (name, text) in messages {
+            let window = NSWindow(
+                contentRect: NSRect(origin: .zero, size: size),
+                styleMask: [.borderless], backing: .buffered, defer: false
+            )
+            window.setFrameOrigin(NSPoint(x: -10_000, y: -10_000))
+            let view = HintOverlayView(frame: NSRect(origin: .zero, size: size))
+            view.wantsLayer = true
+            view.layer?.backgroundColor = NSColor(calibratedWhite: 0.25, alpha: 1).cgColor
+            view.windowRegion = view.bounds
+            view.banner = text
+            window.contentView = view
+            window.orderFront(nil)
+            SnapshotRunner.settle(0.3)
+            let url = outURL.appendingPathComponent("banner-\(name).png")
             if SnapshotRunner.capture(window, to: url) { print(url.path) }
             window.orderOut(nil)
         }

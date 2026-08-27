@@ -128,9 +128,10 @@ struct SecureInputDiagnosticsView: View {
             Text("""
                 The named app is usually a red herring — macOS reports whichever app is \
                 frontmost, not the one that turned Secure Keyboard Entry on. To find the real \
-                culprit, quit suspects one at a time (Chromium apps like Chrome, Slack, or VS \
-                Code with a focused password field; password managers; Terminal's Secure \
-                Keyboard Entry). When this flips to green, the app you just quit was holding it.
+                culprit, quit suspects one at a time: keystroke viewers like Karabiner-Elements' \
+                Event Viewer; Chromium apps (Chrome, Slack, VS Code) with a focused password \
+                field; password managers; Terminal's Secure Keyboard Entry. When this flips to \
+                green, the app you just quit was holding it.
                 """)
                 .font(.callout)
                 .foregroundStyle(.secondary)
