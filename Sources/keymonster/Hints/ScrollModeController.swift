@@ -28,7 +28,7 @@ final class ScrollModeController {
     }
 
     private let overlay = HintOverlay()
-    private let keyTap = HintKeyTap()
+    private let keyTap = HintKeyInput()
     private var phase: Phase = .inactive
 
     var isActive: Bool {
@@ -50,12 +50,12 @@ final class ScrollModeController {
     }
 
     private func activate() {
-        guard KeyTapAccess.ensureGranted() else { return }
+        guard HintKeyInput.ensureAccess() else { return }
         guard let scan = AXScrollPaneFinder.scan() else {
             NSSound.beep()
             return
         }
-        guard !SecureInput.blocksHintInput(windowFrame: scan.windowFrame) else { return }
+        guard !HintKeyInput.secureInputBlocks(windowFrame: scan.windowFrame) else { return }
         let session = Session(panes: scan.panes, windowFrame: scan.windowFrame)
         switch ScrollActivation.forPaneCount(scan.panes.count) {
         case .none:
@@ -71,7 +71,7 @@ final class ScrollModeController {
     }
 
     private func tapFailed() {
-        log.error("could not create event tap (Accessibility revoked?)")
+        log.error("could not start key capture (Accessibility revoked?)")
         NSSound.beep()
     }
 

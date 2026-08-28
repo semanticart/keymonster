@@ -43,7 +43,10 @@ All paths are relative to `Sources/keymonster/`.
 | `Hints/HintGrouping.swift`              | Merges targets whose labels would collide into green area groups.                                                                                               |
 | `Hints/HintZoom.swift`                  | Geometry of the zoomed view: panel placement, magnification, label spots.                                                                                       |
 | `Hints/WindowCapture.swift`             | Screenshots the region beneath the overlay for the zoomed view.                                                                                                 |
-| `Hints/HintKeyTap.swift`                | CGEvent tap that captures keystrokes while hints or the grid are showing.                                                                                       |
+| `Hints/HintKeyInput.swift`              | Key-capture front door for the modes: picks the tap or the focus panel per activation from the experimental `focusKeyCapture` setting, and hosts the permission/secure-input gates. |
+| `Hints/HintKeyClassifier.swift`         | The keystroke→`HintKeyEvent` rules shared by both capture backends (pure, tested).                                                                              |
+| `Hints/HintKeyTap.swift`                | CGEvent tap backend: captures keystrokes invisibly, but needs Input Monitoring and is starved by Secure Keyboard Entry.                                          |
+| `Hints/HintKeyPanel.swift`              | Focus-capture backend (experimental): an invisible non-activating key panel reads keystrokes via the responder chain — immune to Secure Keyboard Entry, no Input Monitoring needed. |
 | `Hints/MouseClicker.swift`              | Synthesizes left/right clicks at a target's center.                                                                                                             |
 | `Hints/TextJumpController.swift`        | Orchestrates text-jump mode: arm → pick character → label occurrences → place caret.                                                                            |
 | `Hints/AXFocusedText.swift`             | Reads the focused text field's value/caret via AX and moves the caret; `LiveAXTextTree` is the live tree the search below reads.                                |

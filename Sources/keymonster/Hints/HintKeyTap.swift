@@ -31,17 +31,8 @@ enum HintKeyEvent: Equatable {
 @MainActor
 final class HintKeyTap {
     var handler: ((HintKeyEvent) -> Void)?
-    /// When on, Return/keypad Enter is swallowed and reported as `.enter`
-    /// instead of passing through (grid mode confirms with Return).
-    var acceptsEnter = false
-    /// Non-letter characters that still count as input (grid mode's keyboard
-    /// rows include punctuation like ";" and "[", plus their shifted forms).
-    var extraCharacters: Set<Character> = []
-    /// When on, any single printable key is reported verbatim as `.letter`
-    /// (un-lowercased, digits and punctuation included) instead of being
-    /// filtered to hint letters — text-jump mode's target character can be
-    /// anything typed.
-    var reportsRawCharacters = false
+    /// The keystroke rules for the active mode; see `HintKeyClassifier`.
+    var classifier = HintKeyClassifier()
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
 
@@ -125,40 +116,10 @@ final class HintKeyTap {
     }
 
     /// nil means the keystroke isn't hint input (chorded, non-letter) and should
-    /// pass through to the app while hint mode dismisses.
+    /// pass through to the app while hint mode dismisses. The rules live in
+    /// `HintKeyClassifier`, shared with the focus-capture backend.
     private func classify(_ event: CGEvent) -> HintKeyEvent? {
-        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-        switch keyCode {
-        case 53: return .escape
-        case 51: return .backspace
-        default: break
-        }
-        let flags = event.flags
-        if acceptsEnter, keyCode == 36 || keyCode == 76 { // Return, keypad Enter
-            return .enter(shifted: flags.contains(.maskShift))
-        }
-        if flags.contains(.maskCommand) || flags.contains(.maskControl) || flags.contains(.maskAlternate) {
-            return nil
-        }
-        // NSEvent does the keycode→character mapping for the user's actual
-        // keyboard layout, so hints work on Dvorak/AZERTY too.
-        guard let characters = NSEvent(cgEvent: event)?.charactersIgnoringModifiers,
-              characters.count == 1, let character = characters.first else {
-            return nil
-        }
-        // Text-jump's first phase accepts any printable character (a letter,
-        // digit, symbol, or space) as the jump target; control keys like Return
-        // and Tab still fall through to `.cancel`.
-        if reportsRawCharacters {
-            guard let scalar = character.unicodeScalars.first, scalar.value >= 0x20 else {
-                return nil
-            }
-            return .letter(character, shifted: flags.contains(.maskShift))
-        }
-        guard let letter = characters.lowercased().first,
-              letter.isASCII, letter.isLetter || extraCharacters.contains(letter) else {
-            return nil
-        }
-        return .letter(letter, shifted: flags.contains(.maskShift))
+        guard let nsEvent = NSEvent(cgEvent: event) else { return nil }
+        return classifier.classify(nsEvent)
     }
 }

@@ -15,7 +15,7 @@ private let log = Logger(subsystem: "keymonster", category: "grid")
 @MainActor
 final class GridModeController {
     private let overlay = GridOverlay()
-    private let keyTap = HintKeyTap()
+    private let keyTap = HintKeyInput()
 
     /// The whole window, in AX coordinates; the base the hint grid covers.
     private var windowFrame: CGRect = .zero
@@ -46,15 +46,15 @@ final class GridModeController {
     }
 
     private func activate() {
-        guard KeyTapAccess.ensureGranted() else { return }
+        guard HintKeyInput.ensureAccess() else { return }
         guard let windowFrame = AXHintTargetFinder.focusedWindowFrame(), !windowFrame.isEmpty else {
             log.info("no focused window for grid mode")
             NSSound.beep()
             return
         }
-        guard !SecureInput.blocksHintInput(windowFrame: windowFrame) else { return }
+        guard !HintKeyInput.secureInputBlocks(windowFrame: windowFrame) else { return }
         guard keyTap.start() else {
-            log.error("could not create event tap (Accessibility revoked?)")
+            log.error("could not start key capture (Accessibility revoked?)")
             NSSound.beep()
             return
         }

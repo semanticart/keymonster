@@ -69,13 +69,16 @@ enum KeyTapAccess {
     /// is missing and returning false so the caller aborts — the user grants and
     /// re-triggers the hotkey. Mirrors the existing Accessibility-prompt flow, now
     /// covering Input Monitoring too (previously never requested, so keys could
-    /// silently never arrive).
-    static func ensureGranted() -> Bool {
+    /// silently never arrive). Focus-based capture (`HintKeyPanel`) reads keys
+    /// via the responder chain instead of a tap, so it passes
+    /// `needsInputMonitoring: false` and only Accessibility is required.
+    static func ensureGranted(needsInputMonitoring: Bool = true) -> Bool {
         guard accessibility.isGranted else {
             log.info("key tap needs Accessibility; prompting")
             Paster.requestAccess()
             return false
         }
+        guard needsInputMonitoring else { return true }
         switch inputMonitoring {
         case .granted:
             return true

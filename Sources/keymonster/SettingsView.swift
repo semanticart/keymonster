@@ -174,6 +174,19 @@ struct SettingsView: View {
                     AccessibilityNotice()
                 }
             }
+
+            SettingsSection(
+                header: "Experimental",
+                footer: "Read mode keystrokes by focusing an invisible Key Monster "
+                    + "panel instead of intercepting events. Keeps working while "
+                    + "Secure Keyboard Entry is on (e.g. a password manager holding "
+                    + "it) and needs no Input Monitoring permission. Applies to "
+                    + "hints, grid, scroll, and text jump."
+            ) {
+                SettingsToggleRow(
+                    title: "Focus-based key capture", isOn: $settings.focusKeyCapture
+                )
+            }
         }
     }
 

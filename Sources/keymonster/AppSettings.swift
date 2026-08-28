@@ -74,6 +74,7 @@ final class AppSettings: ObservableObject {
     static let scrollShortcutKey = "scrollPanesShortcut"
     static let textJumpShortcutKey = "textJumpShortcut"
     static let menuSearchShortcutKey = "menuSearchShortcut"
+    static let focusKeyCaptureKey = "focusKeyCapture"
 
     @Published var launchAtLogin: Bool {
         didSet {
@@ -164,6 +165,15 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(checkForUpdates, forKey: Self.checkForUpdatesKey) }
     }
 
+    /// Experimental: capture mode keystrokes (hints, grid, scroll, text jump)
+    /// by giving an invisible Key Monster panel key focus instead of a CGEvent
+    /// tap. Immune to Secure Keyboard Entry and needs no Input Monitoring
+    /// permission; the trade-off is the target app briefly losing keyboard
+    /// focus while a mode is active. See `HintKeyInput`.
+    @Published var focusKeyCapture: Bool {
+        didSet { defaults.set(focusKeyCapture, forKey: Self.focusKeyCaptureKey) }
+    }
+
     /// True while ShortcutRecorder is capturing a key combo. Not persisted:
     /// AppDelegate registers no hotkeys while this is set, so a combo being
     /// recorded can't also trigger a live global shortcut.
@@ -173,6 +183,7 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         autoPaste = defaults.object(forKey: Self.autoPasteKey) as? Bool ?? true
         checkForUpdates = defaults.object(forKey: Self.checkForUpdatesKey) as? Bool ?? true
+        focusKeyCapture = defaults.bool(forKey: Self.focusKeyCaptureKey)
         launchAtLogin = SMAppService.mainApp.status == .enabled
         shortcut = Self.loadShortcut(defaults, key: Self.shortcutKey)
         hintLeftShortcut = Self.loadShortcut(defaults, key: Self.hintLeftShortcutKey)

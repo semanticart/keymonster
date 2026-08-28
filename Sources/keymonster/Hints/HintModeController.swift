@@ -29,7 +29,7 @@ final class HintModeController {
     }
 
     private let overlay = HintOverlay()
-    private let keyTap = HintKeyTap()
+    private let keyTap = HintKeyInput()
     private var session: Session?
 
     var isActive: Bool { session != nil }
@@ -50,15 +50,15 @@ final class HintModeController {
     }
 
     private func activate(button: MouseClicker.Button) {
-        guard KeyTapAccess.ensureGranted() else { return }
+        guard HintKeyInput.ensureAccess() else { return }
         guard let scan = AXHintTargetFinder.scan(), !scan.targets.isEmpty else {
             log.info("no hint targets in the frontmost window")
             NSSound.beep()
             return
         }
-        guard !SecureInput.blocksHintInput(windowFrame: scan.windowFrame) else { return }
+        guard !HintKeyInput.secureInputBlocks(windowFrame: scan.windowFrame) else { return }
         guard keyTap.start() else {
-            log.error("could not create event tap (Accessibility revoked?)")
+            log.error("could not start key capture (Accessibility revoked?)")
             NSSound.beep()
             return
         }

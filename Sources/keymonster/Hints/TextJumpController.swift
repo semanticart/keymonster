@@ -1,5 +1,8 @@
 import AppKit
 import ApplicationServices
+import os.log
+
+private let log = Logger(subsystem: "keymonster", category: "textjump")
 
 /// Keyboard-driven caret placement inside the focused text field (native or
 /// web). A hotkey arms the mode; the next key names a target character, every
@@ -55,7 +58,7 @@ final class TextJumpController {
     }
 
     private let overlay = HintOverlay()
-    private let keyTap = HintKeyTap()
+    private let keyTap = HintKeyInput()
     private var phase: Phase = .inactive
 
     var isActive: Bool {
@@ -80,20 +83,24 @@ final class TextJumpController {
     }
 
     private func activate() {
-        guard KeyTapAccess.ensureGranted() else { return }
+        guard HintKeyInput.ensureAccess() else { return }
         guard let focus = AXFocusedText.focused() else {
+            log.info("no focused text field to jump in")
             NSSound.beep()
             return
         }
         guard let windowFrame = AXHintTargetFinder.focusedWindowFrame(), !windowFrame.isEmpty else {
+            log.info("no focused window for text jump")
             NSSound.beep()
             return
         }
-        guard !SecureInput.blocksHintInput(windowFrame: windowFrame) else { return }
+        guard !HintKeyInput.secureInputBlocks(windowFrame: windowFrame) else { return }
         guard keyTap.start() else {
+            log.error("could not start key capture (Accessibility revoked?)")
             NSSound.beep()
             return
         }
+        log.debug("text jump armed over the focused field")
 
         let field = Field(element: focus.element, value: focus.value, windowFrame: windowFrame)
         phase = .armed(field)
