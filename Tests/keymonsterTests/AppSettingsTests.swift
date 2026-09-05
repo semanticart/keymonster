@@ -147,6 +147,7 @@ final class EditorSettingsTests: XCTestCase {
         XCTAssertNil(settings.editInEditorShortcut)
         XCTAssertEqual(settings.editorCommand, "")
         XCTAssertNil(settings.editorTerminal)
+        XCTAssertTrue(settings.quitEditorTerminal, "a terminal started just for the edit is quit by default")
     }
 
     func testEditorSettingsPersist() {
@@ -154,11 +155,13 @@ final class EditorSettingsTests: XCTestCase {
         settings.editInEditorShortcut = Shortcut(keyCode: 14, carbonModifiers: 0x1000 | 0x0200)
         settings.editorCommand = "code --wait"
         settings.editorTerminal = AppRef(bundleID: "net.kovidgoyal.kitty", name: "kitty")
+        settings.quitEditorTerminal = false
 
         let reloaded = AppSettings(defaults: defaults)
         XCTAssertEqual(reloaded.editInEditorShortcut, settings.editInEditorShortcut)
         XCTAssertEqual(reloaded.editorCommand, "code --wait")
         XCTAssertEqual(reloaded.editorTerminal, AppRef(bundleID: "net.kovidgoyal.kitty", name: "kitty"))
+        XCTAssertFalse(reloaded.quitEditorTerminal)
     }
 
     func testClearingEditorSettingsRemovesThem() {

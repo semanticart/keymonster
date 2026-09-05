@@ -77,6 +77,7 @@ final class AppSettings: ObservableObject {
     static let editInEditorShortcutKey = "editInEditorShortcut"
     static let editorCommandKey = "editorCommand"
     static let editorTerminalKey = "editorTerminalApp"
+    static let quitEditorTerminalKey = "quitEditorTerminalWhenDone"
 
     @Published var launchAtLogin: Bool {
         didSet {
@@ -182,6 +183,15 @@ final class AppSettings: ObservableObject {
         didSet { persist(editorTerminal, forKey: Self.editorTerminalKey) }
     }
 
+    /// When on (the default), a terminal instance the app had to start just to
+    /// host the editor — kitty, WezTerm, Alacritty, Ghostty only take a command
+    /// on the command line, so a running one can't be reused — is quit once the
+    /// editor exits, instead of lingering with no windows. Terminals handed the
+    /// script as a document (Terminal, iTerm2) are the user's and never quit.
+    @Published var quitEditorTerminal: Bool {
+        didSet { defaults.set(quitEditorTerminal, forKey: Self.quitEditorTerminalKey) }
+    }
+
     /// When on, pressing Return pastes the selection into the previously focused
     /// app instead of only copying it. Defaults on; requires Accessibility access.
     @Published var autoPaste: Bool {
@@ -215,6 +225,7 @@ final class AppSettings: ObservableObject {
         editInEditorShortcut = Self.loadShortcut(defaults, key: Self.editInEditorShortcutKey)
         editorCommand = defaults.string(forKey: Self.editorCommandKey) ?? ""
         editorTerminal = Self.loadValue(defaults, key: Self.editorTerminalKey)
+        quitEditorTerminal = defaults.object(forKey: Self.quitEditorTerminalKey) as? Bool ?? true
         appShortcuts = Self.loadList(defaults, key: Self.appShortcutsKey)
         scriptShortcuts = Self.loadList(defaults, key: Self.scriptShortcutsKey)
     }

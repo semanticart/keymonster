@@ -103,9 +103,11 @@ screen, scroll any pane, and jump the caret through text, all without the mouse.
   e.g. `nvim -c 'set ft=markdown'`), then `$VISUAL`, then `$EDITOR`, read from
   your login shell. GUI editors must block until the file closes (`code --wait`,
   `zed --wait`); terminal editors such as vim, nano, or `emacs -nw` need a
-  terminal to run in, chosen in Settings — Terminal, iTerm2, kitty, WezTerm,
-  Alacritty, and Ghostty each get a fresh window, and any other terminal is
-  handed a `.command` file. The edited text is put back with a single
+  terminal to run in, chosen in Settings — Terminal and iTerm2 get a fresh
+  window; kitty, WezTerm, Alacritty, and Ghostty only take a command at launch,
+  so they get a separate instance that is quit again when the editor exits
+  (a toggle in Settings); any other terminal is handed a `.command` file. The
+  edited text is put back with a single
   accessibility write where the field allows it, or by select-all-and-paste
   otherwise; if focus has moved on, it is left on the clipboard rather than
   pasted somewhere unintended. Requires Accessibility permission.

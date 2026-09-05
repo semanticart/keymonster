@@ -30,6 +30,37 @@ final class ExternalEditorControllerTests: XCTestCase {
         }
     }
 
+    /// A stand-in terminal app: runs the wrapper the way a real terminal
+    /// window would (in the background, nothing of ours to wait on) and
+    /// remembers whether the controller quit the instance it "started".
+    private final class FakeTerminal: TerminalInstance {
+        let processIdentifier: pid_t = 4242
+        var launches: [TerminalLaunch] = []
+        var terminated = false
+
+        func terminate() -> Bool {
+            terminated = true
+            return true
+        }
+
+        /// Runs the script detached, and returns self as the started instance
+        /// for a new-instance launch, nil for a document hand-off.
+        func open(_ launch: TerminalLaunch, scriptPath: String) -> TerminalInstance? {
+            launches.append(launch)
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/sh")
+            process.arguments = [scriptPath]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try? process.run()
+            if case .document = launch { return nil }
+            return self
+        }
+    }
+
+    private let kitty = AppRef(bundleID: "net.kovidgoyal.kitty", name: "kitty")
+    private let terminalApp = AppRef(bundleID: "com.apple.Terminal", name: "Terminal")
+
     private let original = "That’s great to hear.\n\nReally happy for you, buddy."
     private let edited = "That’s great to hear.\n\nReally happy for you, pal."
     private var directory: URL!
@@ -121,6 +152,48 @@ final class ExternalEditorControllerTests: XCTestCase {
         XCTAssertTrue(field.failures[0].hasPrefix("no editor configured"), field.failures[0])
     }
 
+    func testTerminalStartedForTheEditIsQuitOnceTheEditorExits() throws {
+        let field = FakeField(raw: original, whole: original, acceptsAXWrite: true)
+        let terminal = FakeTerminal()
+        let controller = makeController(field, editor: try editorScript(), terminal: kitty, host: terminal)
+        runEdit(controller)
+
+        // The edit went through the terminal-hosted path and landed.
+        XCTAssertEqual(terminal.launches.count, 1)
+        guard case .newInstance(let arguments) = terminal.launches[0] else {
+            return XCTFail("kitty should be started as a new instance, got \(terminal.launches[0])")
+        }
+        XCTAssertEqual(arguments.count, 1)
+        XCTAssertTrue(arguments[0].hasSuffix(EditorWrapperScript.fileName), arguments[0])
+        XCTAssertEqual(field.axWrites, [edited])
+        // ...and the instance that hosted it was quit, a beat later.
+        waitUntil("the terminal instance is quit") { terminal.terminated }
+    }
+
+    func testTerminalIsLeftRunningWhenTheSettingIsOff() throws {
+        let field = FakeField(raw: original, whole: original, acceptsAXWrite: true)
+        let terminal = FakeTerminal()
+        let controller = makeController(field, editor: try editorScript(), terminal: kitty,
+                                        host: terminal, quitTerminal: false)
+        runEdit(controller)
+
+        XCTAssertEqual(field.axWrites, [edited])
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: controller.terminalQuitDelay * 3))
+        XCTAssertFalse(terminal.terminated, "the setting is off, so the instance must be left alone")
+    }
+
+    func testTerminalHandedTheScriptAsADocumentIsNeverQuit() throws {
+        let field = FakeField(raw: original, whole: original, acceptsAXWrite: true)
+        let terminal = FakeTerminal()
+        let controller = makeController(field, editor: try editorScript(), terminal: terminalApp, host: terminal)
+        runEdit(controller)
+
+        XCTAssertEqual(terminal.launches, [.document])
+        XCTAssertEqual(field.axWrites, [edited])
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: controller.terminalQuitDelay * 3))
+        XCTAssertFalse(terminal.terminated, "Terminal.app was the user's already; nothing of ours to quit")
+    }
+
     // MARK: - Harness
 
     private var capturePath: URL { directory.appendingPathComponent("editor-saw.txt") }
@@ -140,7 +213,10 @@ final class ExternalEditorControllerTests: XCTestCase {
         return script.path
     }
 
-    private func makeController(_ field: FakeField, editor: String) -> ExternalEditorController {
+    private func makeController(
+        _ field: FakeField, editor: String,
+        terminal: AppRef? = nil, host: FakeTerminal? = nil, quitTerminal: Bool = true
+    ) -> ExternalEditorController {
         var dependencies = ExternalEditorController.Dependencies()
         dependencies.isTrusted = { true }
         dependencies.requestAccess = { XCTFail("should not ask for access when trusted") }
@@ -157,11 +233,18 @@ final class ExternalEditorControllerTests: XCTestCase {
         dependencies.leaveOnClipboard = { field.clipboard.append($0) }
         dependencies.frontmostApplication = { nil }
         dependencies.editorCommand = { editor }
-        dependencies.editorTerminal = { nil }
+        dependencies.editorTerminal = { terminal }
+        dependencies.quitTerminalWhenDone = { quitTerminal }
+        dependencies.terminalAppURL = { URL(fileURLWithPath: "/Applications/\($0).app") }
+        dependencies.openTerminal = { launch, _, scriptPath in
+            guard let host else { throw NSError(domain: "test", code: 1) }
+            return host.open(launch, scriptPath: scriptPath)
+        }
         let home = directory.path
         dependencies.loginEnvironment = { ["PATH": "/usr/bin:/bin", "HOME": home] }
         let controller = ExternalEditorController(dependencies: dependencies)
         controller.reportFailure = { field.failures.append($0) }
+        controller.terminalQuitDelay = 0.05
         return controller
     }
 
@@ -175,5 +258,14 @@ final class ExternalEditorControllerTests: XCTestCase {
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
         }
         XCTAssertFalse(controller.isActive, "the edit did not finish within \(timeout)s")
+    }
+
+    /// Pumps the main run loop until `condition` holds or the timeout passes.
+    private func waitUntil(_ what: String, timeout: TimeInterval = 5, _ condition: () -> Bool) {
+        let deadline = Date(timeIntervalSinceNow: timeout)
+        while !condition() && Date() < deadline {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
+        }
+        XCTAssertTrue(condition(), "timed out waiting for \(what)")
     }
 }

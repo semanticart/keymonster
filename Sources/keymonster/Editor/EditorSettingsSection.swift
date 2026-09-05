@@ -25,8 +25,10 @@ struct EditorSettingsSection: View {
                 + "blank to use $\(EditorCommand.environmentVariable), $VISUAL, or $EDITOR from "
                 + "your login shell. GUI editors must block until the file is closed, e.g. "
                 + "code --wait. Terminal editors such as vim need a terminal to run in: "
-                + "choose one below. Terminal, iTerm2, kitty, WezTerm, Alacritty, and "
-                + "Ghostty each get a new window; any other app is handed a .command file."
+                + "choose one below. Terminal and iTerm2 open a new window; kitty, WezTerm, "
+                + "Alacritty, and Ghostty only take a command when they start, so a separate "
+                + "instance is opened for the edit and, with the switch on, quit again once "
+                + "the editor exits. Any other app is handed a .command file."
         ) {
             ShortcutSettingRow(
                 title: "Edit in Editor",
@@ -68,6 +70,14 @@ struct EditorSettingsSection: View {
                         .foregroundStyle(.secondary)
                     Button("Choose…", action: chooseTerminal)
                 }
+            }
+
+            if settings.editorTerminal != nil {
+                SettingsToggleRow(title: "Quit the terminal when the edit is done",
+                                  isOn: $settings.quitEditorTerminal)
+                    .help("Only for a terminal instance started just for the edit "
+                        + "(kitty, WezTerm, Alacritty, Ghostty). Terminal and iTerm2 "
+                        + "windows are yours and are never quit.")
             }
 
             if showAccessibilityNotice {

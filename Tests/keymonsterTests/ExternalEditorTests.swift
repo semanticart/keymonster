@@ -105,24 +105,22 @@ final class ShellQuoteTests: XCTestCase {
 final class TerminalLaunchTests: XCTestCase {
     private let script = "/tmp/x/edit.command"
 
-    func testKnownTerminalsGetANewWindowRunningTheScript() {
+    func testTerminalsThatOnlyTakeACommandAtLaunchGetANewInstance() {
         let cases: [(String, [String])] = [
-            ("net.kovidgoyal.kitty", ["-na", "/Applications/kitty.app", "--args", script]),
-            ("org.alacritty", ["-na", "/Applications/kitty.app", "--args", "-e", script]),
-            ("com.github.wez.wezterm", ["-na", "/Applications/kitty.app", "--args", "start", "--", script]),
-            ("com.mitchellh.ghostty", ["-na", "/Applications/kitty.app", "--args", "-e", script])
+            ("net.kovidgoyal.kitty", [script]),
+            ("org.alacritty", ["-e", script]),
+            ("com.github.wez.wezterm", ["start", "--", script]),
+            ("com.mitchellh.ghostty", ["-e", script])
         ]
         for (bundleID, expected) in cases {
-            let launch = TerminalLaunch.make(bundleID: bundleID, appPath: "/Applications/kitty.app", script: script)
-            XCTAssertEqual(launch.executablePath, "/usr/bin/open", bundleID)
-            XCTAssertEqual(launch.arguments, expected, bundleID)
+            XCTAssertEqual(TerminalLaunch.make(bundleID: bundleID, script: script),
+                           .newInstance(arguments: expected), bundleID)
         }
     }
 
     func testTerminalAppAndUnknownsAreHandedTheCommandFile() {
         for bundleID in ["com.apple.Terminal", "com.googlecode.iterm2", "com.example.someterm"] {
-            let launch = TerminalLaunch.make(bundleID: bundleID, appPath: "/Applications/T.app", script: script)
-            XCTAssertEqual(launch.arguments, ["-a", "/Applications/T.app", script], bundleID)
+            XCTAssertEqual(TerminalLaunch.make(bundleID: bundleID, script: script), .document, bundleID)
         }
     }
 }

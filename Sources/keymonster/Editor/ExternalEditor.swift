@@ -164,31 +164,34 @@ enum EditorWrapperScript {
 /// own idea of how to be told "run this program in a new window", so the ones
 /// worth knowing are listed; anything else is handed the script as a document,
 /// which works for any terminal that registers the `.command` type (Terminal
-/// and iTerm2 do). `open` is used throughout: it goes through Launch Services,
-/// so the window comes forward like a user-launched one, and `-n` starts a
-/// fresh instance so `--args` is actually delivered when the app is already
-/// running.
-struct TerminalLaunch: Equatable {
-    let executablePath: String
-    let arguments: [String]
+/// and iTerm2 do; kitty does too, but asks for confirmation every time).
+///
+/// Both go through Launch Services (`NSWorkspace`), so the window comes forward
+/// like a user-launched one. The listed terminals only take command-line
+/// arguments at process start, so they get a fresh instance of the app — a
+/// running one would just be activated and the arguments dropped. That instance
+/// is ours, and lingers with no windows once the editor exits, so the app may
+/// quit it afterwards (see `ExternalEditorController`); a document open reuses
+/// whatever the user already has running and must be left alone.
+enum TerminalLaunch: Equatable {
+    /// Start a new instance of the app with these arguments.
+    case newInstance(arguments: [String])
+    /// Ask the (possibly running) app to open the script as a document.
+    case document
 
-    static let openTool = "/usr/bin/open"
-
-    static func make(bundleID: String, appPath: String, script: String) -> TerminalLaunch {
-        let args: [String]
+    static func make(bundleID: String, script: String) -> TerminalLaunch {
         switch bundleID {
         case "net.kovidgoyal.kitty":
-            args = ["-na", appPath, "--args", script]
+            return .newInstance(arguments: [script])
         case "org.alacritty":
-            args = ["-na", appPath, "--args", "-e", script]
+            return .newInstance(arguments: ["-e", script])
         case "com.github.wez.wezterm":
-            args = ["-na", appPath, "--args", "start", "--", script]
+            return .newInstance(arguments: ["start", "--", script])
         case "com.mitchellh.ghostty":
-            args = ["-na", appPath, "--args", "-e", script]
+            return .newInstance(arguments: ["-e", script])
         default:
             // Terminal.app, iTerm2, and anything else that opens .command files.
-            args = ["-a", appPath, script]
+            return .document
         }
-        return TerminalLaunch(executablePath: openTool, arguments: args)
     }
 }

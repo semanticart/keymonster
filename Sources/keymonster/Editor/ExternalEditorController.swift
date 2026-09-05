@@ -20,6 +20,10 @@ private let log = Logger(subsystem: "keymonster", category: "editor")
 /// the verification read the field's paragraphs rather than its raw value,
 /// because Chromium's raw value loses blank lines (see `ParagraphText`).
 ///
+/// A terminal that had to be started fresh to host the editor (see
+/// `TerminalLaunch`) is quit once the editor exits, when the setting says so,
+/// so the user isn't left closing an empty terminal by hand.
+///
 /// The pure pieces — round-trip newline handling, editor resolution, the
 /// wrapper script, per-terminal launch arguments — live in `ExternalEditor.swift`.
 @MainActor
@@ -39,6 +43,9 @@ final class ExternalEditorController {
         let original: String
         let addedTrailingNewline: Bool
         var poll: Timer?
+        /// The terminal instance started for this edit, if a new one was; the
+        /// app's to quit once the editor is done.
+        var terminal: TerminalInstance?
 
         init(directory: URL, app: NSRunningApplication?, element: AXUIElement,
              original: String, addedTrailingNewline: Bool) {
@@ -72,6 +79,11 @@ final class ExternalEditorController {
     private let activationDelay: TimeInterval = 0.15
     /// How often the status file is checked while a terminal hosts the editor.
     private let pollInterval: TimeInterval = 0.25
+    /// How long after the editor exits its terminal instance is asked to quit.
+    /// The wrapper writes the status as its last act, so this lets the window
+    /// close on its own first; quitting while it still shows a running process
+    /// could make the terminal ask whether to close it.
+    var terminalQuitDelay: TimeInterval = 0.5
 
     var isActive: Bool { session != nil }
 
@@ -134,7 +146,7 @@ final class ExternalEditorController {
         let textPath = session.textFile.path
         let statusPath = session.statusFile.path
         let scriptPath = session.scriptFile.path
-        let terminalURL = terminal.flatMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0.bundleID) }
+        let terminalURL = terminal.flatMap { dependencies.terminalAppURL($0.bundleID) }
         if let terminal, terminalURL == nil {
             finish(id, failure: "terminal app \(terminal.name) is not installed")
             return
@@ -165,7 +177,9 @@ final class ExternalEditorController {
             log.info("edit \(id) running editor: \(editor, privacy: .public)")
 
             if let terminal, let terminalURL {
-                self.launchInTerminal(id, terminal: terminal, appURL: terminalURL, scriptPath: scriptPath)
+                Task { @MainActor in
+                    await self.launchInTerminal(id, terminal: terminal, appURL: terminalURL, scriptPath: scriptPath)
+                }
             } else {
                 self.launchDirectly(id, scriptPath: scriptPath, statusPath: statusPath, environment: environment)
             }
@@ -205,34 +219,36 @@ final class ExternalEditorController {
 
     /// Terminal editors: ask the terminal app to open a window on the wrapper,
     /// then poll for the status file the wrapper writes when the editor exits —
-    /// there is no process of ours to wait on.
-    private nonisolated func launchInTerminal(_ id: UUID, terminal: AppRef, appURL: URL, scriptPath: String) {
-        let launch = TerminalLaunch.make(bundleID: terminal.bundleID, appPath: appURL.path, script: scriptPath)
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: launch.executablePath)
-        process.arguments = launch.arguments
-        process.standardInput = FileHandle.nullDevice
-        process.standardOutput = FileHandle.nullDevice
-        let stderrPipe = Pipe()
-        process.standardError = stderrPipe
+    /// there is no process of ours to wait on. When the terminal had to be
+    /// started as a new instance, that instance is remembered so it can be quit
+    /// once the editor is done.
+    private func launchInTerminal(_ id: UUID, terminal: AppRef, appURL: URL, scriptPath: String) async {
+        let launch = TerminalLaunch.make(bundleID: terminal.bundleID, script: scriptPath)
+        let instance: TerminalInstance?
         do {
-            try process.run()
+            instance = try await dependencies.openTerminal(launch, appURL, scriptPath)
         } catch {
-            Task { @MainActor in
-                self.finish(id, failure: "could not open \(terminal.name): \(error.localizedDescription)")
-            }
+            finish(id, failure: "could not open \(terminal.name): \(error.localizedDescription)")
             return
         }
-        let stderrData = (try? stderrPipe.fileHandleForReading.readToEnd()) ?? Data()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            let stderr = String(data: stderrData, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let detail = stderr.isEmpty ? "exited \(process.terminationStatus)" : stderr
-            Task { @MainActor in self.finish(id, failure: "could not open \(terminal.name): \(detail)") }
-            return
+        guard let session, session.id == id else { return }
+        if let instance {
+            log.info("edit \(id) started \(terminal.name, privacy: .public) instance \(instance.processIdentifier)")
         }
-        Task { @MainActor in self.pollForStatus(id) }
+        session.terminal = instance
+        pollForStatus(id)
+    }
+
+    /// Quits the terminal instance started for this edit, if there was one and
+    /// the user wants that. Never touches a terminal the script was handed to
+    /// as a document: that one was the user's already.
+    private func quitTerminalIfOwned(_ session: Session) {
+        guard let terminal = session.terminal, dependencies.quitTerminalWhenDone() else { return }
+        let id = session.id
+        DispatchQueue.main.asyncAfter(deadline: .now() + terminalQuitDelay) {
+            let outcome = terminal.terminate() ? "quit" : "would not quit"
+            log.info("edit \(id): terminal instance \(terminal.processIdentifier) \(outcome, privacy: .public)")
+        }
     }
 
     private func pollForStatus(_ id: UUID) {
@@ -262,6 +278,7 @@ final class ExternalEditorController {
 
     private func finish(_ id: UUID, status: Int32, stderr: String) {
         guard let session = takeSession(id) else { return }
+        quitTerminalIfOwned(session)
         guard status == 0 else {
             log.info("edit \(id): editor exited \(status); leaving the field untouched")
             cleanUp(session)
@@ -357,6 +374,14 @@ extension ExternalEditorController {
         }
         var editorCommand: @MainActor () -> String = { AppSettings.shared.editorCommand }
         var editorTerminal: @MainActor () -> AppRef? = { AppSettings.shared.editorTerminal }
+        var quitTerminalWhenDone: @MainActor () -> Bool = { AppSettings.shared.quitEditorTerminal }
+        var terminalAppURL: @MainActor (String) -> URL? = {
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0)
+        }
+        /// Opens the terminal on the wrapper script; see `TerminalOpener`.
+        var openTerminal: @MainActor (TerminalLaunch, URL, String) async throws -> TerminalInstance? = {
+            try await TerminalOpener.open($0, app: $1, script: $2)
+        }
         /// Runs off the main thread, since it may block on the login shell.
         var loginEnvironment: @Sendable () -> [String: String] = { LoginShellEnvironment.load() }
     }
