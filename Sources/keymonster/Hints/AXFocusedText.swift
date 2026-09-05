@@ -84,22 +84,28 @@ enum AXFocusedText {
 
     // MARK: - Whole-value access (Edit in Editor)
 
-    /// The field's current full text, re-read rather than taken from `Focus`,
-    /// for checking what a write actually produced.
-    static func value(of element: AXUIElement) -> String? {
-        axString(element, kAXValueAttribute)
+    /// The field's whole text, re-read rather than taken from `Focus`, with the
+    /// blank lines Chromium's value leaves out put back from the paragraph
+    /// structure (see `ParagraphText`). `Focus.value` stays the raw value:
+    /// text jump indexes into it with AX offsets, which the raw value matches.
+    static func wholeValue(of element: AXUIElement) -> String? {
+        guard let value = axString(element, kAXValueAttribute) else { return nil }
+        let paragraphs = ParagraphText.paragraphs(of: element, in: LiveAXTextTree())
+        return ParagraphText.restoringBlankLines(in: value, paragraphs: paragraphs)
     }
 
     /// Replaces the field's entire text in one AX write. Returns whether the
     /// field accepted it — apps that don't expose a settable value (or ignore
     /// the write) report failure here, and the caller falls back to pasting.
-    /// Success is judged by reading the value back, since some apps answer
-    /// "success" to a write they then ignore.
+    /// Success is judged by reading the whole text back, since some apps
+    /// answer "success" to a write they then ignore, and Chromium answers it
+    /// to a write it then mangles: each newline lands as a paragraph break
+    /// *plus* an empty paragraph, which only the paragraph-aware read can see.
     @discardableResult
     static func setValue(_ element: AXUIElement, to text: String) -> Bool {
         guard isSettable(element, kAXValueAttribute) else { return false }
         let error = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, text as CFString)
-        return error == .success && value(of: element) == text
+        return error == .success && wholeValue(of: element) == text
     }
 
     /// Whether `element` is still the system-wide focused element — the check

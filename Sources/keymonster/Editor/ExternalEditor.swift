@@ -31,6 +31,72 @@ enum EditorRoundTrip {
     }
 }
 
+/// A field's whole text as read through its paragraphs, for editors whose
+/// `AXValue` is lossy. Chromium (Chrome, Electron apps like Slack) exposes a
+/// rich-text editable as an `AXTextArea` whose value is its block children
+/// joined by newlines — except that an *empty* paragraph contributes nothing,
+/// so a blank line between two paragraphs reads back as a single newline. The
+/// paragraphs themselves are still there in the tree, one child group each,
+/// so the blank lines can be put back by reading those instead. Captured
+/// against Slack, 2026-09-04.
+///
+/// The reconstruction is only trusted when it agrees with the value on every
+/// non-blank line and adds newlines; anything else (inline content the leaves
+/// don't carry, a shape this wasn't written for) falls back to the value as
+/// the app reported it — today's behaviour.
+enum ParagraphText {
+    /// One string per direct child of `element`: its leaf text concatenated,
+    /// or "" for a childless, valueless child (an empty paragraph). Nil when
+    /// the tree is bigger than `limit` nodes, since walking a whole document
+    /// for this isn't worth it.
+    static func paragraphs<Tree: AXTextTree>(
+        of element: Tree.Element, in tree: Tree, limit: Int = 4000
+    ) -> [String]? {
+        var budget = limit
+        var result: [String] = []
+        for child in tree.children(of: element) {
+            guard let text = leafText(of: child, in: tree, budget: &budget) else { return nil }
+            result.append(text)
+        }
+        return result
+    }
+
+    private static func leafText<Tree: AXTextTree>(
+        of element: Tree.Element, in tree: Tree, budget: inout Int
+    ) -> String? {
+        budget -= 1
+        guard budget >= 0 else { return nil }
+        let children = tree.children(of: element)
+        if children.isEmpty { return tree.stringValue(of: element) ?? "" }
+        var text = ""
+        for child in children {
+            guard let piece = leafText(of: child, in: tree, budget: &budget) else { return nil }
+            text += piece
+        }
+        return text
+    }
+
+    /// `value` with the blank lines its paragraphs show it dropped, or `value`
+    /// untouched when the paragraphs don't tell that exact story.
+    static func restoringBlankLines(in value: String, paragraphs: [String]?) -> String {
+        guard let paragraphs, !paragraphs.isEmpty else { return value }
+        let joined = paragraphs.joined(separator: "\n")
+        guard newlineCount(joined) > newlineCount(value),
+              nonBlankLines(joined) == nonBlankLines(value) else {
+            return value
+        }
+        return joined
+    }
+
+    private static func newlineCount(_ text: String) -> Int {
+        text.reduce(0) { $0 + ($1 == "\n" ? 1 : 0) }
+    }
+
+    private static func nonBlankLines(_ text: String) -> [Substring] {
+        text.split(separator: "\n", omittingEmptySubsequences: true)
+    }
+}
+
 /// Which editor to run, in git's order of precedence: an explicit setting
 /// wins, then the app-specific `$KEY_MONSTER_EDITOR` (git's `GIT_EDITOR`, for
 /// an editor setup that only makes sense here — `nvim -c 'set ft=markdown'`),

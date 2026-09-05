@@ -30,7 +30,7 @@ final class AXLiveTreeTests: XCTestCase {
         let tree = LiveAXTextTree()
         let app = try launchFixture()
         let field = try XCTUnwrap(
-            element(in: app, withValue: "fixture native field hello", tree: tree),
+            waitForElement(in: app, withValue: "fixture native field hello", tree: tree),
             "no native NSTextField in the fixture window"
         )
         let hits = find("h", value: "fixture native field hello", element: field, tree: tree)
@@ -48,6 +48,11 @@ final class AXLiveTreeTests: XCTestCase {
     func testWebContentIsInvisibleUntilAccessibilityIsArmed() throws {
         let tree = LiveAXTextTree()
         let app = try launchFixture(armWebAccessibility: false)
+        // Deliberately a single read, not `waitForElement`: the first request
+        // for the web view's children is itself what makes WebKit start
+        // vending, so a second pass would find the content whether or not
+        // anything armed it. What this pins down is what a one-shot reader
+        // sees — nothing — which is the symptom text jump had.
         XCTAssertNil(
             element(in: app, withValue: "fixture web editable hello", tree: tree),
             "a WKWebView vends no tree until an assistive client asks — the reason "
@@ -60,7 +65,7 @@ final class AXLiveTreeTests: XCTestCase {
         let tree = LiveAXTextTree()
         let app = try launchFixture()
         let editable = try XCTUnwrap(
-            element(in: app, withValue: "fixture web editable hello", tree: tree),
+            waitForElement(in: app, withValue: "fixture web editable hello", tree: tree),
             "no contenteditable in the fixture's WKWebView"
         )
         let hits = find("h", value: "fixture web editable hello", element: editable, tree: tree)
@@ -83,7 +88,7 @@ final class AXLiveTreeTests: XCTestCase {
         let tree = LiveAXTextTree()
         let app = try launchFixture()
         let omnibox = try XCTUnwrap(
-            element(in: app, withValue: "https://fixture.example.com/path?query=hello", tree: tree),
+            waitForElement(in: app, withValue: "https://fixture.example.com/path?query=hello", tree: tree),
             "no omnibox mimic in the fixture window"
         )
         let hits = find(
@@ -158,6 +163,26 @@ final class AXLiveTreeTests: XCTestCase {
         wait(for: [ready], timeout: 30)
         // The AX server lags the first paint by a frame or two.
         Thread.sleep(forTimeInterval: 0.5)
+    }
+
+    /// `element(in:withValue:)`, retried until it answers or `timeout` runs out.
+    ///
+    /// WebKit vends its accessibility tree lazily: the web view's group is
+    /// empty until an assistive client first asks for its children, and the
+    /// web content process takes well under a second after that ask to fill
+    /// it in. A single walk therefore sees nothing on the first pass no matter
+    /// how long it waited beforehand, so the lookup has to be the thing that
+    /// asks and then come back.
+    private func waitForElement(
+        in root: AXUIElement, withValue value: String, tree: LiveAXTextTree,
+        timeout: TimeInterval = 5
+    ) -> AXUIElement? {
+        let deadline = Date(timeIntervalSinceNow: timeout)
+        while true {
+            if let found = element(in: root, withValue: value, tree: tree) { return found }
+            guard Date() < deadline else { return nil }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
     }
 
     /// Depth-first search of the fixture's tree for the element carrying `value`.

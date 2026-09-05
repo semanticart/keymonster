@@ -16,7 +16,9 @@ private let log = Logger(subsystem: "keymonster", category: "editor")
 /// The text is written back with a single AX value write when the field takes
 /// one, verified by reading it back; otherwise, if the field still has focus,
 /// by select-all and paste. If focus moved on, the edited text is left on the
-/// clipboard rather than pasted somewhere unintended.
+/// clipboard rather than pasted somewhere unintended. Both the capture and
+/// the verification read the field's paragraphs rather than its raw value,
+/// because Chromium's raw value loses blank lines (see `ParagraphText`).
 ///
 /// The pure pieces — round-trip newline handling, editor resolution, the
 /// wrapper script, per-terminal launch arguments — live in `ExternalEditor.swift`.
@@ -90,14 +92,17 @@ final class ExternalEditorController {
             return
         }
 
-        let outbound = EditorRoundTrip.outbound(focus.value)
+        // The paragraph-aware read, not `focus.value`: Chromium's raw value
+        // drops blank lines, and the editor should see the field as it looks.
+        let original = AXFocusedText.wholeValue(of: focus.element) ?? focus.value
+        let outbound = EditorRoundTrip.outbound(original)
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("keymonster-edit-\(UUID().uuidString)")
         let session = Session(
             directory: directory,
             app: NSWorkspace.shared.frontmostApplication,
             element: focus.element,
-            original: focus.value,
+            original: original,
             addedTrailingNewline: outbound.addedTrailingNewline
         )
         do {
@@ -109,7 +114,7 @@ final class ExternalEditorController {
         }
         self.session = session
         let appName = session.app?.localizedName ?? "?"
-        log.info("edit \(session.id) captured \(focus.value.count) characters from \(appName, privacy: .public)")
+        log.info("edit \(session.id) captured \(original.count) characters from \(appName, privacy: .public)")
 
         launch(session, configuredEditor: AppSettings.shared.editorCommand,
                terminal: AppSettings.shared.editorTerminal)
