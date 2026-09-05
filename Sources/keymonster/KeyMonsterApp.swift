@@ -31,8 +31,6 @@ enum Entry {
             MainActor.assumeIsolated { ScrollTestRunner.main() }
         } else if CommandLine.arguments.dropFirst().contains("keysim") {
             MainActor.assumeIsolated { KeySimRunner.main() }
-        } else if CommandLine.arguments.dropFirst().contains("secinput") {
-            MainActor.assumeIsolated { SecInputRunner.main() }
         } else if CommandLine.arguments.dropFirst().contains("hintscan") {
             MainActor.assumeIsolated { HintScanRunner.main() }
         } else {
@@ -54,7 +52,7 @@ struct KeyMonsterApp: App {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     let history = ClipboardHistory()
     private var watcher: ClipboardWatcher?
     private var statusItem: NSStatusItem?
@@ -71,8 +69,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var cancellables: Set<AnyCancellable> = []
     private var settingsWindow: NSWindow?
     private var settingsSizeObservation: NSKeyValueObservation?
-    private var secureInputWindow: NSWindow?
-    private let secureInputMonitor = SecureInputMonitor()
     private let axPrewarmer = AXPrewarmer()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -163,14 +159,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         showItem.target = self
         menu.addItem(showItem)
         menu.addItem(.separator())
-        let secureInputItem = NSMenuItem(
-            title: "Secure Keyboard Entry…",
-            action: #selector(showSecureInputDiagnostics),
-            keyEquivalent: ""
-        )
-        secureInputItem.target = self
-        menu.addItem(secureInputItem)
-        menu.addItem(.separator())
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: "")
         settingsItem.target = self
         menu.addItem(settingsItem)
@@ -229,34 +217,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         settingsWindow = win
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
-    }
-
-    @objc func showSecureInputDiagnostics() {
-        log.info("showSecureInputDiagnostics")
-        if let win = secureInputWindow, win.isVisible {
-            NSApp.activate(ignoringOtherApps: true)
-            win.makeKeyAndOrderFront(nil)
-            return
-        }
-        // Poll only while the window is open; windowWillClose stops it.
-        secureInputMonitor.start()
-        let hosting = NSHostingController(rootView: SecureInputDiagnosticsView(monitor: secureInputMonitor))
-        let win = NSWindow(contentViewController: hosting)
-        win.title = "Secure Keyboard Entry"
-        win.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        win.setContentSize(NSSize(width: 480, height: 540))
-        win.center()
-        win.delegate = self
-        win.isReleasedWhenClosed = false
-        secureInputWindow = win
-        NSApp.activate(ignoringOtherApps: true)
-        win.makeKeyAndOrderFront(nil)
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow, window == secureInputWindow else { return }
-        secureInputMonitor.stop()
-        secureInputWindow = nil
     }
 
     @objc private func openReleasesPage() {
