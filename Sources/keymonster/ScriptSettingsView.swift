@@ -130,8 +130,9 @@ private extension View {
     }
 }
 
-/// Shown after a script shortcut fails: what broke, and a way to the log file.
-private struct ScriptFailureNotice: View {
+/// Shown after a script shortcut (or an Edit in Editor session) fails: what
+/// broke, and a way to the log file.
+struct ScriptFailureNotice: View {
     let failure: ScriptLog.Failure
 
     var body: some View {

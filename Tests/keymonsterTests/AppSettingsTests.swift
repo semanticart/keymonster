@@ -124,3 +124,52 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertFalse(AppSettings(defaults: defaults).suspendHotkeys)
     }
 }
+
+@MainActor
+final class EditorSettingsTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private let suiteName = "keymonsterTests.EditorSettings"
+
+    override func setUp() {
+        super.setUp()
+        defaults = UserDefaults(suiteName: suiteName)
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults = nil
+        super.tearDown()
+    }
+
+    func testEditorSettingsStartEmpty() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertNil(settings.editInEditorShortcut)
+        XCTAssertEqual(settings.editorCommand, "")
+        XCTAssertNil(settings.editorTerminal)
+    }
+
+    func testEditorSettingsPersist() {
+        let settings = AppSettings(defaults: defaults)
+        settings.editInEditorShortcut = Shortcut(keyCode: 14, carbonModifiers: 0x1000 | 0x0200)
+        settings.editorCommand = "code --wait"
+        settings.editorTerminal = AppRef(bundleID: "net.kovidgoyal.kitty", name: "kitty")
+
+        let reloaded = AppSettings(defaults: defaults)
+        XCTAssertEqual(reloaded.editInEditorShortcut, settings.editInEditorShortcut)
+        XCTAssertEqual(reloaded.editorCommand, "code --wait")
+        XCTAssertEqual(reloaded.editorTerminal, AppRef(bundleID: "net.kovidgoyal.kitty", name: "kitty"))
+    }
+
+    func testClearingEditorSettingsRemovesThem() {
+        let settings = AppSettings(defaults: defaults)
+        settings.editorCommand = "nvim"
+        settings.editorTerminal = AppRef(bundleID: "com.apple.Terminal", name: "Terminal")
+        settings.editorCommand = "   "
+        settings.editorTerminal = nil
+
+        XCTAssertNil(defaults.object(forKey: AppSettings.editorCommandKey))
+        XCTAssertNil(defaults.data(forKey: AppSettings.editorTerminalKey))
+        XCTAssertEqual(AppSettings(defaults: defaults).editorCommand, "")
+    }
+}

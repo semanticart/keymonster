@@ -93,6 +93,22 @@ screen, scroll any pane, and jump the caret through text, all without the mouse.
   areas (Safari, Chrome, Electron). `Delete` backs out of the zoom, then back to
   pick a different character; `Esc`, a real click, or any other chord dismisses.
   Requires Accessibility permission.
+- **Edit in Editor** — press a shortcut while a text field is focused to open
+  its contents in your own editor, the way `git commit` hands a message to
+  `$EDITOR`. Save and quit and the edited text replaces the field; a non-zero
+  exit (`:cq` in vim) leaves the field untouched, and an unchanged file is a
+  no-op. Blank lines are preserved exactly — only the one trailing newline
+  editors insist on is added going out and removed coming back. The editor is
+  taken from Settings, then `$KEY_MONSTER_EDITOR` (so you can force a filetype,
+  e.g. `nvim -c 'set ft=markdown'`), then `$VISUAL`, then `$EDITOR`, read from
+  your login shell. GUI editors must block until the file closes (`code --wait`,
+  `zed --wait`); terminal editors such as vim, nano, or `emacs -nw` need a
+  terminal to run in, chosen in Settings — Terminal, iTerm2, kitty, WezTerm,
+  Alacritty, and Ghostty each get a fresh window, and any other terminal is
+  handed a `.command` file. The edited text is put back with a single
+  accessibility write where the field allows it, or by select-all-and-paste
+  otherwise; if focus has moved on, it is left on the clipboard rather than
+  pasted somewhere unintended. Requires Accessibility permission.
 - **Menu search** — press a shortcut to list the frontmost app's entire menu bar
   in a searchable panel. Type to fuzzy-find across the whole menu path (so `exp
 pdf` reaches **File › Export › PDF…**); the closest match floats to the top.

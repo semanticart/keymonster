@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Key Monster — ditch the mouse, feed it your clipboard</title>
-<meta name="description" content="Key Monster is a keyboard-driven macOS menu bar app: vimium-style click hints, a zooming click grid, keyboard scrolling, text jump, menu search, app-focus shortcuts, and searchable clipboard history.">
+<meta name="description" content="Key Monster is a keyboard-driven macOS menu bar app: vimium-style click hints, a zooming click grid, keyboard scrolling, text jump, edit any field in your $EDITOR, menu search, app-focus shortcuts, and searchable clipboard history.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <meta property="og:title" content="Key Monster">
 <meta property="og:description" content="A menu-bar monster that gives your keyboard teeth — click, scroll, jump, and search anything, no mouse required — and remembers everything you copy.">
@@ -12,7 +12,8 @@
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Pirata+One&family=Anton&display=swap" rel="stylesheet">
+<script>try{if(localStorage.getItem("km-doom")==="1")document.documentElement.classList.add("doom")}catch(e){}</script>
 <style>
   /* ===== Tokens — the whole palette comes from the app icon ===== */
   :root {
@@ -91,6 +92,16 @@
     transition: background 0.15s ease;
   }
   .gh-btn:hover { background: rgba(69, 179, 240, 0.18); text-decoration: none; }
+
+  /* the lightning bolt that summons doom mode */
+  .doom-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex-shrink: 0;
+    border: 1px solid var(--line); border-radius: 9px;
+    background: none; color: var(--muted); cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  }
+  .doom-toggle:hover { color: #ffe600; border-color: #ffe600; transform: rotate(-8deg); }
 
   /* ===== Hero ===== */
   .hero { position: relative; overflow: clip; padding: 72px 0 48px; }
@@ -374,6 +385,247 @@
     .card { flex-basis: 100%; }
     nav.links a:not(.gh-btn) { display: none; }
   }
+
+  /* ============================================================
+     ⚡ DOOM MODE — the Mörk Borg edition.
+     Toggled by the lightning bolt; everything below is scoped
+     under html.doom and swaps the palette, the type, and (via
+     data-doom attributes) the copy itself.
+     ============================================================ */
+  html.doom {
+    --bg: #0d0b0e;
+    --surface: #15111a;
+    --surface-2: #1c1622;
+    --fur: #ffe600;          /* plague yellow */
+    --fur-deep: #c9b400;
+    --lip: #ff3ea5;          /* viscera pink */
+    --text: #efe6d0;
+    --muted: #beb293;
+    --faint: #9b8f6d;
+    --line: #ffe600;
+    --key-face: linear-gradient(#1c1c1c, #000);
+    --display: "Pirata One", "Bricolage Grotesque", serif;
+    --doom-black: #0d0b0e;
+    --doom-yellow: #ffe600;
+    --doom-pink: #ff3ea5;
+  }
+
+  /* film grain over everything */
+  html.doom body::after {
+    content: ""; position: fixed; inset: 0; z-index: 90; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.09; mix-blend-mode: overlay;
+  }
+
+  html.doom ::selection { background: var(--doom-pink); color: #000; }
+  html.doom a:focus-visible, html.doom button:focus-visible { outline-color: var(--doom-pink); border-radius: 0; }
+
+  html.doom h1, html.doom h2, html.doom .card h3, html.doom .split .copy h3,
+  html.doom .privacy h3, html.doom .wordmark {
+    text-transform: uppercase; letter-spacing: 0.02em; font-weight: 400;
+  }
+  html.doom .eyebrow {
+    font-family: "Anton", var(--mono); font-size: 0.82rem; letter-spacing: 0.22em;
+    display: inline-block; padding: 3px 10px;
+    background: var(--doom-black); color: var(--doom-yellow);
+    transform: rotate(-1.5deg);
+  }
+
+  /* nav */
+  html.doom header.nav {
+    background: rgba(13, 11, 14, 0.94);
+    border-bottom: 3px solid var(--doom-yellow);
+  }
+  html.doom .nav-inner img { filter: hue-rotate(215deg) saturate(1.7) brightness(1.1); }
+  html.doom .wordmark { color: var(--doom-yellow); font-size: 1.45rem; }
+  html.doom nav.links a { text-transform: uppercase; font-family: "Anton", sans-serif; letter-spacing: 0.1em; font-size: 0.8rem; }
+  html.doom nav.links a:hover { color: var(--doom-pink); }
+  html.doom .gh-btn {
+    border: 2px solid var(--doom-yellow); border-radius: 0;
+    background: none; color: var(--doom-yellow) !important;
+  }
+  html.doom .gh-btn:hover { background: var(--doom-yellow); color: #000 !important; }
+  html.doom .doom-toggle {
+    background: var(--doom-yellow); color: #000;
+    border: 2px solid #000; border-radius: 0;
+    box-shadow: 3px 3px 0 var(--doom-pink);
+  }
+  html.doom .doom-toggle:hover { transform: rotate(8deg) scale(1.08); }
+
+  /* hero: a wall of plague yellow */
+  html.doom .hero { background: var(--doom-yellow); color: var(--doom-black); padding-bottom: 72px; }
+  html.doom .hero::before {
+    inset: 0; height: auto;
+    background:
+      radial-gradient(90px 70px at 84% 12%, #0d0b0e 0 60%, transparent 61%),
+      radial-gradient(26px 22px at 91% 22%, #0d0b0e 0 60%, transparent 61%),
+      radial-gradient(14px 12px at 78% 6%, #0d0b0e 0 60%, transparent 61%),
+      radial-gradient(60px 46px at 4% 78%, #0d0b0e 0 60%, transparent 61%),
+      radial-gradient(18px 15px at 12% 88%, #0d0b0e 0 60%, transparent 61%),
+      radial-gradient(9px 8px at 9% 70%, #0d0b0e 0 60%, transparent 61%),
+      radial-gradient(34px 28px at 96% 64%, #ff3ea5 0 60%, transparent 61%),
+      radial-gradient(11px 9px at 92% 74%, #ff3ea5 0 60%, transparent 61%);
+  }
+  /* torn bottom edge */
+  html.doom .hero::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22px;
+    background:
+      linear-gradient(135deg, var(--doom-black) 50%, transparent 50%) 0 0 / 26px 22px repeat-x,
+      linear-gradient(-135deg, var(--doom-black) 50%, transparent 50%) 0 0 / 26px 22px repeat-x;
+  }
+  html.doom .hero .eyebrow { background: var(--doom-black); color: var(--doom-yellow); }
+  html.doom .hero h1 {
+    font-size: clamp(3rem, 6.5vw, 4.9rem); line-height: 0.96;
+    max-width: 15ch; transform: rotate(-1.6deg);
+    text-shadow: 4px 4px 0 var(--doom-pink);
+  }
+  html.doom .hero h1 .chomp {
+    background: var(--doom-black);
+    -webkit-background-clip: border-box; background-clip: border-box;
+    color: var(--doom-yellow); -webkit-text-fill-color: var(--doom-yellow);
+    display: inline-block; padding: 0 14px 4px; transform: rotate(1.2deg);
+    text-shadow: none;
+  }
+  html.doom .hero .lede { color: #241d05; font-size: 1.1rem; }
+  html.doom .hero .lede strong { color: #000; }
+  html.doom .dl-btn {
+    background: var(--doom-pink); color: #000 !important;
+    font-family: "Anton", sans-serif; text-transform: uppercase; letter-spacing: 0.08em;
+    border: 3px solid #000; border-radius: 0;
+    box-shadow: 6px 6px 0 #000; transform: skew(-4deg);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  html.doom .dl-btn:hover { filter: none; transform: skew(-4deg) translate(-2px, -2px); box-shadow: 9px 9px 0 #000; }
+  html.doom .build-link {
+    border: 3px solid #000; border-radius: 0; color: #000;
+    font-family: "Anton", sans-serif; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  html.doom .build-link:hover { background: #000; color: var(--doom-yellow); border-color: #000; }
+  html.doom .cta-or { color: #3d3308; font-weight: 700; }
+  html.doom .cta-row::after {
+    content: "☠ NO MOUSE SHALL SURVIVE ☠";
+    font-family: "Anton", sans-serif; font-size: 0.8rem; letter-spacing: 0.14em;
+    color: var(--doom-pink); border: 3px solid var(--doom-pink);
+    padding: 5px 12px; transform: rotate(-5deg); white-space: nowrap;
+  }
+  html.doom .hero-cast::before { background: none; filter: none; }
+  html.doom .hero-cast video {
+    border: 4px solid #000; border-radius: 0;
+    box-shadow: 10px 10px 0 #000; transform: rotate(1.1deg);
+  }
+  html.doom .chord-strip { color: #3d3308; font-weight: 600; }
+  html.doom kbd.key {
+    background: #000; color: var(--doom-yellow);
+    border: 1px solid #000; border-radius: 0;
+    box-shadow: 2.5px 2.5px 0 var(--doom-pink);
+  }
+  html.doom .chord:hover kbd.key, html.doom kbd.key:hover {
+    transform: translate(1.5px, 1.5px); box-shadow: 1px 1px 0 var(--doom-pink);
+  }
+
+  /* section heads */
+  html.doom .section-head h2 {
+    font-size: clamp(2.4rem, 5vw, 3.6rem); line-height: 0.98;
+    transform: rotate(-1.1deg); display: inline-block;
+  }
+  html.doom section { position: relative; }
+  html.doom section.tinted { background: none; }
+
+  /* keyboard rites: black */
+  html.doom #keyboard { border-bottom: 6px solid var(--doom-yellow); }
+  html.doom #keyboard .section-head h2 { color: var(--doom-yellow); text-shadow: 3px 3px 0 #4a003a; }
+  html.doom #keyboard .section-head::after {
+    content: "DEATH TO THE RODENT"; display: inline-block; margin-top: 18px;
+    font-family: "Anton", sans-serif; font-size: 0.8rem; letter-spacing: 0.18em;
+    color: var(--doom-pink); border: 3px solid var(--doom-pink);
+    padding: 4px 12px; transform: rotate(2.5deg);
+  }
+
+  /* cards: yellow slabs, hammered in crooked */
+  html.doom .card {
+    background: var(--doom-yellow); color: #000;
+    border: 3px solid #000; border-radius: 0;
+    box-shadow: 8px 8px 0 var(--doom-pink);
+  }
+  html.doom .card.in { transform: rotate(-0.9deg); }
+  html.doom .card.in:nth-child(even) { transform: rotate(1.1deg); }
+  html.doom .card.in:nth-child(3n) { transform: rotate(-1.7deg); }
+  html.doom .card.in:hover { transform: rotate(0deg) translate(-2px, -2px); box-shadow: 11px 11px 0 var(--doom-pink); border-color: #000; }
+  html.doom .card h3 { font-size: 1.5rem; }
+  html.doom .card p { color: #241d05; }
+  html.doom .card p strong { color: #000; }
+  html.doom .card .art { border: 2px solid #000; border-radius: 0; background: var(--doom-black); }
+  html.doom .badge {
+    color: #000; background: var(--doom-pink);
+    border: 1px solid #000; border-radius: 0;
+  }
+  html.doom .badge.area { background: var(--doom-yellow); border-color: #000; color: #000; }
+  html.doom .art .grid i { border-color: rgba(255, 230, 0, 0.22); color: #7a6d3f; }
+  html.doom .art .loupe {
+    border-color: var(--doom-pink); color: var(--doom-pink);
+    box-shadow: 4px 4px 0 rgba(255, 62, 165, 0.4); border-radius: 0;
+  }
+  html.doom .art .pane { border: 2px solid var(--doom-yellow); background: rgba(255, 230, 0, 0.08); border-radius: 0; }
+  html.doom .art .apps .app { border-radius: 0; }
+  html.doom .art .apps .app.active { border-color: var(--doom-pink); color: var(--doom-pink); box-shadow: 3px 3px 0 rgba(255, 62, 165, 0.5); }
+  html.doom .art .script .out { color: var(--doom-yellow); }
+  html.doom .art .mini-win { border-radius: 0; }
+
+  html.doom #keyboard .split .copy h3 { color: var(--doom-yellow); font-size: 2.1rem; }
+  html.doom #keyboard .split .copy p { color: var(--muted); }
+
+  /* the hoard: yellow */
+  html.doom #clipboard { background: var(--doom-yellow); color: var(--doom-black); border-bottom: 6px solid #000; }
+  html.doom #clipboard .eyebrow { background: #000; color: var(--doom-yellow); }
+  html.doom #clipboard .section-head h2 { color: #000; text-shadow: 3px 3px 0 var(--doom-pink); }
+  html.doom #clipboard .section-head p, html.doom #clipboard .split .copy p { color: #241d05; }
+  html.doom #clipboard .split .copy p strong { color: #000; }
+  html.doom #clipboard .split .copy h3 { color: #000; font-size: 2.1rem; }
+  html.doom #clipboard .keylist li { color: #241d05; }
+  html.doom #clipboard .keylist .keys .sep { color: #3d3308; }
+
+  /* photo-bash the screenshots: grayscale, crushed, duotone-smeared */
+  html.doom .shot-frame::before { background: none; filter: none; }
+  html.doom .shot-frame img {
+    filter: grayscale(1) contrast(1.55) brightness(1.05);
+    border: 4px solid #000; border-radius: 0;
+    box-shadow: 10px 10px 0 #000;
+    transform: rotate(-1deg);
+  }
+  html.doom .split.flip .shot-frame img { transform: rotate(1.2deg); }
+  html.doom .shot-frame::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(155deg, rgba(255, 230, 0, 0.5), rgba(255, 62, 165, 0.45) 70%);
+    mix-blend-mode: color; border: 4px solid transparent;
+    transform: rotate(-1deg);
+  }
+  html.doom .split.flip .shot-frame::after { transform: rotate(1.2deg); }
+
+  /* the covenant: black with pink scars */
+  html.doom #covenant .section-head h2 { color: var(--doom-pink); text-shadow: 3px 3px 0 #3d0026; }
+  html.doom .privacy .item { border-left: 4px solid var(--doom-pink); }
+  html.doom .privacy h3 { color: var(--doom-yellow); font-size: 1.35rem; font-weight: 400; }
+
+  /* the summoning: yellow */
+  html.doom #install { background: var(--doom-yellow); color: var(--doom-black); border-top: 6px solid var(--doom-pink); }
+  html.doom #install .eyebrow { background: #000; color: var(--doom-yellow); }
+  html.doom #install .section-head h2 { color: #000; text-shadow: 3px 3px 0 var(--doom-pink); }
+  html.doom #install .section-head p { color: #241d05; }
+  html.doom #install .or-build { color: #3d3308; }
+  html.doom pre.term {
+    background: #000; border: 3px solid #000; border-radius: 0;
+    box-shadow: 8px 8px 0 var(--doom-pink); color: var(--doom-yellow);
+  }
+  html.doom pre.term .c { color: #8f8f8f; }
+  html.doom pre.term .d { color: var(--doom-pink); }
+  html.doom .perms .perm { color: #241d05; }
+  html.doom .perms .perm strong { color: #000; text-transform: uppercase; }
+  html.doom .perms .dot { color: var(--doom-pink); }
+
+  /* footer */
+  html.doom footer { border-top: 6px solid var(--doom-yellow); color: var(--muted); }
+  html.doom .foot-inner img { filter: hue-rotate(215deg) saturate(1.7) brightness(1.1); }
+  html.doom footer a { color: var(--doom-pink); }
 </style>
 </head>
 <body>
@@ -381,15 +633,18 @@
 <header class="nav">
   <div class="nav-inner">
     <img src="assets/icon.svg" alt="">
-    <a class="wordmark" href="#">Key Monster</a>
+    <a class="wordmark" href="#" data-doom="KEY MÖNSTER">Key Monster</a>
     <nav class="links">
-      <a href="#keyboard">Keyboard tricks</a>
-      <a href="#clipboard">Clipboard</a>
-      <a href="#install">Install</a>
+      <a href="#keyboard" data-doom="Rites">Keyboard tricks</a>
+      <a href="#clipboard" data-doom="The Hoard">Clipboard</a>
+      <a href="#install" data-doom="Summon">Install</a>
       <a class="gh-btn" href="https://github.com/semanticart/keymonster">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
         GitHub
       </a>
+      <button id="doom-toggle" class="doom-toggle" type="button" aria-pressed="false" aria-label="Toggle doom mode" title="⚡ DOOM">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1.5 8L19 9h-6l1.5-7z"/></svg>
+      </button>
     </nav>
   </div>
 </header>
@@ -399,9 +654,9 @@
     <div class="wrap">
       <div class="hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow">A menu-bar monster for macOS</p>
-          <h1><span class="chomp">Ditch the mouse.</span> Feed it your clipboard.</h1>
-          <p class="lede">Key Monster hands your whole Mac to the keyboard: <strong>click anything on screen, scroll any pane, jump the caret, run any menu item, and hop between apps</strong> — no mouse required. And it quietly remembers everything you copy — text, images, files — handing it back from a fast, searchable panel.</p>
+          <p class="eyebrow" data-doom="A menu-bar abomination for macOS">A menu-bar monster for macOS</p>
+          <h1 data-doom="<span class='chomp'>The mouse is dead.</span> The mönster feasts."><span class="chomp">Ditch the mouse.</span> Feed it your clipboard.</h1>
+          <p class="lede" data-doom="KEY MÖNSTER seizes your Mac in the name of the keyboard: <strong>click anything that dares to render, scroll the unscrollable, hurl the caret through walls of text, drag buried menu items shrieking into the light, and possess app after app</strong> — while the mouse rots where it fell. Everything you copy is devoured whole — text, images, files — and disgorged on command from a fast, searchable pit of souls.">Key Monster hands your whole Mac to the keyboard: <strong>click anything on screen, scroll any pane, jump the caret, run any menu item, and hop between apps</strong> — no mouse required. And it quietly remembers everything you copy — text, images, files — handing it back from a fast, searchable panel.</p>
         </div>
         <div class="hero-cast">
           <video id="hero-cast-video" width="2280" height="1800" autoplay muted loop playsinline controls
@@ -412,9 +667,9 @@
         </div>
       </div>
       <div class="cta-row">
-        <a class="dl-btn" href="https://github.com/semanticart/keymonster/releases/latest/download/KeyMonster.dmg">Download for macOS</a>
+        <a class="dl-btn" href="https://github.com/semanticart/keymonster/releases/latest/download/KeyMonster.dmg" data-doom="⚡ Claim the mönster">Download for macOS</a>
         <span class="cta-or">or</span>
-        <a class="build-link" href="https://github.com/semanticart/keymonster">Build from source →</a>
+        <a class="build-link" href="https://github.com/semanticart/keymonster" data-doom="Forge it from cursed source →">Build from source →</a>
       </div>
       <div class="chord-strip" aria-hidden="true">
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">F</kbd> click hints</span>
@@ -422,7 +677,7 @@
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">S</kbd> scroll</span>
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">J</kbd> text jump</span>
         <span class="chord"><kbd class="key">⌃</kbd><kbd class="key">⇧</kbd><kbd class="key">V</kbd> history</span>
-        <span>— just our picks: nothing comes pre-bound, you record your own in Settings</span>
+        <span data-doom="— merely our liturgy: nothing comes pre-bound. Carve your own runes in Settings.">— just our picks: nothing comes pre-bound, you record your own in Settings</span>
       </div>
     </div>
   </div>
@@ -430,9 +685,9 @@
   <section id="keyboard" class="tinted">
     <div class="wrap">
       <div class="section-head" data-reveal>
-        <p class="eyebrow">Keyboard tricks</p>
-        <h2>Teeth for your whole Mac</h2>
-        <p>Key Monster gives every mouse-shaped chore a keyboard-shaped answer: click it, jump to it, or search for it — without leaving the home row.</p>
+        <p class="eyebrow" data-doom="Keyboard rites">Keyboard tricks</p>
+        <h2 data-doom="Teeth for your whole miserable Mac">Teeth for your whole Mac</h2>
+        <p data-doom="Every mouse-shaped chore is put to the blade. Click it, jump to it, or search it out of hiding — your hands never leave the home row. The home row is home now. There is no other home.">Key Monster gives every mouse-shaped chore a keyboard-shaped answer: click it, jump to it, or search for it — without leaving the home row.</p>
       </div>
       <div class="cards">
         <div class="card" data-reveal>
@@ -447,8 +702,8 @@
               <span class="badge area" style="left:54%; top:26%">D</span>
             </div>
           </div>
-          <h3>Click hints</h3>
-          <p>Vimium, but for your whole Mac. Every clickable element grows a home-row label — type it to click. Works on native apps, Safari, Chrome, and Electron. Crowded spots get a green label that zooms in for a closer look.</p>
+          <h3 data-doom="Hints of doom">Click hints</h3>
+          <p data-doom="Vimium, but it swallowed your entire Mac. Every clickable element is branded with a home-row rune — speak it and the click falls like an axe. Native apps, Safari, Chrome, Electron: none are spared. Crowded spots get a green mark that drags you in closer for the kill.">Vimium, but for your whole Mac. Every clickable element grows a home-row label — type it to click. Works on native apps, Safari, Chrome, and Electron. Crowded spots get a green label that zooms in for a closer look.</p>
         </div>
         <div class="card" data-reveal>
           <div class="art" aria-hidden="true">
@@ -460,8 +715,8 @@
             </div>
             <div class="loupe">H</div>
           </div>
-          <h3>Grid click</h3>
-          <p>No element to label? Overlay a grid where each cell mirrors your keyboard — the key under your finger names the cell in the same spot on screen. Each press zooms in like a loupe until the click lands, pixel-precise.</p>
+          <h3 data-doom="The grid of judgment">Grid click</h3>
+          <p data-doom="Nothing to label? Carve the screen into a grid shaped like your own keyboard — the key under your finger names the cell in the same spot on screen. Each press descends like a loupe over carrion until the click lands. Pixel-precise. Merciless.">No element to label? Overlay a grid where each cell mirrors your keyboard — the key under your finger names the cell in the same spot on screen. Each press zooms in like a loupe until the click lands, pixel-precise.</p>
         </div>
         <div class="card" data-reveal>
           <div class="art" aria-hidden="true">
@@ -471,15 +726,22 @@
               <span class="pane" style="left:38%; top:24%; width:57%; height:66%"><span class="badge">J</span></span>
             </div>
           </div>
-          <h3>Scroll panes</h3>
-          <p>Every scrollable pane in the window gets an outline and a letter — pick one and <strong>J and K become the scroll wheel</strong>. Works even in apps that hide their scroll bars from the keyboard, Electron included.</p>
+          <h3 data-doom="Scroll or be scrolled">Scroll panes</h3>
+          <p data-doom="Every scrollable pane in the window is outlined and marked with a letter. Choose one and <strong>J and K become the wheel of torment</strong> — even in apps that hide their scroll bars from the keyboard like cowards. Electron included. Especially Electron.">Every scrollable pane in the window gets an outline and a letter — pick one and <strong>J and K become the scroll wheel</strong>. Works even in apps that hide their scroll bars from the keyboard, Electron included.</p>
         </div>
         <div class="card" data-reveal>
           <div class="art" aria-hidden="true">
             <div class="textline">th<span class="hit"><span class="badge">F</span>e</span> monst<span class="hit"><span class="badge">J</span>e</span>r at<span class="hit"><span class="badge">K</span>e</span> my mouse</div>
           </div>
-          <h3>Text jump</h3>
-          <p>Press the chord, then any character: every visible occurrence in the focused field gets a label, and typing one drops the caret right there. Works in native fields and web text areas alike.</p>
+          <h3 data-doom="Caret necromancy">Text jump</h3>
+          <p data-doom="Strike the chord, then any character: every visible occurrence in the focused field is marked, and one keystroke drops the caret exactly where you willed it. Native fields, web text areas — the caret goes where it is told.">Press the chord, then any character: every visible occurrence in the focused field gets a label, and typing one drops the caret right there. Works in native fields and web text areas alike.</p>
+        </div>
+        <div class="card" data-reveal>
+          <div class="art" aria-hidden="true">
+            <div class="script"><span>any text field</span> <span>→</span> <kbd class="key">$EDITOR</kbd> <span>→</span> <span class="out">✓</span></div>
+          </div>
+          <h3 data-doom="Editor exorcism">Edit in Editor</h3>
+          <p data-doom="Rip any text field open in your own editor, the way <code>git commit</code> drags a message before your eyes. Save and quit and the words are dragged back into the field; quit in error (<code>:cq</code>) and the field is left to rot untouched. vim in your terminal or <code>code --wait</code> — the mönster does not care which blade you bring.">Open any text field in your own editor, the way <code>git commit</code> opens a message. Save and quit to put the text back; quit with an error to leave it alone. vim in your terminal or <code>code --wait</code> — your call.</p>
         </div>
         <div class="card" data-reveal>
           <div class="art" aria-hidden="true">
@@ -491,30 +753,30 @@
               <div class="app">T</div>
             </div>
           </div>
-          <h3>App focus</h3>
-          <p>Bind a chord to one app — or several. Press it to focus the first; press again to cycle through the rest. One combo can rotate through Slack, Chrome, and your terminal.</p>
+          <h3 data-doom="App possession">App focus</h3>
+          <p data-doom="Bind a chord to one app — or a whole procession of them. Press it to possess the first; press again to cycle the damned. One combo can rotate through Slack, Chrome, and your terminal. Forever. In that order.">Bind a chord to one app — or several. Press it to focus the first; press again to cycle through the rest. One combo can rotate through Slack, Chrome, and your terminal.</p>
         </div>
         <div class="card" data-reveal>
           <div class="art" aria-hidden="true">
             <div class="script"><kbd class="key">⌃⇧M</kbd> <span>→</span> <span>File › Export as PDF…</span></div>
           </div>
-          <h3>Menu search</h3>
-          <p>Fuzzy-find any menu item in the frontmost app and run it with Return — no more spelunking through nested menus for that one command you use twice a year.</p>
+          <h3 data-doom="Menu divination">Menu search</h3>
+          <p data-doom="Fuzzy-find any menu item in the frontmost app and execute it with Return — no more crawling through nested menus on your knees for the one command you invoke twice a year.">Fuzzy-find any menu item in the frontmost app and run it with Return — no more spelunking through nested menus for that one command you use twice a year.</p>
         </div>
         <div class="card" data-reveal>
           <div class="art" aria-hidden="true">
             <div class="script"><kbd class="key">⌃⇧R</kbd> <span>→</span> <span>deploy.sh</span> <span class="out">✓</span></div>
           </div>
-          <h3>Script shortcuts</h3>
-          <p>Point a chord at any executable file and Key Monster runs it in the background — failures land in a log with a one-click way to read it.</p>
+          <h3 data-doom="Blood scripts">Script shortcuts</h3>
+          <p data-doom="Point a chord at any executable and KEY MÖNSTER runs it in the dark. Failures are entombed in a log with a one-click exhumation.">Point a chord at any executable file and Key Monster runs it in the background — failures land in a log with a one-click way to read it.</p>
         </div>
       </div>
 
       <div class="split" style="margin-top: 84px" data-reveal>
         <div class="copy">
-          <p class="eyebrow">Menu search</p>
-          <h3>Every menu item, three keystrokes away</h3>
-          <p>The same search-first panel, pointed at the frontmost app's menu bar. Fuzzy matching means <strong>"re" finds Reload Page, Reopen Last Closed Tab, and Merge All Windows</strong> — ranked, with the full breadcrumb so you know exactly what will run.</p>
+          <p class="eyebrow" data-doom="Menu divination">Menu search</p>
+          <h3 data-doom="Every menu item, three keystrokes from oblivion">Every menu item, three keystrokes away</h3>
+          <p data-doom="The same search-first altar, aimed at the frontmost app's menu bar. Fuzzy matching means <strong>'re' summons Reload Page, Reopen Last Closed Tab, and Merge All Windows</strong> — ranked, with the full breadcrumb, so you know precisely what you are about to unleash.">The same search-first panel, pointed at the frontmost app's menu bar. Fuzzy matching means <strong>"re" finds Reload Page, Reopen Last Closed Tab, and Merge All Windows</strong> — ranked, with the full breadcrumb so you know exactly what will run.</p>
         </div>
         <div class="shot-frame">
           <img src="assets/shots/menu-search-dark.png" width="1620" height="1380" alt="The Menu Search panel over Safari, query 're', listing View › Reload Page, File › Share › Messages, History › Reopen Last Closed Tab, and Window › Merge All Windows." loading="lazy">
@@ -526,21 +788,21 @@
   <section id="clipboard">
     <div class="wrap">
       <div class="section-head" data-reveal>
-        <p class="eyebrow">Clipboard history</p>
-        <h2>Everything you copy, one chord away</h2>
-        <p>The mouse isn't the only thing Key Monster eats. It lives in the menu bar — no Dock icon, no windows lying around — recording what you copy and giving it back the moment you ask.</p>
+        <p class="eyebrow" data-doom="The hoard">Clipboard history</p>
+        <h2 data-doom="Everything you copy, dragged screaming back">Everything you copy, one chord away</h2>
+        <p data-doom="The mouse was only the first course. KEY MÖNSTER lurks in the menu bar — no Dock icon, no windows lying around, no mercy — recording every copy and disgorging it the instant you demand tribute.">The mouse isn't the only thing Key Monster eats. It lives in the menu bar — no Dock icon, no windows lying around — recording what you copy and giving it back the moment you ask.</p>
       </div>
 
       <div class="split" data-reveal>
         <div class="copy">
-          <h3>Search first, paste faster</h3>
-          <p>One shortcut opens a centered panel with the cursor already in the search field. Matching runs across <strong>text content, file names, and the source app's name</strong> — type "safari" and see everything you copied from Safari.</p>
-          <p><strong>Return doesn't just copy — it pastes</strong>, synthesizing <span style="white-space:nowrap">⌘V</span> into the app you were just using. No switching back, no second shortcut.</p>
+          <h3 data-doom="Search first. Paste harder.">Search first, paste faster</h3>
+          <p data-doom="One chord tears open a centered panel, cursor already waiting in the search field. The hunt runs across <strong>text, file names, and the source app's name</strong> — type 'safari' and behold everything you ever ripped from Safari.">One shortcut opens a centered panel with the cursor already in the search field. Matching runs across <strong>text content, file names, and the source app's name</strong> — type "safari" and see everything you copied from Safari.</p>
+          <p data-doom="<strong>Return does not merely copy — it pastes</strong>, hammering ⌘V straight into the app you just left. No switching back. No second chord. No hesitation."><strong>Return doesn't just copy — it pastes</strong>, synthesizing <span style="white-space:nowrap">⌘V</span> into the app you were just using. No switching back, no second shortcut.</p>
           <ul class="keylist">
             <li><span class="keys"><kbd class="key">⌃</kbd><kbd class="key">N</kbd><span class="sep">/</span><kbd class="key">⌃</kbd><kbd class="key">P</kbd></span> move the selection</li>
             <li><span class="keys"><kbd class="key">⌃</kbd><kbd class="key">J</kbd><span class="sep">/</span><kbd class="key">⌃</kbd><kbd class="key">K</kbd></span> scroll long previews</li>
-            <li><span class="keys"><kbd class="key">↩</kbd></span> paste into the previous app</li>
-            <li><span class="keys"><kbd class="key">esc</kbd></span> vanish</li>
+            <li><span class="keys"><kbd class="key">↩</kbd></span> <span data-doom="paste into the app you abandoned">paste into the previous app</span></li>
+            <li><span class="keys"><kbd class="key">esc</kbd></span> <span data-doom="vanish into the void">vanish</span></li>
           </ul>
         </div>
         <div class="shot-frame">
@@ -553,32 +815,32 @@
           <img src="assets/shots/clipboard-image-dark.png" width="1860" height="1500" alt="The history panel with an image entry selected, showing a full-size preview of the copied image — Key Monster's own monster icon — in the right pane." loading="lazy">
         </div>
         <div class="copy">
-          <h3>Not just text</h3>
-          <p>Images from Preview or your browser, files copied in Finder, rich text with its formatting — each entry keeps <strong>the icon of the app it came from</strong>, and the preview pane shows the whole thing: the complete text, the full image, every file path.</p>
-          <p>History is stored locally in SQLite, survives restarts, deduplicates repeat copies, and keeps the last 10,000 items.</p>
+          <h3 data-doom="Not just text. Nothing is safe.">Not just text</h3>
+          <p data-doom="Images from Preview or your browser, files torn from Finder, rich text with its finery intact — every entry bears <strong>the icon of the app it was taken from</strong>, and the preview pane shows the whole carcass: the complete text, the full image, every file path.">Images from Preview or your browser, files copied in Finder, rich text with its formatting — each entry keeps <strong>the icon of the app it came from</strong>, and the preview pane shows the whole thing: the complete text, the full image, every file path.</p>
+          <p data-doom="The hoard is kept in local SQLite, survives restarts, spits duplicate offerings back out, and holds the last 10,000 souls.">History is stored locally in SQLite, survives restarts, deduplicates repeat copies, and keeps the last 10,000 items.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="tinted">
+  <section id="covenant" class="tinted">
     <div class="wrap">
       <div class="section-head" data-reveal>
-        <p class="eyebrow">Boring, in the good way</p>
-        <h2>Local, quiet, respectful</h2>
+        <p class="eyebrow" data-doom="Boring, in the brutal way">Boring, in the good way</p>
+        <h2 data-doom="Local. Silent. Merciless.">Local, quiet, respectful</h2>
       </div>
       <div class="privacy" data-reveal>
         <div class="item">
-          <h3>Nothing leaves your Mac</h3>
-          <p>History lives in a local SQLite database. No accounts, no sync service, no telemetry — there isn't even a network permission to grant.</p>
+          <h3 data-doom="Nothing escapes your Mac">Nothing leaves your Mac</h3>
+          <p data-doom="The hoard rots gloriously in a local SQLite crypt. No accounts, no sync service, no telemetry — there is not even a network permission to refuse.">History lives in a local SQLite database. No accounts, no sync service, no telemetry — there isn't even a network permission to grant.</p>
         </div>
         <div class="item">
-          <h3>Password-manager aware</h3>
-          <p>Key Monster honors the nspasteboard.org convention: clipboard contents marked concealed or transient — like copied passwords — are never recorded.</p>
+          <h3 data-doom="Passwords are sacred">Password-manager aware</h3>
+          <p data-doom="KEY MÖNSTER honors the nspasteboard.org covenant: clipboard contents marked concealed or transient — copied passwords — are never recorded. Even mönsters have a code.">Key Monster honors the nspasteboard.org convention: clipboard contents marked concealed or transient — like copied passwords — are never recorded.</p>
         </div>
         <div class="item">
-          <h3>A background accessory</h3>
-          <p>No Dock icon, no app switcher entry, no window until you summon one. Just a small monster in the menu bar, waiting for a chord.</p>
+          <h3 data-doom="A lurking accessory">A background accessory</h3>
+          <p data-doom="No Dock icon. No app switcher entry. No window until summoned. Just a small mönster in the menu bar. Waiting. Always waiting.">No Dock icon, no app switcher entry, no window until you summon one. Just a small monster in the menu bar, waiting for a chord.</p>
         </div>
       </div>
     </div>
@@ -587,23 +849,23 @@
   <section id="install">
     <div class="wrap">
       <div class="section-head" data-reveal>
-        <p class="eyebrow">Install</p>
-        <h2>One download and it's yours</h2>
-        <p>Requires macOS 14 or later. The app is signed and notarized by Apple — download it, drag it to Applications, done. Prefer no binaries to trust? Build from source and read every line first.</p>
+        <p class="eyebrow" data-doom="The summoning">Install</p>
+        <h2 data-doom="One download and it is bound to you">One download and it's yours</h2>
+        <p data-doom="Demands macOS 14 or later. Signed and notarized by Apple — the rare pact where both parties keep their word. Download it, drag it to Applications, done. Trust no binary? Forge it from source and read every cursed line yourself.">Requires macOS 14 or later. The app is signed and notarized by Apple — download it, drag it to Applications, done. Prefer no binaries to trust? Build from source and read every line first.</p>
       </div>
       <div class="install-grid" data-reveal>
         <div>
-          <a class="dl-btn" href="https://github.com/semanticart/keymonster/releases/latest/download/KeyMonster.dmg">Download Key&nbsp;Monster.dmg</a>
-          <p class="or-build">Always the latest release · or build from source:</p>
+          <a class="dl-btn" href="https://github.com/semanticart/keymonster/releases/latest/download/KeyMonster.dmg" data-doom="⚡ Seize Key Mönster.dmg">Download Key&nbsp;Monster.dmg</a>
+          <p class="or-build" data-doom="Always the latest release · or forge it yourself in the fires below:">Always the latest release · or build from source:</p>
           <pre class="term"><code><span class="d">$</span> git clone https://github.com/semanticart/keymonster
 <span class="d">$</span> cd keymonster
 <span class="d">$</span> make install
-<span class="c"># builds a signed release .app and puts it in /Applications</span></code></pre>
+<span class="c" data-doom="# forges a signed release .app and chains it to /Applications"># builds a signed release .app and puts it in /Applications</span></code></pre>
         </div>
         <div class="perms">
-          <div class="perm"><span class="dot">●</span><span><strong>Accessibility</strong> — asked for on demand; powers auto-paste, click hints, the grid, scroll panes, and text jump.</span></div>
-          <div class="perm"><span class="dot">●</span><span><strong>Screen Recording</strong> — asked for when you first zoom; the grid loupe and hint zoom stay off until it's granted. Captures are single still frames kept only in memory, never saved — and despite the permission's name, no audio is ever recorded.</span></div>
-          <div class="perm"><span class="dot">●</span><span><strong>Everything is configurable</strong> — each feature has its own shortcut recorder in Settings, and features you don't bind stay out of your way.</span></div>
+          <div class="perm"><span class="dot">●</span><span data-doom="<strong>Accessibility</strong> — demanded only when needed; fuels auto-paste, hints of doom, the grid of judgment, scroll panes, and caret necromancy."><strong>Accessibility</strong> — asked for on demand; powers auto-paste, click hints, the grid, scroll panes, and text jump.</span></div>
+          <div class="perm"><span class="dot">●</span><span data-doom="<strong>Screen Recording</strong> — demanded at your first zoom; the loupe stays chained until you grant it. Captures are single still frames held only in memory, never written down — and despite the permission's name, no audio is ever taken. The mönster hears nothing."><strong>Screen Recording</strong> — asked for when you first zoom; the grid loupe and hint zoom stay off until it's granted. Captures are single still frames kept only in memory, never saved — and despite the permission's name, no audio is ever recorded.</span></div>
+          <div class="perm"><span class="dot">●</span><span data-doom="<strong>Everything is configurable</strong> — every rite has its own shortcut recorder in Settings, and rites you leave unbound stay in their graves."><strong>Everything is configurable</strong> — each feature has its own shortcut recorder in Settings, and features you don't bind stay out of your way.</span></div>
         </div>
       </div>
     </div>
@@ -614,9 +876,9 @@
   <div class="wrap foot-inner">
     <div class="brand">
       <img src="assets/icon.svg" alt="">
-      <span>Key Monster — Swift 6, SwiftUI &amp; AppKit, <a href="https://github.com/groue/GRDB.swift">GRDB</a>.</span>
+      <span data-doom="KEY MÖNSTER — forged in Swift 6, SwiftUI &amp; AppKit, and <a href='https://github.com/groue/GRDB.swift'>GRDB</a>.">Key Monster — Swift 6, SwiftUI &amp; AppKit, <a href="https://github.com/groue/GRDB.swift">GRDB</a>.</span>
     </div>
-    <span>The screencast and screenshots are real panels rendered by the app itself, fed on demo data.</span>
+    <span data-doom="The screencast is real. The panels are real. The mönster is real. Nothing is safe.">The screencast and screenshots are real panels rendered by the app itself, fed on demo data.</span>
   </div>
 </footer>
 
@@ -641,6 +903,33 @@
     }, { rootMargin: "0px 0px -8% 0px" });
     targets.forEach(el => io.observe(el));
   }
+
+  // ⚡ Doom mode: swap the palette (html.doom) and the copy (data-doom attrs).
+  // The head script already applied the class pre-paint; this syncs the text.
+  const doomBtn = document.getElementById("doom-toggle");
+  const NORMAL_TITLE = document.title;
+  const DOOM_TITLE = "KEY MÖNSTER — THE MOUSE MUST DIE";
+
+  function setDoom(on) {
+    document.documentElement.classList.toggle("doom", on);
+    document.querySelectorAll("[data-doom]").forEach(el => {
+      if (on) {
+        if (!("norm" in el.dataset)) el.dataset.norm = el.innerHTML;
+        el.innerHTML = el.getAttribute("data-doom");
+      } else if ("norm" in el.dataset) {
+        el.innerHTML = el.dataset.norm;
+      }
+    });
+    document.title = on ? DOOM_TITLE : NORMAL_TITLE;
+    doomBtn.setAttribute("aria-pressed", String(on));
+    try { localStorage.setItem("km-doom", on ? "1" : "0"); } catch (e) {}
+  }
+
+  doomBtn.addEventListener("click", () => {
+    setDoom(!document.documentElement.classList.contains("doom"));
+  });
+
+  if (document.documentElement.classList.contains("doom")) setDoom(true);
 </script>
 
 </body>

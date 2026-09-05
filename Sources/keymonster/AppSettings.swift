@@ -74,6 +74,9 @@ final class AppSettings: ObservableObject {
     static let scrollShortcutKey = "scrollPanesShortcut"
     static let textJumpShortcutKey = "textJumpShortcut"
     static let menuSearchShortcutKey = "menuSearchShortcut"
+    static let editInEditorShortcutKey = "editInEditorShortcut"
+    static let editorCommandKey = "editorCommand"
+    static let editorTerminalKey = "editorTerminalApp"
 
     @Published var launchAtLogin: Bool {
         didSet {
@@ -151,6 +154,34 @@ final class AppSettings: ObservableObject {
         didSet { persist(menuSearchShortcut, forKey: Self.menuSearchShortcutKey) }
     }
 
+    /// Global shortcut that opens the focused text field's contents in the
+    /// user's editor and, when the editor exits cleanly, puts the edited text
+    /// back — the way git hands a commit message to `$EDITOR`.
+    @Published var editInEditorShortcut: Shortcut? {
+        didSet { persist(editInEditorShortcut, forKey: Self.editInEditorShortcutKey) }
+    }
+
+    /// The editor to run, as a shell snippet (`code --wait`, `nvim`). Empty
+    /// means "use `$KEY_MONSTER_EDITOR`, `$VISUAL`, then `$EDITOR`, from the
+    /// login shell" (see `EditorCommand`).
+    @Published var editorCommand: String {
+        didSet {
+            let trimmed = editorCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                defaults.removeObject(forKey: Self.editorCommandKey)
+            } else {
+                defaults.set(editorCommand, forKey: Self.editorCommandKey)
+            }
+        }
+    }
+
+    /// The terminal app to run the editor in, for editors that need one (vim,
+    /// nano, emacs -nw). nil runs the editor directly, which suits GUI editors
+    /// that can wait for their window to close.
+    @Published var editorTerminal: AppRef? {
+        didSet { persist(editorTerminal, forKey: Self.editorTerminalKey) }
+    }
+
     /// When on, pressing Return pastes the selection into the previously focused
     /// app instead of only copying it. Defaults on; requires Accessibility access.
     @Published var autoPaste: Bool {
@@ -181,17 +212,24 @@ final class AppSettings: ObservableObject {
         scrollShortcut = Self.loadShortcut(defaults, key: Self.scrollShortcutKey)
         textJumpShortcut = Self.loadShortcut(defaults, key: Self.textJumpShortcutKey)
         menuSearchShortcut = Self.loadShortcut(defaults, key: Self.menuSearchShortcutKey)
+        editInEditorShortcut = Self.loadShortcut(defaults, key: Self.editInEditorShortcutKey)
+        editorCommand = defaults.string(forKey: Self.editorCommandKey) ?? ""
+        editorTerminal = Self.loadValue(defaults, key: Self.editorTerminalKey)
         appShortcuts = Self.loadList(defaults, key: Self.appShortcutsKey)
         scriptShortcuts = Self.loadList(defaults, key: Self.scriptShortcutsKey)
     }
 
     private static func loadShortcut(_ defaults: UserDefaults, key: String) -> Shortcut? {
-        guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(Shortcut.self, from: data)
+        loadValue(defaults, key: key)
     }
 
-    private func persist(_ shortcut: Shortcut?, forKey key: String) {
-        if let shortcut, let data = try? JSONEncoder().encode(shortcut) {
+    private static func loadValue<T: Decodable>(_ defaults: UserDefaults, key: String) -> T? {
+        guard let data = defaults.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    private func persist<T: Encodable>(_ value: T?, forKey key: String) {
+        if let value, let data = try? JSONEncoder().encode(value) {
             defaults.set(data, forKey: key)
         } else {
             defaults.removeObject(forKey: key)

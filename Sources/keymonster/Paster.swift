@@ -47,11 +47,33 @@ enum Paster {
         return true
     }
 
+    /// Replaces the focused field's whole contents with `text`: puts it on the
+    /// pasteboard, selects all, pastes. The paste-shaped fallback for Edit in
+    /// Editor, used where a field won't take an AX value write (rich web
+    /// editors, mostly). The target app must already be frontmost. No-op
+    /// (returns false) if untrusted.
+    @discardableResult
+    static func replaceAll(with text: String) -> Bool {
+        guard isTrusted else { log.debug("replaceAll skipped: not trusted"); return false }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        postCommandKey(0x00) // 'a'
+        // A beat between the two chords so the selection lands before the paste.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            postCommandV()
+        }
+        return true
+    }
+
     private static func postCommandV() {
-        let vKeyCode: CGKeyCode = 0x09 // 'v'
+        postCommandKey(0x09) // 'v'
+    }
+
+    private static func postCommandKey(_ keyCode: CGKeyCode) {
         let source = CGEventSource(stateID: .combinedSessionState)
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: false)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
         keyDown?.flags = .maskCommand
         keyUp?.flags = .maskCommand
         keyDown?.post(tap: .cghidEventTap)

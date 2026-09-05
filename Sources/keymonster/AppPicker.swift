@@ -8,7 +8,7 @@ enum AppPicker {
     /// Present an open panel scoped to applications and return the chosen app's
     /// bundle id + display name. nil if the user cancels or the bundle is unreadable.
     @MainActor
-    static func choose() -> AppRef? {
+    static func choose(message: String = "Choose an app to focus with this shortcut") -> AppRef? {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.application]
         panel.allowsMultipleSelection = false
@@ -16,7 +16,7 @@ enum AppPicker {
         panel.canChooseFiles = true
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.prompt = "Choose"
-        panel.message = "Choose an app to focus with this shortcut"
+        panel.message = message
         guard panel.runModal() == .OK, let url = panel.url,
               let bundleID = Bundle(url: url)?.bundleIdentifier else {
             return nil

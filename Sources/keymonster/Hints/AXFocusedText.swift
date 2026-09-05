@@ -82,6 +82,34 @@ enum AXFocusedText {
         }
     }
 
+    // MARK: - Whole-value access (Edit in Editor)
+
+    /// The field's current full text, re-read rather than taken from `Focus`,
+    /// for checking what a write actually produced.
+    static func value(of element: AXUIElement) -> String? {
+        axString(element, kAXValueAttribute)
+    }
+
+    /// Replaces the field's entire text in one AX write. Returns whether the
+    /// field accepted it — apps that don't expose a settable value (or ignore
+    /// the write) report failure here, and the caller falls back to pasting.
+    /// Success is judged by reading the value back, since some apps answer
+    /// "success" to a write they then ignore.
+    @discardableResult
+    static func setValue(_ element: AXUIElement, to text: String) -> Bool {
+        guard isSettable(element, kAXValueAttribute) else { return false }
+        let error = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, text as CFString)
+        return error == .success && value(of: element) == text
+    }
+
+    /// Whether `element` is still the system-wide focused element — the check
+    /// before a paste-based fallback, so edited text never lands in whatever
+    /// field the user moved to in the meantime.
+    static func isFocused(_ element: AXUIElement) -> Bool {
+        guard let current = focusedElement() else { return false }
+        return CFEqual(current, element)
+    }
+
     // MARK: - Focus
 
     /// Browsers and Electron apps only build an accessibility tree for their web

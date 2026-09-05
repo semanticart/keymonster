@@ -63,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let gridMode = GridModeController()
     private let scrollMode = ScrollModeController()
     private let textJumpMode = TextJumpController()
+    private let externalEditor = ExternalEditorController()
     private let menuFinder = MenuFinderController()
     private let scriptRunner = ScriptRunner()
     private let updateChecker = UpdateChecker()
@@ -257,6 +258,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             (settings.gridShortcut, { [weak self] in self?.gridMode.toggle() }),
             (settings.scrollShortcut, { [weak self] in self?.scrollMode.toggle() }),
             (settings.textJumpShortcut, { [weak self] in self?.textJumpMode.toggle() }),
+            (settings.editInEditorShortcut, { [weak self] in self?.externalEditor.trigger() }),
             (settings.menuSearchShortcut, { [weak self] in self?.menuFinder.toggle() })
         ])
         for script in settings.scriptShortcuts {

@@ -16,7 +16,7 @@ struct SettingsView: View {
         let singles = [
             settings.shortcut, settings.hintLeftShortcut, settings.hintRightShortcut,
             settings.gridShortcut, settings.scrollShortcut, settings.textJumpShortcut,
-            settings.menuSearchShortcut
+            settings.editInEditorShortcut, settings.menuSearchShortcut
         ]
         return ShortcutConflicts.conflicting(
             singles.compactMap { $0 }
@@ -180,7 +180,8 @@ struct SettingsView: View {
 
     private var textTab: some View {
         SettingsTabView(description: "Move the caret through text by sight instead of "
-            + "arrow keys. Requires Accessibility permission.") {
+            + "arrow keys, or hand a text field to your own editor. Both require "
+            + "Accessibility permission.") {
             ShortcutSettingSection(
                 title: "Jump to Character",
                 shortcut: $settings.textJumpShortcut,
@@ -191,6 +192,12 @@ struct SettingsView: View {
                     + "then a character. Every visible occurrence gets a label; type one "
                     + "to drop the caret just before that character. Delete picks a "
                     + "different character; Esc cancels."
+            )
+
+            EditorSettingsSection(
+                settings: settings,
+                isConflicting: isConflicting(settings.editInEditorShortcut),
+                showAccessibilityNotice: settings.editInEditorShortcut != nil && !accessTrusted
             )
         }
     }
