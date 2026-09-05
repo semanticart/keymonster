@@ -78,7 +78,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.info("applicationDidFinishLaunching")
         NSApp.setActivationPolicy(.accessory)
-        KeyTapAccess.logStatus()
         axPrewarmer.start()
 
         do {

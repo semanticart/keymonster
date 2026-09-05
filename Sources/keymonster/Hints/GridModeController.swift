@@ -15,7 +15,7 @@ private let log = Logger(subsystem: "keymonster", category: "grid")
 @MainActor
 final class GridModeController {
     private let overlay = GridOverlay()
-    private let keyTap = HintKeyInput()
+    private let keyInput = HintKeyPanel()
 
     /// The whole window, in AX coordinates; the base the hint grid covers.
     private var windowFrame: CGRect = .zero
@@ -30,10 +30,10 @@ final class GridModeController {
     var isActive: Bool { !regions.isEmpty }
 
     init() {
-        keyTap.acceptsEnter = true
-        keyTap.extraCharacters = Set(GridDivision.rows.joined().filter { !$0.isLetter })
+        keyInput.classifier.acceptsEnter = true
+        keyInput.classifier.extraCharacters = Set(GridDivision.rows.joined().filter { !$0.isLetter })
             .union(GridDivision.shiftedAliases.keys)
-        keyTap.handler = { [weak self] key in self?.handle(key) }
+        keyInput.handler = { [weak self] key in self?.handle(key) }
     }
 
     /// Fired by the global hotkey; pressing it again dismisses.
@@ -46,15 +46,14 @@ final class GridModeController {
     }
 
     private func activate() {
-        guard HintKeyInput.ensureAccess() else { return }
+        guard Paster.isTrusted else { Paster.requestAccess(); return }
         guard let windowFrame = AXHintTargetFinder.focusedWindowFrame(), !windowFrame.isEmpty else {
             log.info("no focused window for grid mode")
             NSSound.beep()
             return
         }
-        guard !HintKeyInput.secureInputBlocks(windowFrame: windowFrame) else { return }
-        guard keyTap.start() else {
-            log.error("could not start key capture (Accessibility revoked?)")
+        guard keyInput.start() else {
+            log.error("could not take key focus for grid input")
             NSSound.beep()
             return
         }
@@ -167,7 +166,7 @@ final class GridModeController {
     }
 
     private func dismiss() {
-        keyTap.stop()
+        keyInput.stop()
         overlay.hide()
         regions = []
         hintCells = []

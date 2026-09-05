@@ -28,7 +28,7 @@ final class ScrollModeController {
     }
 
     private let overlay = HintOverlay()
-    private let keyTap = HintKeyInput()
+    private let keyInput = HintKeyPanel()
     private var phase: Phase = .inactive
 
     var isActive: Bool {
@@ -37,7 +37,7 @@ final class ScrollModeController {
     }
 
     init() {
-        keyTap.handler = { [weak self] key in self?.handle(key) }
+        keyInput.handler = { [weak self] key in self?.handle(key) }
     }
 
     /// Fired by the global hotkey; pressing it again dismisses.
@@ -50,28 +50,27 @@ final class ScrollModeController {
     }
 
     private func activate() {
-        guard HintKeyInput.ensureAccess() else { return }
+        guard Paster.isTrusted else { Paster.requestAccess(); return }
         guard let scan = AXScrollPaneFinder.scan() else {
             NSSound.beep()
             return
         }
-        guard !HintKeyInput.secureInputBlocks(windowFrame: scan.windowFrame) else { return }
         let session = Session(panes: scan.panes, windowFrame: scan.windowFrame)
         switch ScrollActivation.forPaneCount(scan.panes.count) {
         case .none:
             log.info("no scrollable panes in the frontmost window")
             NSSound.beep()
         case .scroll(let index):
-            guard keyTap.start() else { return tapFailed() }
+            guard keyInput.start() else { return captureFailed() }
             startScrolling(session, index: index)
         case .select:
-            guard keyTap.start() else { return tapFailed() }
+            guard keyInput.start() else { return captureFailed() }
             startSelecting(session)
         }
     }
 
-    private func tapFailed() {
-        log.error("could not start key capture (Accessibility revoked?)")
+    private func captureFailed() {
+        log.error("could not take key focus for scroll input")
         NSSound.beep()
     }
 
@@ -177,7 +176,7 @@ final class ScrollModeController {
     }
 
     private func dismiss() {
-        keyTap.stop()
+        keyInput.stop()
         overlay.hide()
         phase = .inactive
     }

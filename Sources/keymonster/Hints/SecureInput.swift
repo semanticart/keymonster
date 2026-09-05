@@ -1,15 +1,14 @@
 import AppKit
 import Carbon.HIToolbox
-import os.log
-
-private let log = Logger(subsystem: "keymonster", category: "hints.secureinput")
 
 /// Detects Secure Keyboard Entry, macOS's anti-keylogging state: while any
 /// process holds it, the window server delivers keystrokes only to the focused
-/// app and event taps see nothing. A hint mode started then would draw its
-/// overlay and watch every letter sail through to the target app (password
-/// prompts hold it briefly; Terminal's "Secure Keyboard Entry" and a
-/// long-running Music.app are known to hold it indefinitely).
+/// app and event taps see nothing. Key Monster's focus-based capture
+/// (`HintKeyPanel`) is the key window while a mode runs, so the modes are
+/// unaffected — this reading feeds the Secure Keyboard Entry window
+/// (`SecureInputMonitor`), which narrates the state for debugging *other*
+/// apps' key troubles (password prompts hold it briefly; Terminal's toggle
+/// and a long-running Music.app are known to hold it indefinitely).
 @MainActor
 enum SecureInput {
     /// A point-in-time reading of the secure-input state and who — supposedly —
@@ -72,36 +71,4 @@ enum SecureInput {
         )
     }
 
-    /// When secure input is on, beeps and flashes an explanatory banner over
-    /// `windowFrame` — the caller should not start its key tap. Returns false when
-    /// input is free.
-    ///
-    /// The banner names an app only when it's a distinct background process; when
-    /// the reported holder is merely the frontmost app (the usual case, and often
-    /// the very app the user is trying to use), it stays generic rather than
-    /// blaming the wrong thing. The full picture is in the Secure Keyboard Entry
-    /// window (see `SecureInputMonitor`).
-    static func blocksHintInput(windowFrame: CGRect) -> Bool {
-        let snapshot = current()
-        guard snapshot.enabled else { return false }
-
-        let message = snapshot.attributableHolderName.map {
-            """
-            \($0) is holding Secure Keyboard Entry — keys can't reach Key Monster.
-            Quit it (or any keystroke viewer) to release it.
-            """
-        } ?? """
-            Secure Keyboard Entry is on — keys can't reach Key Monster.
-            Quit any keystroke viewer, like Karabiner-Elements' Event Viewer, to release it.
-            """
-
-        log.error("""
-            secure keyboard entry is on (reported pid \(snapshot.holderPID ?? -1), \
-            \(snapshot.holderName ?? "?", privacy: .public), frontmost=\(snapshot.holderIsFrontmost)); \
-            keys can't be intercepted
-            """)
-        HintOverlay.flash(message, windowFrame: windowFrame)
-        NSSound.beep()
-        return true
-    }
 }

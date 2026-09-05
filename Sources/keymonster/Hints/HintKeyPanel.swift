@@ -3,18 +3,20 @@ import os.log
 
 private let log = Logger(subsystem: "keymonster", category: "hints.keypanel")
 
-/// The experimental focus-based key-capture backend: instead of tapping events,
-/// an invisible non-activating panel takes key-window status (the same
-/// mechanism as the clipboard `FloatingPanel`), so mode keystrokes arrive
-/// through the ordinary responder chain.
+/// How the modes read keystrokes: an invisible non-activating panel takes
+/// key-window status (the same mechanism as the clipboard `FloatingPanel`), so
+/// mode keystrokes arrive through the ordinary responder chain.
 ///
-/// Why bother: Secure Keyboard Entry only starves *eavesdroppers* — the key
-/// window still receives its keystrokes — so this path keeps working while a
-/// stuck password manager holds secure input, and it needs no Input Monitoring
-/// permission. The trade-offs against the tap: the target app loses keyboard
-/// focus while a mode is active (it regains it when the panel closes), and a
-/// non-hint keystroke (a ⌘-chord, a stray Return) is consumed along with the
-/// dismissal instead of passing through to the app.
+/// This deliberately isn't an event tap. Secure Keyboard Entry starves taps —
+/// a stuck holder (a password manager, a terminal's menu toggle) would
+/// silently kill every mode — but it only starves *eavesdroppers*: the key
+/// window still receives its keystrokes, so this path is immune. It also
+/// needs no permission of its own (the modes need Accessibility for AX
+/// scanning and clicks, nothing more — in particular, no Input Monitoring).
+/// The known costs: the target app loses keyboard focus while a mode is
+/// active (it regains it when the panel closes), and a non-hint keystroke (a
+/// ⌘-chord, a stray Return) is consumed along with the dismissal. The
+/// tap-based alternative lived until v0.2.11 if those ever need revisiting.
 @MainActor
 final class HintKeyPanel {
     var handler: ((HintKeyEvent) -> Void)?
@@ -24,9 +26,9 @@ final class HintKeyPanel {
     private var panel: KeyCapturePanel?
     private var mouseMonitors: [Any] = []
 
-    /// Puts up the capture panel and takes key focus. Mirrors
-    /// `HintKeyTap.start`'s contract; this backend has no permission to lack,
-    /// so it only fails if AppKit refuses key status outright.
+    /// Puts up the capture panel and takes key focus. No permission to lack,
+    /// so it only fails if AppKit refuses key status outright (system dialogs
+    /// and other privileged surfaces can).
     func start() -> Bool {
         guard panel == nil else { return true }
         let panel = KeyCapturePanel()
@@ -45,10 +47,9 @@ final class HintKeyPanel {
         }
         self.panel = panel
 
-        // The tap cancels on real clicks; monitors reproduce that. Global for
-        // clicks landing in other apps, local for clicks on our own windows.
-        // (Synthesized commit clicks can't trip these: modes stop() before
-        // clicking.)
+        // A real click anywhere dismisses the mode. Global for clicks landing
+        // in other apps, local for clicks on our own windows. (Synthesized
+        // commit clicks can't trip these: modes stop() before clicking.)
         if let monitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.leftMouseDown, .rightMouseDown],
             handler: { [weak self] _ in
@@ -87,8 +88,8 @@ final class HintKeyPanel {
             log.debug("keyDown \(event.keyCode): captured as hint input")
             handler?(key)
         } else {
-            // Not hint input (a chord, Tab, …). Unlike the tap, the keystroke
-            // was already delivered to us and is consumed; just dismiss.
+            // Not hint input (a chord, Tab, …) — consumed along with the
+            // dismissal; it does not pass through to the app.
             log.debug("keyDown \(event.keyCode): not hint input, cancelling")
             handler?(.cancel)
         }

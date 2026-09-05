@@ -53,8 +53,7 @@ enum SecInputRunner {
         if rest.contains("once") {
             print(header)
             print("\(timestamp())  \(stateDescription())")
-            print("permissions: Accessibility \(KeyTapAccess.accessibility.label) · "
-                + "Input Monitoring \(KeyTapAccess.inputMonitoring.label)")
+            print("permissions: Accessibility \(Paster.isTrusted ? "granted" : "not granted")")
             exit(0)
         }
 

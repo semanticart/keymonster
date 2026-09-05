@@ -139,17 +139,6 @@ final class HintOverlay {
         view = nil
     }
 
-    /// Flashes a self-dismissing banner over the window — for error states
-    /// where no mode session exists to own (and later hide) an overlay.
-    static func flash(_ text: String, windowFrame: CGRect, duration: TimeInterval = 3) {
-        let overlay = HintOverlay()
-        overlay.showBanner(text, windowFrame: windowFrame)
-        // The capture keeps the throwaway overlay alive until it hides itself.
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
-            overlay.hide()
-        }
-    }
-
     /// Runs the presentation half of a `LabelSession` effect. `.commit` and
     /// `.unwound` are the mode's own to handle; they draw nothing.
     func apply(_ effect: LabelSession.Effect) {

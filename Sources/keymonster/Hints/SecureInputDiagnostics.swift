@@ -6,22 +6,23 @@ import os.log
 private let log = Logger(subsystem: "keymonster", category: "hints.secureinput.diagnostics")
 
 /// Polls `SecureInput.current()` on a timer and keeps a running log of state
-/// changes, so the Secure Keyboard Entry window can show — live — when keys are
-/// blocked and let you find the culprit by elimination. It only records a new
-/// row when the state actually changes, so the log stays short across long runs.
+/// changes. Key Monster's focus-based capture is immune to Secure Keyboard
+/// Entry, so this window is informational: it shows the system state live and
+/// helps find which app is holding secure input (by elimination) when some
+/// *other* tool is starved by it. It only records a new row when the state
+/// actually changes, so the log stays short across long runs.
 @MainActor
 final class SecureInputMonitor: ObservableObject {
     struct Event: Identifiable {
         let id = UUID()
         let time: Date
         let description: String
-        let blocked: Bool
+        let secureInputOn: Bool
     }
 
     @Published private(set) var current: SecureInput.Snapshot = .free
     @Published private(set) var events: [Event] = []
-    @Published private(set) var accessibility: KeyTapAccess.Status = .undetermined
-    @Published private(set) var inputMonitoring: KeyTapAccess.Status = .undetermined
+    @Published private(set) var accessibilityTrusted = true
 
     private var timer: Timer?
     private var lastDescription: String?
@@ -64,60 +65,62 @@ final class SecureInputMonitor: ObservableObject {
     /// Seed representative state for headless screenshots (`secinput shot`), so a
     /// captured window shows a populated log without waiting for real events.
     func debugSeed() {
-        accessibility = .granted
-        inputMonitoring = .denied
+        accessibilityTrusted = true
         current = SecureInput.Snapshot(
             enabled: true, holderPID: 100, holderName: "Google Chrome", holderBundleID: "com.google.Chrome",
             frontmostPID: 100, frontmostName: "Google Chrome", screenLocked: false
         )
         let now = Date()
         events = [
-            Event(time: now, description: Self.describe(current), blocked: true),
+            Event(time: now, description: Self.describe(current), secureInputOn: true),
             Event(time: now.addingTimeInterval(-8),
-                  description: "Blocked — reported “Slack”, but that's just the frontmost app (unreliable)",
-                  blocked: true),
+                  description: "On — reported “Slack”, but that's just the frontmost app (unreliable)",
+                  secureInputOn: true),
             Event(time: now.addingTimeInterval(-20),
-                  description: "Keys reach Key Monster (secure input off)", blocked: false)
+                  description: "Secure Keyboard Entry is off", secureInputOn: false)
         ]
     }
     #endif
 
     private func poll() {
-        accessibility = KeyTapAccess.accessibility
-        inputMonitoring = KeyTapAccess.inputMonitoring
+        accessibilityTrusted = Paster.isTrusted
         let snapshot = SecureInput.current()
         current = snapshot
         let description = Self.describe(snapshot)
         guard description != lastDescription else { return }
         lastDescription = description
-        events.insert(Event(time: Date(), description: description, blocked: snapshot.enabled), at: 0)
+        events.insert(
+            Event(time: Date(), description: description, secureInputOn: snapshot.enabled), at: 0
+        )
         if events.count > 200 { events.removeLast(events.count - 200) }
     }
 
     /// A one-line, human-readable summary of a snapshot — also the change key, so
-    /// two snapshots that read the same don't add a row.
+    /// two snapshots that read the same don't add a row. Narrates the system
+    /// state only: secure input never affects Key Monster's modes.
     static func describe(_ snapshot: SecureInput.Snapshot) -> String {
-        guard snapshot.enabled else { return "Keys reach Key Monster (secure input off)" }
+        guard snapshot.enabled else { return "Secure Keyboard Entry is off" }
         if snapshot.screenLocked {
-            return "Blocked — screen locked (holder masked as loginwindow)"
+            return "On — screen locked (holder masked as loginwindow)"
         }
         let holder = snapshot.holderName
             ?? snapshot.holderPID.map { "pid \($0)" }
             ?? "unknown app"
         if snapshot.holderIsFrontmost {
-            return "Blocked — reported “\(holder)”, but that's just the frontmost app (unreliable)"
+            return "On — reported “\(holder)”, but that's just the frontmost app (unreliable)"
         }
-        return "Blocked — reported “\(holder)” (background process — worth investigating)"
+        return "On — reported “\(holder)” (background process — worth investigating)"
     }
 }
 
 /// The Secure Keyboard Entry window, opened from the menu bar. Shows the live
-/// blocked/free state and a change log, with instructions for finding the holder
-/// by quitting suspects one at a time.
+/// on/off state and a change log, with instructions for finding the holder by
+/// quitting suspects one at a time — useful when some other tool is starved by
+/// secure input; Key Monster itself never is.
 struct SecureInputDiagnosticsView: View {
     @ObservedObject var monitor: SecureInputMonitor
 
-    private var blocked: Bool { monitor.current.enabled }
+    private var secureInputOn: Bool { monitor.current.enabled }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -156,55 +159,31 @@ struct SecureInputDiagnosticsView: View {
     }
 
     private var permissions: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            permissionRow(
-                "Accessibility", monitor.accessibility,
-                need: "required to run the key tap"
-            )
-            permissionRow(
-                "Input Monitoring", monitor.inputMonitoring,
-                need: "required to read keystrokes — the one that's easy to miss"
-            )
+        HStack(spacing: 10) {
+            Circle()
+                .fill(monitor.accessibilityTrusted ? Color.green : Color.orange)
+                .frame(width: 9, height: 9)
+            Text("Accessibility").font(.callout.weight(.medium))
+            Text(monitor.accessibilityTrusted ? "Granted" : "Not granted")
+                .font(.callout)
+                .foregroundStyle(monitor.accessibilityTrusted ? Color.secondary : Color.orange)
+            Spacer(minLength: 8)
+            Text("the only permission the modes need")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.05)))
     }
 
-    private func permissionRow(_ name: String, _ status: KeyTapAccess.Status, need: String) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(status.isGranted ? Color.green : Color.orange)
-                .frame(width: 9, height: 9)
-            Text(name).font(.callout.weight(.medium))
-            Text(status.label)
-                .font(.callout)
-                .foregroundStyle(status.isGranted ? Color.secondary : Color.orange)
-            Spacer(minLength: 8)
-            if status.isGranted {
-                Text(need).font(.caption).foregroundStyle(.tertiary)
-            } else if name == "Input Monitoring" {
-                Button("Fix…") { fixInputMonitoring() }
-            }
-        }
-    }
-
-    private func fixInputMonitoring() {
-        // Undetermined → show the system prompt; denied → open the settings pane.
-        if monitor.inputMonitoring == .undetermined {
-            KeyTapAccess.requestInputMonitoring()
-        } else {
-            KeyTapAccess.openInputMonitoringSettings()
-        }
-    }
-
     private var statusBanner: some View {
         HStack(spacing: 12) {
             Circle()
-                .fill(blocked ? Color.red : Color.green)
+                .fill(secureInputOn ? Color.orange : Color.green)
                 .frame(width: 14, height: 14)
             VStack(alignment: .leading, spacing: 2) {
-                Text(blocked ? "Blocked" : "Keys reach Key Monster")
+                Text(bannerTitle)
                     .font(.title2.weight(.semibold))
                 Text(SecureInputMonitor.describe(monitor.current))
                     .font(.callout)
@@ -216,8 +195,14 @@ struct SecureInputDiagnosticsView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill((blocked ? Color.red : Color.green).opacity(0.12))
+                .fill((secureInputOn ? Color.orange : Color.green).opacity(0.12))
         )
+    }
+
+    private var bannerTitle: String {
+        secureInputOn
+            ? "Secure Keyboard Entry is on — Key Monster is unaffected"
+            : "Secure Keyboard Entry is off"
     }
 
     private var logList: some View {
@@ -235,7 +220,7 @@ struct SecureInputDiagnosticsView: View {
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.secondary)
                         Circle()
-                            .fill(event.blocked ? Color.red : Color.green)
+                            .fill(event.secureInputOn ? Color.orange : Color.green)
                             .frame(width: 7, height: 7)
                         Text(event.description)
                             .font(.callout)

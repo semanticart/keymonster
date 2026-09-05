@@ -58,7 +58,7 @@ final class TextJumpController {
     }
 
     private let overlay = HintOverlay()
-    private let keyTap = HintKeyInput()
+    private let keyInput = HintKeyPanel()
     private var phase: Phase = .inactive
 
     var isActive: Bool {
@@ -69,8 +69,8 @@ final class TextJumpController {
     init() {
         // The target character can be anything typed — a digit, punctuation, or
         // a space — not just a hint letter, so take keystrokes raw.
-        keyTap.reportsRawCharacters = true
-        keyTap.handler = { [weak self] key in self?.handle(key) }
+        keyInput.classifier.reportsRawCharacters = true
+        keyInput.handler = { [weak self] key in self?.handle(key) }
     }
 
     /// Fired by the global hotkey; pressing it again dismisses.
@@ -83,7 +83,7 @@ final class TextJumpController {
     }
 
     private func activate() {
-        guard HintKeyInput.ensureAccess() else { return }
+        guard Paster.isTrusted else { Paster.requestAccess(); return }
         guard let focus = AXFocusedText.focused() else {
             log.info("no focused text field to jump in")
             NSSound.beep()
@@ -94,9 +94,8 @@ final class TextJumpController {
             NSSound.beep()
             return
         }
-        guard !HintKeyInput.secureInputBlocks(windowFrame: windowFrame) else { return }
-        guard keyTap.start() else {
-            log.error("could not start key capture (Accessibility revoked?)")
+        guard keyInput.start() else {
+            log.error("could not take key focus for text jump input")
             NSSound.beep()
             return
         }
@@ -218,7 +217,7 @@ final class TextJumpController {
     }
 
     private func dismiss() {
-        keyTap.stop()
+        keyInput.stop()
         overlay.hide()
         phase = .inactive
     }

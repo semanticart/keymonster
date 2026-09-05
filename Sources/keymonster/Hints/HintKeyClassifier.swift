@@ -1,9 +1,21 @@
 import AppKit
 
-/// The keystroke→`HintKeyEvent` rules shared by both key-capture backends
-/// (`HintKeyTap` and `HintKeyPanel`), so the two paths can't drift apart.
-/// Works on `NSEvent` because both backends can produce one — the tap via
-/// `NSEvent(cgEvent:)`, the panel natively — and `NSEvent` does the
+/// One keystroke's meaning while a mode is showing.
+enum HintKeyEvent: Equatable {
+    case letter(Character, shifted: Bool)
+    case escape
+    case backspace
+    /// Return or keypad Enter. Only produced when the classifier's
+    /// `acceptsEnter` is on (grid mode confirms with Return); otherwise Return
+    /// falls through to `.cancel` like any other non-hint key.
+    case enter(shifted: Bool)
+    /// Anything else — a chorded shortcut, a mouse click, cmd-tab. The mode
+    /// should get out of the way.
+    case cancel
+}
+
+/// The keystroke→`HintKeyEvent` rules for `HintKeyPanel`, kept separate so
+/// they're pure and testable. Works on `NSEvent`, which does the
 /// keycode→character mapping for the user's actual keyboard layout, so hints
 /// work on Dvorak/AZERTY too.
 struct HintKeyClassifier {

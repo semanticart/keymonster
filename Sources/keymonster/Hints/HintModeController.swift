@@ -29,13 +29,13 @@ final class HintModeController {
     }
 
     private let overlay = HintOverlay()
-    private let keyTap = HintKeyInput()
+    private let keyInput = HintKeyPanel()
     private var session: Session?
 
     var isActive: Bool { session != nil }
 
     init() {
-        keyTap.handler = { [weak self] key in self?.handle(key) }
+        keyInput.handler = { [weak self] key in self?.handle(key) }
     }
 
     /// Fired by the global hotkeys. Pressing the active mode's shortcut again
@@ -50,15 +50,14 @@ final class HintModeController {
     }
 
     private func activate(button: MouseClicker.Button) {
-        guard HintKeyInput.ensureAccess() else { return }
+        guard Paster.isTrusted else { Paster.requestAccess(); return }
         guard let scan = AXHintTargetFinder.scan(), !scan.targets.isEmpty else {
             log.info("no hint targets in the frontmost window")
             NSSound.beep()
             return
         }
-        guard !HintKeyInput.secureInputBlocks(windowFrame: scan.windowFrame) else { return }
-        guard keyTap.start() else {
-            log.error("could not start key capture (Accessibility revoked?)")
+        guard keyInput.start() else {
+            log.error("could not take key focus for hint input")
             NSSound.beep()
             return
         }
@@ -148,7 +147,7 @@ final class HintModeController {
     }
 
     private func dismiss() {
-        keyTap.stop()
+        keyInput.stop()
         overlay.hide()
         session = nil
     }

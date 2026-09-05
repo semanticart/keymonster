@@ -57,15 +57,4 @@ final class SecureInputTests: XCTestCase {
         XCTAssertTrue(SecureInputMonitor.describe(snap).contains("background"))
     }
 
-    func testPermissionStatusLabels() {
-        XCTAssertEqual(KeyTapAccess.Status.granted.label, "Granted")
-        XCTAssertEqual(KeyTapAccess.Status.denied.label, "Denied")
-        XCTAssertEqual(KeyTapAccess.Status.undetermined.label, "Not yet requested")
-    }
-
-    func testOnlyGrantedStatusCountsAsGranted() {
-        XCTAssertTrue(KeyTapAccess.Status.granted.isGranted)
-        XCTAssertFalse(KeyTapAccess.Status.denied.isGranted)
-        XCTAssertFalse(KeyTapAccess.Status.undetermined.isGranted)
-    }
 }
