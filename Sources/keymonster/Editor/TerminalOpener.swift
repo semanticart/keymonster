@@ -13,8 +13,10 @@ extension NSRunningApplication: TerminalInstance {}
 /// window comes forward like a user-launched one. Returns the instance started
 /// for the edit — the one to quit when it's over — or nil when the script was
 /// handed to the app as a document, since that app may well have been the
-/// user's running one.
+/// user's running one. Main-actor, like its caller, so the returned app object
+/// never has to cross an isolation boundary (Swift 6.1 rejects that).
 enum TerminalOpener {
+    @MainActor
     static func open(_ launch: TerminalLaunch, app appURL: URL, script scriptPath: String) async throws
         -> TerminalInstance? {
         let configuration = NSWorkspace.OpenConfiguration()
