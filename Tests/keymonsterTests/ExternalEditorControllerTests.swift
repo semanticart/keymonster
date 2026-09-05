@@ -21,6 +21,7 @@ final class ExternalEditorControllerTests: XCTestCase {
         var axWrites: [String] = []
         var pastes: [String] = []
         var failures: [String] = []
+        var clipboard: [String] = []
 
         init(raw: String, whole: String, acceptsAXWrite: Bool) {
             rawValue = raw
@@ -94,6 +95,21 @@ final class ExternalEditorControllerTests: XCTestCase {
         XCTAssertEqual(field.failures, ["editor exited 3"])
     }
 
+    func testLostFocusLeavesTheTextOnTheClipboardInsteadOfPasting() throws {
+        // The user clicked elsewhere while the editor was open: the AX write is
+        // refused as before, but a paste would land in the wrong field.
+        let field = FakeField(raw: original, whole: original, acceptsAXWrite: false)
+        field.focused = false
+        let controller = makeController(field, editor: try editorScript())
+        runEdit(controller)
+
+        XCTAssertEqual(field.axWrites, [edited])
+        XCTAssertEqual(field.pastes, [])
+        XCTAssertEqual(field.clipboard, [edited])
+        XCTAssertEqual(field.failures.count, 1)
+        XCTAssertTrue(field.failures[0].contains("on the clipboard"), field.failures[0])
+    }
+
     func testNoEditorConfiguredReportsHowToSetOne() {
         let field = FakeField(raw: original, whole: original, acceptsAXWrite: true)
         let controller = makeController(field, editor: "")
@@ -138,6 +154,7 @@ final class ExternalEditorControllerTests: XCTestCase {
         }
         dependencies.isFocused = { _ in field.focused }
         dependencies.replaceAllByPasting = { field.pastes.append($0) }
+        dependencies.leaveOnClipboard = { field.clipboard.append($0) }
         dependencies.frontmostApplication = { nil }
         dependencies.editorCommand = { editor }
         dependencies.editorTerminal = { nil }

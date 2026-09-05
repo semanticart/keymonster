@@ -322,8 +322,7 @@ final class ExternalEditorController {
             return
         }
         guard dependencies.isFocused(session.element) else {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
+            dependencies.leaveOnClipboard(text)
             reportFailure("the field lost focus before the text could be put back; "
                 + "the edited text is on the clipboard")
             return
@@ -348,6 +347,11 @@ extension ExternalEditorController {
         var setValue: @MainActor (AXUIElement, String) -> Bool = { AXFocusedText.setValue($0, to: $1) }
         var isFocused: @MainActor (AXUIElement) -> Bool = { AXFocusedText.isFocused($0) }
         var replaceAllByPasting: @MainActor (String) -> Void = { Paster.replaceAll(with: $0) }
+        /// Where the edited text goes when it can't be put back: the clipboard.
+        var leaveOnClipboard: @MainActor (String) -> Void = { text in
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+        }
         var frontmostApplication: @MainActor () -> NSRunningApplication? = {
             NSWorkspace.shared.frontmostApplication
         }
