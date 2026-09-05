@@ -9,8 +9,7 @@ import AppKit
 /// real overlay views line up with what the window shows.
 enum DemoWindowLayout {
     static let size = CGSize(width: 920, height: 640)
-    /// Overlay views extend this far past every window edge, because real hint
-    /// badges hang just outside the window they label.
+    /// Overlay views reach this far past every window edge, as real badges do.
     static let overlayMargin: CGFloat = 40
 
     static let titleBarHeight: CGFloat = 40
@@ -25,8 +24,7 @@ enum DemoWindowLayout {
     static let link = CGRect(x: 232, y: 300, width: 320, height: 20)
     static let publishButton = CGRect(x: 796, y: 582, width: 100, height: 34)
 
-    /// The two scrollable panes the scroll scene outlines: everything below the
-    /// title bar, split at the sidebar's edge.
+    /// The two scrollable panes the scroll scene outlines, split at the sidebar.
     static var sidebarPane: CGRect {
         CGRect(x: 0, y: titleBarHeight, width: sidebarWidth, height: size.height - titleBarHeight)
     }
@@ -57,9 +55,12 @@ final class DemoWindowModel: ObservableObject {
     @Published var publishPressed = false
     /// Swaps the checklist pane for the markdown editor (the text-jump scene).
     @Published var editorMode = false
-    /// The editor's caret as (line, column) into `DemoEditorLayout.lines`.
+    /// The editor's text and caret (line, column); the edit-in-editor scene
+    /// rewrites the text on write-back and tints `highlightedLine` briefly.
+    @Published var editorLines = DemoEditorLayout.lines
     @Published var caret: (line: Int, column: Int)?
-    /// How far the content pane's copy has scrolled up, in points; the Publish button stays put.
+    @Published var highlightedLine: Int?
+    /// How far the content pane's copy has scrolled up, in points; Publish stays put.
     @Published var contentScroll: CGFloat = 0
 }
 

@@ -57,12 +57,20 @@ extension DemoWindow {
     /// text with a visible caret at `model.caret`. Every character is placed
     /// individually at its `characterRect` so the scene's occurrence badges are
     /// pixel-aligned with the glyphs they label, whatever advance the text
-    /// engine would have used.
+    /// engine would have used. The lines come from the model so the
+    /// edit-in-editor scene can show edited text landing back in the field.
     var editorPane: some View {
         let textColor = Color.white.opacity(0.86)
         let faintColor = Color.white.opacity(0.42)
         return ZStack(alignment: .topLeading) {
-            ForEach(Array(DemoEditorLayout.lines.enumerated()), id: \.offset) { index, line in
+            if let highlighted = model.highlightedLine {
+                let rect = DemoEditorLayout.characterRect(line: highlighted, column: 0)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color(red: 0.35, green: 0.66, blue: 0.95).opacity(0.18))
+                    .frame(width: DemoWindowLayout.contentPane.width - 48, height: rect.height - 4)
+                    .position(x: DemoWindowLayout.contentPane.midX, y: rect.midY)
+            }
+            ForEach(Array(model.editorLines.enumerated()), id: \.offset) { index, line in
                 let color = line.hasPrefix("#") ? faintColor : textColor
                 ForEach(Array(line.enumerated()), id: \.offset) { column, char in
                     let rect = DemoEditorLayout.characterRect(line: index, column: column)

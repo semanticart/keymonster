@@ -9,12 +9,15 @@ private let log = Logger(subsystem: "keymonster", category: "screencast")
 ///
 /// `keymonster screencast [--out DIR] [--fps N] [--min SCENES]` drives the
 /// real panels and overlays through a choreographed demo — click hints, the
-/// grid loupe, scroll panes, text jump, menu search, then the clipboard
-/// history — against
+/// grid loupe, scroll panes, text jump, edit in editor, menu search, then the
+/// clipboard history — against
 /// the same seeded demo content as `snapshot --demo`, capturing one PNG per
 /// frame plus a `poster.png`. Nothing on screen is real user data, so the
 /// result is safe to publish. `make site-cast` records the frames and encodes
 /// the video.
+///
+/// `--only editor,menu` records just the named scenes, for iterating on one
+/// without sitting through the rest.
 ///
 /// `--min hints=5.2,grid=6.1,...` gives scenes a minimum duration: a scene
 /// shorter than its minimum holds its final frame longer before fading out.
@@ -51,12 +54,22 @@ enum ScreencastRunner {
         let recorder = Recorder(window: window, outURL: outURL, fps: fps)
         recorder.minimums = parseMinimums(SnapshotRunner.option("--min"))
 
-        hintScene(recorder: recorder, window: window)
-        gridScene(recorder: recorder, window: window)
-        scrollScene(recorder: recorder, window: window)
-        textJumpScene(recorder: recorder, window: window)
-        menuScene(recorder: recorder, window: window)
-        historyScene(recorder: recorder, window: window)
+        let scenes: [(name: String, play: (Recorder, NSWindow) -> Void)] = [
+            ("hints", hintScene),
+            ("grid", gridScene),
+            ("scroll", scrollScene),
+            ("jump", textJumpScene),
+            ("editor", editorScene),
+            ("menu", menuScene),
+            ("history", historyScene)
+        ]
+        let only = SnapshotRunner.option("--only").map { Set($0.split(separator: ",").map(String.init)) }
+        if let only, let unknown = only.first(where: { name in !scenes.contains { $0.name == name } }) {
+            SnapshotRunner.fail("no scene named '\(unknown)' (have \(scenes.map(\.name).joined(separator: ", ")))")
+        }
+        for scene in scenes where only?.contains(scene.name) ?? true {
+            scene.play(recorder, window)
+        }
 
         recorder.writeTimings()
         print(outDir)
