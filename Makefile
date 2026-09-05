@@ -1,4 +1,4 @@
-.PHONY: build run test axtest fixture clean lint app snapshot site-shots site-cast site-cast-voiced icon install dist notarize release
+.PHONY: build run test axtest fixture clean lint app snapshot site site-shots site-cast site-cast-voiced icon install dist notarize release
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -54,6 +54,15 @@ run: app
 SNAP_ARGS ?=
 snapshot: build
 	swift run keymonster snapshot $(SNAP_ARGS)
+
+# Serve the website (docs/) locally and open it in the browser. Plain static
+# files, so Python's built-in server is enough. Override the port with
+# `make site SITE_PORT=9000`. Ctrl-C to stop.
+SITE_PORT ?= 8000
+site:
+	@echo "Serving docs/ at http://localhost:$(SITE_PORT)/ (Ctrl-C to stop)"
+	@(sleep 1; open "http://localhost:$(SITE_PORT)/") &
+	python3 -m http.server $(SITE_PORT) --bind 127.0.0.1 --directory docs
 
 # Regenerate the website screenshots in docs/assets/shots. Renders the real
 # panels against seeded demo content (never the on-disk clipboard history), in
