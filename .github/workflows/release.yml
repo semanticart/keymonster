@@ -34,10 +34,16 @@ permissions:
 
 jobs:
   release:
-    # macos-15 ships Xcode 16 (Swift 6), which Package.swift requires. The app's
+    # Build with the same Xcode as local development, pinned so a runner image
+    # update can't silently change the compiler: Swift's concurrency checking
+    # differs between releases, and code that builds locally has failed here
+    # on an older toolchain. Bump DEVELOPER_DIR alongside the local Xcode; the
+    # versions the image carries are listed in actions/runner-images. The app's
     # macOS 14 deployment target is set in Package.swift, so the binary still
-    # runs on macOS 14+ regardless of the builder's OS.
-    runs-on: macos-15
+    # runs on macOS 14+ regardless of the builder's OS or Xcode.
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@v7
 
