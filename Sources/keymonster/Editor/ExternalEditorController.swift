@@ -54,12 +54,17 @@ final class ExternalEditorController {
         var scriptFile: URL { directory.appendingPathComponent(EditorWrapperScript.fileName) }
     }
 
+    private let dependencies: Dependencies
     private var session: Session?
 
     /// How the user hears about a failure; injectable for tests.
     var reportFailure: (String) -> Void = { detail in
         ScriptLog.shared.record(script: ExternalEditorController.logName, detail: detail)
         NSSound.beep()
+    }
+
+    init(dependencies: Dependencies = Dependencies()) {
+        self.dependencies = dependencies
     }
 
     /// How long the target app gets to come forward before the text is
@@ -85,8 +90,8 @@ final class ExternalEditorController {
     // MARK: - Capture
 
     private func start() {
-        guard Paster.isTrusted else { Paster.requestAccess(); return }
-        guard let focus = AXFocusedText.focused() else {
+        guard dependencies.isTrusted() else { dependencies.requestAccess(); return }
+        guard let focus = dependencies.focusedField() else {
             log.info("no focused text field to edit")
             NSSound.beep()
             return
@@ -94,13 +99,13 @@ final class ExternalEditorController {
 
         // The paragraph-aware read, not `focus.value`: Chromium's raw value
         // drops blank lines, and the editor should see the field as it looks.
-        let original = AXFocusedText.wholeValue(of: focus.element) ?? focus.value
+        let original = dependencies.wholeValue(focus.element) ?? focus.value
         let outbound = EditorRoundTrip.outbound(original)
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("keymonster-edit-\(UUID().uuidString)")
         let session = Session(
             directory: directory,
-            app: NSWorkspace.shared.frontmostApplication,
+            app: dependencies.frontmostApplication(),
             element: focus.element,
             original: original,
             addedTrailingNewline: outbound.addedTrailingNewline
@@ -116,8 +121,8 @@ final class ExternalEditorController {
         let appName = session.app?.localizedName ?? "?"
         log.info("edit \(session.id) captured \(original.count) characters from \(appName, privacy: .public)")
 
-        launch(session, configuredEditor: AppSettings.shared.editorCommand,
-               terminal: AppSettings.shared.editorTerminal)
+        launch(session, configuredEditor: dependencies.editorCommand(),
+               terminal: dependencies.editorTerminal())
     }
 
     // MARK: - Launch
@@ -135,8 +140,9 @@ final class ExternalEditorController {
             return
         }
 
+        let loadEnvironment = dependencies.loginEnvironment
         DispatchQueue.global(qos: .userInitiated).async { [self] in
-            let environment = LoginShellEnvironment.load()
+            let environment = loadEnvironment()
             guard let editor = EditorCommand.resolve(configured: configuredEditor, environment: environment) else {
                 Task { @MainActor in
                     self.finish(id, failure: "no editor configured: set one in Settings, "
@@ -311,11 +317,11 @@ final class ExternalEditorController {
     }
 
     private func replace(_ text: String, in session: Session) {
-        if AXFocusedText.setValue(session.element, to: text) {
+        if dependencies.setValue(session.element, text) {
             log.info("edit \(session.id): replaced via AX value")
             return
         }
-        guard AXFocusedText.isFocused(session.element) else {
+        guard dependencies.isFocused(session.element) else {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
             reportFailure("the field lost focus before the text could be put back; "
@@ -323,6 +329,31 @@ final class ExternalEditorController {
             return
         }
         log.info("edit \(session.id): field rejected the AX write; pasting instead")
-        Paster.replaceAll(with: text)
+        dependencies.replaceAllByPasting(text)
+    }
+}
+
+// MARK: - Dependencies
+
+extension ExternalEditorController {
+    /// The live edges of an edit — trust, focus, the field's reads and writes,
+    /// settings, the login shell — as closures, so the whole capture → editor →
+    /// write-back decision can be driven in a test against a fake field with
+    /// no accessibility grant and no login shell. Defaults are the real thing.
+    struct Dependencies {
+        var isTrusted: @MainActor () -> Bool = { Paster.isTrusted }
+        var requestAccess: @MainActor () -> Void = { _ = Paster.requestAccess() }
+        var focusedField: @MainActor () -> AXFocusedText.Focus? = { AXFocusedText.focused() }
+        var wholeValue: @MainActor (AXUIElement) -> String? = { AXFocusedText.wholeValue(of: $0) }
+        var setValue: @MainActor (AXUIElement, String) -> Bool = { AXFocusedText.setValue($0, to: $1) }
+        var isFocused: @MainActor (AXUIElement) -> Bool = { AXFocusedText.isFocused($0) }
+        var replaceAllByPasting: @MainActor (String) -> Void = { Paster.replaceAll(with: $0) }
+        var frontmostApplication: @MainActor () -> NSRunningApplication? = {
+            NSWorkspace.shared.frontmostApplication
+        }
+        var editorCommand: @MainActor () -> String = { AppSettings.shared.editorCommand }
+        var editorTerminal: @MainActor () -> AppRef? = { AppSettings.shared.editorTerminal }
+        /// Runs off the main thread, since it may block on the login shell.
+        var loginEnvironment: @Sendable () -> [String: String] = { LoginShellEnvironment.load() }
     }
 }
