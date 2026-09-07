@@ -35,6 +35,14 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertFalse(AppSettings(defaults: defaults).checkForUpdates)
     }
 
+    func testInstallUpdatesAutomaticallyDefaultsOnAndPersistsOptOut() {
+        XCTAssertTrue(AppSettings(defaults: defaults).installUpdatesAutomatically)
+
+        let settings = AppSettings(defaults: defaults)
+        settings.installUpdatesAutomatically = false
+        XCTAssertFalse(AppSettings(defaults: defaults).installUpdatesAutomatically)
+    }
+
     func testClearingShortcutRemovesIt() {
         let settings = AppSettings(defaults: defaults)
         settings.shortcut = Shortcut(keyCode: 9, carbonModifiers: 0x0100)

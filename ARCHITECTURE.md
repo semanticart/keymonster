@@ -21,6 +21,7 @@ All paths are relative to `Sources/keymonster/`.
 | `ShortcutControls.swift`                | Reusable Settings pieces: the shortcut recorder, conflict/Accessibility notices, the grouped section card, and the standard row shapes.                         |
 | `ScriptSettingsView.swift`              | The Scripts tab's rows (shortcut + script-file picker) and the last-failure notice with its Open Log button.                                                    |
 | `AppSettings.swift`                     | Persisted settings, shortcut formatting, launch-at-login registration, and conflict detection.                                                                  |
+| `Updater.swift`                         | Sparkle wrapper: daily/launch update checks, gentle reminders that badge the status item instead of stealing focus; inert in unbundled `swift run` builds.   |
 | `HotkeyManager.swift`                   | Registers/unregisters the global hotkeys (history panel, focus, hint, grid, text-jump, edit-in-editor, menu-search, and script shortcuts).                      |
 | `AppFocuser.swift`                      | Focuses (or cycles through) the apps bound to a focus shortcut.                                                                                                 |
 | `ScriptRunner.swift`                    | `ScriptShortcut` model, the pure script-file→process mapping (`ScriptInvocation`), and the background `Process` launcher.                                       |

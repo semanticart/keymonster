@@ -67,6 +67,7 @@ final class AppSettings: ObservableObject {
     static let scriptShortcutsKey = "scriptShortcuts"
     static let autoPasteKey = "autoPaste"
     static let checkForUpdatesKey = "checkForUpdates"
+    static let installUpdatesAutomaticallyKey = "installUpdatesAutomatically"
     static let hasLaunchedKey = "hasLaunched"
     static let hintLeftShortcutKey = "hintLeftClickShortcut"
     static let hintRightShortcutKey = "hintRightClickShortcut"
@@ -198,11 +199,18 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(autoPaste, forKey: Self.autoPasteKey) }
     }
 
-    /// When on (the default), the app asks GitHub once a day whether a newer
-    /// release exists and offers it in the status menu. Never downloads or
-    /// installs anything; see UpdateChecker.
+    /// When on (the default), Sparkle checks once a day whether a newer release
+    /// exists and offers it in the status menu; see Updater.
     @Published var checkForUpdates: Bool {
         didSet { defaults.set(checkForUpdates, forKey: Self.checkForUpdatesKey) }
+    }
+
+    /// When on (the default), a found update is downloaded and installed in
+    /// the background, taking effect at the next relaunch. Off means Sparkle
+    /// waits for the user to say "Install" first. Has no effect while
+    /// `checkForUpdates` is off.
+    @Published var installUpdatesAutomatically: Bool {
+        didSet { defaults.set(installUpdatesAutomatically, forKey: Self.installUpdatesAutomaticallyKey) }
     }
 
     /// True while ShortcutRecorder is capturing a key combo. Not persisted:
@@ -214,6 +222,7 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         autoPaste = defaults.object(forKey: Self.autoPasteKey) as? Bool ?? true
         checkForUpdates = defaults.object(forKey: Self.checkForUpdatesKey) as? Bool ?? true
+        installUpdatesAutomatically = defaults.object(forKey: Self.installUpdatesAutomaticallyKey) as? Bool ?? true
         launchAtLogin = SMAppService.mainApp.status == .enabled
         shortcut = Self.loadShortcut(defaults, key: Self.shortcutKey)
         hintLeftShortcut = Self.loadShortcut(defaults, key: Self.hintLeftShortcutKey)

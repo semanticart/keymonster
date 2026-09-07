@@ -247,9 +247,12 @@ struct SettingsView: View {
                 SettingsToggleRow(title: "Launch at Login", isOn: $settings.launchAtLogin)
             }
 
-            SettingsSection(footer: "Ask GitHub once a day whether a newer release exists and "
-                + "offer it in the menu bar. Nothing is downloaded or installed automatically.") {
+            SettingsSection(footer: "Look for a newer release once a day and offer it in the menu bar. "
+                + "With automatic installs on, the update is applied in the background and "
+                + "takes effect the next time Key Monster starts.") {
                 SettingsToggleRow(title: "Check for Updates", isOn: $settings.checkForUpdates)
+                SettingsToggleRow(title: "Install Updates Automatically", isOn: $settings.installUpdatesAutomatically)
+                    .disabled(!settings.checkForUpdates)
             }
         }
     }

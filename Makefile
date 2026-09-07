@@ -1,4 +1,4 @@
-.PHONY: build run test axtest fixture clean lint app snapshot site site-shots site-cast site-cast-voiced icon emoji-names install dist notarize release
+.PHONY: build run test axtest fixture clean lint app snapshot site site-shots site-cast site-cast-voiced icon emoji-names install dist notarize appcast release
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -35,13 +35,31 @@ build:
 # `make run` builds a proper .app bundle (icon, menu bar agent, code signature).
 # Persistence is SQLite via GRDB and needs no bundle identifier, so `swift run`
 # also works for day-to-day development.
+#
+# Sparkle ships as a prebuilt framework that SwiftPM drops next to the binary;
+# the bundle carries it in Contents/Frameworks, where the rpath set in
+# Package.swift finds it. Sparkle's copy is only ad-hoc signed, and notarization
+# rejects any nested code that isn't Developer ID signed, so its nested pieces
+# are re-signed with our identity, innermost first, before the app itself.
+SPARKLE_FRAMEWORK := $(APP_DIR)/Contents/Frameworks/Sparkle.framework
+SPARKLE_NESTED := \
+	Versions/B/XPCServices/Downloader.xpc \
+	Versions/B/XPCServices/Installer.xpc \
+	Versions/B/Autoupdate \
+	Versions/B/Updater.app
 app: build
 	rm -rf "$(APP_DIR)"
 	mkdir -p "$(APP_DIR)/Contents/MacOS"
 	mkdir -p "$(APP_DIR)/Contents/Resources"
+	mkdir -p "$(APP_DIR)/Contents/Frameworks"
 	cp ".build/$(CONFIG)/keymonster" "$(APP_DIR)/Contents/MacOS/keymonster"
+	cp -R ".build/$(CONFIG)/Sparkle.framework" "$(APP_DIR)/Contents/Frameworks/"
 	cp Resources/Info.plist "$(APP_DIR)/Contents/Info.plist"
 	cp Resources/AppIcon.icns "$(APP_DIR)/Contents/Resources/AppIcon.icns"
+	for nested in $(SPARKLE_NESTED); do \
+		codesign --force $(CODESIGN_FLAGS) --sign "$(CODESIGN_IDENTITY)" "$(SPARKLE_FRAMEWORK)/$$nested"; \
+	done
+	codesign --force $(CODESIGN_FLAGS) --sign "$(CODESIGN_IDENTITY)" "$(SPARKLE_FRAMEWORK)"
 	codesign --force $(CODESIGN_FLAGS) --sign "$(CODESIGN_IDENTITY)" "$(APP_DIR)"
 	@echo "Built $(APP_DIR) (signed with: $(CODESIGN_IDENTITY))"
 
@@ -185,6 +203,34 @@ notarize:
 	xcrun notarytool submit "$(DIST_DMG)" $(NOTARY_ARGS) --wait
 	xcrun stapler staple "$(DIST_DMG)"
 	spctl -a -t open --context context:primary-signature -vv "$(DIST_DMG)"
+
+# Write the Sparkle appcast for the packaged DMG into .build/dist/appcast/.
+# The Release workflow attaches it to the GitHub Release, where the app's
+# SUFeedURL (Resources/Info.plist) reads it from the stable
+# releases/latest/download/appcast.xml URL. generate_appcast mounts the DMG to
+# read the version and minimum macOS out of the app, and signs the entry with
+# the private EdDSA key — from the login keychain by default (see RELEASING.md),
+# or piped in on stdin when CI passes ED_KEY_ARGS='--ed-key-file -'. Only the
+# one release is listed: Sparkle needs nothing older, and deltas are off since
+# there's no previous archive here to diff against.
+APPCAST_DIR := $(DIST_DIR)/appcast
+APPCAST := $(APPCAST_DIR)/appcast.xml
+SPARKLE_BIN := .build/artifacts/sparkle/Sparkle/bin
+ED_KEY_ARGS ?=
+appcast: $(SPARKLE_BIN)/generate_appcast
+	rm -rf "$(APPCAST_DIR)"
+	mkdir -p "$(APPCAST_DIR)"
+	cp "$(DIST_DMG)" "$(APPCAST_DIR)/"
+	"$(SPARKLE_BIN)/generate_appcast" $(ED_KEY_ARGS) \
+		--download-url-prefix "https://github.com/semanticart/keymonster/releases/download/v$(VERSION)/" \
+		--link "https://github.com/semanticart/keymonster/releases/latest" \
+		--maximum-deltas 0 \
+		-o "$(APPCAST)" "$(APPCAST_DIR)"
+	@echo "Wrote $(APPCAST)"
+
+# SwiftPM downloads Sparkle's tools alongside the framework on first build.
+$(SPARKLE_BIN)/generate_appcast:
+	swift build
 
 # Cut a release: stamp VERSION into Info.plist, commit that one file, tag
 # vVERSION, and push both — the GitHub Release workflow does the rest (build,

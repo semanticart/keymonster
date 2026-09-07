@@ -66,7 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let externalEditor = ExternalEditorController()
     private let menuFinder = MenuFinderController()
     private let scriptRunner = ScriptRunner()
-    private let updateChecker = UpdateChecker()
+    private let updater = Updater()
     private var cancellables: Set<AnyCancellable> = []
     private var settingsWindow: NSWindow?
     private var settingsSizeObservation: NSKeyValueObservation?
@@ -92,6 +92,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         panelController = PanelController(history: history)
 
+        // Before the status menu is built, so it can offer "Check for Updates".
+        updater.start()
+
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.menu = buildStatusMenu()
         statusItem = item
@@ -115,10 +118,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showSettings()
         }
 
-        // Rebuild the status menu when an update appears (or goes away after
-        // installing one). Same next-runloop hop as the settings subscription:
-        // @Published emits before the property lands.
-        updateChecker.$availableVersion
+        // Rebuild the status menu when a scheduled check finds an update (or
+        // the user deals with it). Same next-runloop hop as the settings
+        // subscription: @Published emits before the property lands.
+        updater.$availableVersion
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
@@ -127,29 +130,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.applyStatusIcon()
             }
             .store(in: &cancellables)
-
-        // Re-run the check when the Settings toggle flips: enabling checks
-        // right away instead of waiting for the daily timer, and disabling
-        // makes check() retract the menu item.
-        AppSettings.shared.$checkForUpdates
-            .removeDuplicates()
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in await self?.updateChecker.check() }
-            }
-            .store(in: &cancellables)
-        updateChecker.start()
     }
 
     // MARK: - Status item
 
     private func buildStatusMenu() -> NSMenu {
         let menu = NSMenu()
-        if let version = updateChecker.availableVersion {
+        if let version = updater.availableVersion {
             let updateItem = NSMenuItem(
                 title: "Update Available — \(version)…",
-                action: #selector(openReleasesPage),
+                action: #selector(checkForUpdates),
                 keyEquivalent: ""
             )
             updateItem.target = self
@@ -163,6 +153,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: "")
         settingsItem.target = self
         menu.addItem(settingsItem)
+        if updater.isActive {
+            let checkItem = NSMenuItem(
+                title: "Check for Updates…",
+                action: #selector(checkForUpdates),
+                keyEquivalent: ""
+            )
+            checkItem.target = self
+            menu.addItem(checkItem)
+        }
         menu.addItem(.separator())
         let quitItem = NSMenuItem(title: "Quit Key Monster", action: #selector(quit), keyEquivalent: "")
         quitItem.target = self
@@ -173,7 +172,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The bitten-keyboard glyph, growing a dot in the bite while an update is
     /// available so the state is visible without opening the menu.
     private func applyStatusIcon() {
-        let updateAvailable = updateChecker.availableVersion != nil
+        let updateAvailable = updater.availableVersion != nil
         let icon = MenuBarIcon.image(badged: updateAvailable)
         icon.accessibilityDescription = updateAvailable
             ? "Key Monster — update available"
@@ -220,8 +219,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         win.makeKeyAndOrderFront(nil)
     }
 
-    @objc private func openReleasesPage() {
-        NSWorkspace.shared.open(UpdateChecker.releasesURL)
+    @objc private func checkForUpdates() {
+        updater.checkForUpdates()
     }
 
     @objc private func quit() {

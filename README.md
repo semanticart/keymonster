@@ -136,10 +136,12 @@ pdf` reaches **File › Export › PDF…**); the closest match floats to the to
 
 - **Launch at login** — an optional toggle registers Key Monster to start
   automatically when you log in.
-- **Update aware** — the app checks GitHub daily and adds an "Update Available"
-  item to its menu when a newer release exists. Nothing downloads or installs
-  behind your back; the item just opens the release page. Opt out any time with
-  the "Check for Updates" toggle in Settings.
+- **Automatic updates** — the app checks for a newer release daily (via
+  [Sparkle](https://sparkle-project.org)) and installs it in the background,
+  taking effect the next time it starts. A badge on the menu bar icon and an
+  "Update Available" item show when one is waiting; "Check for Updates…" in the
+  menu looks right now. Both the daily check and the silent install can be
+  turned off in Settings.
 
 ## Download
 
@@ -173,10 +175,12 @@ make notarize # submit the DMG to Apple's notary service and staple the ticket
 make clean    # clean build artifacts
 ```
 
-`make run` assembles a real `.app` bundle so the menu bar agent, icon, and code
-signature are in place. Because persistence is SQLite (via
+`make run` assembles a real `.app` bundle so the menu bar agent, icon, code
+signature, and bundled [Sparkle](https://sparkle-project.org) framework are in
+place. Because persistence is SQLite (via
 [GRDB](https://github.com/groue/GRDB.swift)) rather than something requiring a
-bundle identifier, plain `swift run` also works for day-to-day development.
+bundle identifier, plain `swift run` also works for day-to-day development
+(update checks stay off there, since a bare binary has no feed URL).
 `make install` builds a release bundle and installs it to `/Applications`
 (override with `make install INSTALL_DIR=~/Applications`).
 
@@ -224,3 +228,4 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a file-by-file map of the codebase.
 
 - Swift 6 + SwiftUI + AppKit
 - [GRDB](https://github.com/groue/GRDB.swift) for SQLite persistence
+- [Sparkle](https://sparkle-project.org) for automatic updates
