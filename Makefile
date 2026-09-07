@@ -1,4 +1,4 @@
-.PHONY: build run test axtest fixture clean lint app snapshot site site-shots site-cast site-cast-voiced icon install dist notarize release
+.PHONY: build run test axtest fixture clean lint app snapshot site site-shots site-cast site-cast-voiced icon emoji-names install dist notarize release
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -119,6 +119,13 @@ icon:
 
 test:
 	swift test
+
+# Regenerate the emoji short-name table Edit in Editor uses to put Slack's
+# emoji back into text (see EmojiNames.swift). Downloads the current
+# emoji-data release; pass a local copy with `make emoji-names EMOJI_JSON=…`.
+EMOJI_JSON ?=
+emoji-names:
+	scripts/emoji-names.py $(EMOJI_JSON)
 
 # Launch the AX fixture: one window of text fields covering every accessibility
 # shape text jump has to handle (native field, text view, search field, a mimic

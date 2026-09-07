@@ -209,6 +209,49 @@ final class ParagraphTextTests: XCTestCase {
         XCTAssertEqual(read(node), "end 🙂\n\nx")
     }
 
+    /// A picture that isn't an emoji contributes nothing, as before, and the
+    /// value is still cross-checked line by line.
+    func testAnOrdinaryInlineImageIsNotAnEmoji() {
+        let node = ParagraphTree.Node(
+            role: "AXTextArea", value: "see\nbelow",
+            children: [
+                ParagraphTree.paragraph([
+                    ParagraphTree.text("see"), ParagraphTree.Node(role: "AXImage", value: "", description: "image")
+                ]),
+                ParagraphTree.paragraph(),
+                ParagraphTree.paragraph("below")
+            ]
+        )
+        XCTAssertEqual(read(node), "see\n\nbelow")
+    }
+
+    /// With an emoji in play the value's newlines say nothing, but its text
+    /// must still be exactly the leaves' text; otherwise the leaves are
+    /// missing something and the value stands.
+    func testEmojiReadIsRejectedWhenTheLeavesDontMatchTheValue() {
+        let node = ParagraphTree.Node(
+            role: "AXTextArea", value: "a bold b",
+            children: [
+                ParagraphTree.paragraph([
+                    ParagraphTree.text("a "), ParagraphTree.emoji("tada"), ParagraphTree.text(" b")
+                ])
+            ]
+        )
+        XCTAssertEqual(read(node), "a bold b")
+    }
+
+    /// A custom emoji comes through as its shortcode, which Slack turns back
+    /// into the emoji when the edited text is pasted.
+    func testCustomEmojiReadsAsItsShortcode() {
+        let node = ParagraphTree.Node(
+            role: "AXTextArea", value: "ship it \n",
+            children: [
+                ParagraphTree.paragraph([ParagraphTree.text("ship it "), ParagraphTree.emoji("partyparrot")])
+            ]
+        )
+        XCTAssertEqual(read(node), "ship it :partyparrot:")
+    }
+
     func testOversizedTreesGiveUp() {
         let huge = ParagraphTree.Node(
             role: "AXTextArea", value: "",

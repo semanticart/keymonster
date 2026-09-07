@@ -35,20 +35,29 @@ enum EditorRoundTrip {
 /// `AXValue` is lossy. Chromium (Chrome, Electron apps like Slack) exposes a
 /// rich-text editable as an `AXTextArea` whose value is its block children
 /// joined by newlines — except that an *empty* paragraph contributes nothing,
-/// so a blank line between two paragraphs reads back as a single newline. The
-/// paragraphs themselves are still there in the tree, one child group each,
-/// so the blank lines can be put back by reading those instead. Captured
-/// against Slack, 2026-09-04.
+/// so a blank line between two paragraphs reads back as a single newline, and
+/// an emoji (an inline `AXImage`, see `EmojiNames`) contributes a newline or
+/// two instead of itself. The paragraphs are still there in the tree, one
+/// child group each, so the text the user sees can be rebuilt from those
+/// instead. Captured against Slack, 2026-09-04 and 2026-09-07.
 ///
-/// The reconstruction is only trusted when it agrees with the value on every
-/// non-blank line and adds newlines; anything else (inline content the leaves
-/// don't carry, a shape this wasn't written for) falls back to the value as
-/// the app reported it — today's behaviour.
+/// The reconstruction is only trusted when the value backs it up: for a plain
+/// text tree, the paragraphs must agree with the value on every non-blank
+/// line and only add newlines; once emoji are involved the value's newlines
+/// mean nothing, and it must instead match the leaves' text exactly with
+/// every newline removed. Anything else (inline content the leaves don't
+/// carry, a shape this wasn't written for) falls back to the value as the
+/// app reported it.
 enum ParagraphText {
     /// The field's whole text as the user sees it: `value` (its raw `AXValue`)
     /// corrected from the paragraph structure under `element`.
     static func wholeText<Tree: AXTextTree>(value: String, of element: Tree.Element, in tree: Tree) -> String {
-        restoringBlankLines(in: value, paragraphs: paragraphs(of: element, in: tree))
+        guard let reading = read(of: element, in: tree) else { return value }
+        guard reading.emojiCount > 0 else {
+            return restoringBlankLines(in: value, paragraphs: reading.paragraphs)
+        }
+        guard withoutNewlines(value) == withoutNewlines(reading.textWithoutEmoji) else { return value }
+        return reading.paragraphs.joined(separator: "\n")
     }
 
     /// One string per direct child of `element`: its leaf text concatenated,
@@ -58,25 +67,50 @@ enum ParagraphText {
     static func paragraphs<Tree: AXTextTree>(
         of element: Tree.Element, in tree: Tree, limit: Int = 4000
     ) -> [String]? {
+        read(of: element, in: tree, limit: limit)?.paragraphs
+    }
+
+    struct Reading: Equatable {
+        /// One string per paragraph, emoji included.
+        var paragraphs: [String] = []
+        /// Every leaf's text in order with the emoji left out — the material
+        /// Chromium builds its value from.
+        var textWithoutEmoji = ""
+        var emojiCount = 0
+    }
+
+    static func read<Tree: AXTextTree>(
+        of element: Tree.Element, in tree: Tree, limit: Int = 4000
+    ) -> Reading? {
         var budget = limit
-        var result: [String] = []
+        var reading = Reading()
         for child in tree.children(of: element) {
-            guard let text = leafText(of: child, in: tree, budget: &budget) else { return nil }
-            result.append(text)
+            guard let text = leafText(of: child, in: tree, budget: &budget, into: &reading) else { return nil }
+            reading.paragraphs.append(text)
         }
-        return result
+        return reading
     }
 
     private static func leafText<Tree: AXTextTree>(
-        of element: Tree.Element, in tree: Tree, budget: inout Int
+        of element: Tree.Element, in tree: Tree, budget: inout Int, into reading: inout Reading
     ) -> String? {
         budget -= 1
         guard budget >= 0 else { return nil }
         let children = tree.children(of: element)
-        if children.isEmpty { return tree.stringValue(of: element) ?? "" }
+        if children.isEmpty {
+            if tree.role(of: element) == "AXImage",
+               let description = tree.description(of: element),
+               let emoji = EmojiNames.text(forDescription: description) {
+                reading.emojiCount += 1
+                return emoji
+            }
+            let text = tree.stringValue(of: element) ?? ""
+            reading.textWithoutEmoji += text
+            return text
+        }
         var text = ""
         for child in children {
-            guard let piece = leafText(of: child, in: tree, budget: &budget) else { return nil }
+            guard let piece = leafText(of: child, in: tree, budget: &budget, into: &reading) else { return nil }
             text += piece
         }
         return text
@@ -100,6 +134,10 @@ enum ParagraphText {
 
     private static func nonBlankLines(_ text: String) -> [Substring] {
         text.split(separator: "\n", omittingEmptySubsequences: true)
+    }
+
+    private static func withoutNewlines(_ text: String) -> String {
+        text.filter { $0 != "\n" }
     }
 }
 
