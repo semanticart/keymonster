@@ -37,6 +37,15 @@ protocol AXTextTree {
     /// rect when it answers junk — real fields do both, so callers must reject
     /// empty rects rather than trust a successful reply.
     func bounds(of element: Element, at offset: Int) -> CGRect?
+    /// The element's `AXDescription`. Chromium puts an emoji in a rich-text
+    /// editable as a valueless `AXImage` whose only trace of *which* emoji is
+    /// this description ("tada emoji"), so a whole-field read needs it; the
+    /// occurrence search doesn't, hence the default.
+    func description(of element: Element) -> String?
+}
+
+extension AXTextTree {
+    func description(of element: Element) -> String? { nil }
 }
 
 /// Bounds so an enormous field (a whole document) can't hang the app while we

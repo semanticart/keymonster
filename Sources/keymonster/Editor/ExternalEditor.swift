@@ -45,6 +45,12 @@ enum EditorRoundTrip {
 /// don't carry, a shape this wasn't written for) falls back to the value as
 /// the app reported it — today's behaviour.
 enum ParagraphText {
+    /// The field's whole text as the user sees it: `value` (its raw `AXValue`)
+    /// corrected from the paragraph structure under `element`.
+    static func wholeText<Tree: AXTextTree>(value: String, of element: Tree.Element, in tree: Tree) -> String {
+        restoringBlankLines(in: value, paragraphs: paragraphs(of: element, in: tree))
+    }
+
     /// One string per direct child of `element`: its leaf text concatenated,
     /// or "" for a childless, valueless child (an empty paragraph). Nil when
     /// the tree is bigger than `limit` nodes, since walking a whole document

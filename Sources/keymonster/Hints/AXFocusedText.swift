@@ -90,8 +90,7 @@ enum AXFocusedText {
     /// text jump indexes into it with AX offsets, which the raw value matches.
     static func wholeValue(of element: AXUIElement) -> String? {
         guard let value = axString(element, kAXValueAttribute) else { return nil }
-        let paragraphs = ParagraphText.paragraphs(of: element, in: LiveAXTextTree())
-        return ParagraphText.restoringBlankLines(in: value, paragraphs: paragraphs)
+        return ParagraphText.wholeText(value: value, of: element, in: LiveAXTextTree())
     }
 
     /// Replaces the field's entire text in one AX write. Returns whether the
@@ -181,6 +180,10 @@ struct LiveAXTextTree: AXTextTree {
 
     func role(of element: AXUIElement) -> String? {
         axString(element, kAXRoleAttribute)
+    }
+
+    func description(of element: AXUIElement) -> String? {
+        axString(element, kAXDescriptionAttribute)
     }
 
     /// Correct when asked on a native field or on a web leaf `AXStaticText`.
