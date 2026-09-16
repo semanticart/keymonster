@@ -65,6 +65,7 @@ app: build
 
 run: app
 	pkill -x keymonster || true
+	sleep 0.5
 	open "$(APP_DIR)"
 
 # Render the history panel headlessly against the real on-disk history and write
