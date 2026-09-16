@@ -16,7 +16,7 @@ struct SettingsView: View {
         let singles = [
             settings.shortcut, settings.hintLeftShortcut, settings.hintRightShortcut,
             settings.gridShortcut, settings.scrollShortcut, settings.textJumpShortcut,
-            settings.editInEditorShortcut, settings.menuSearchShortcut
+            settings.editInEditorShortcut, settings.menuSearchShortcut, settings.bookmarksShortcut
         ]
         return ShortcutConflicts.conflicting(
             singles.compactMap { $0 }
@@ -52,6 +52,8 @@ struct SettingsView: View {
                 .tabItem { Label("Text", systemImage: "character.cursor.ibeam") }
             menusTab
                 .tabItem { Label("Menus", systemImage: "filemenu.and.selection") }
+            bookmarksTab
+                .tabItem { Label("Bookmarks", systemImage: "bookmark") }
             scriptsTab
                 .tabItem { Label("Scripts", systemImage: "terminal") }
         }
@@ -218,6 +220,15 @@ struct SettingsView: View {
         }
     }
 
+    private var bookmarksTab: some View {
+        SettingsTabView(description: "Fuzzy-find a list of bookmarks — favoring the title, but "
+            + "also matching the url — and open the highlighted one in your default browser. "
+            + "The list itself is a plain CSV file, maintained by hand in your editor rather "
+            + "than through rows in Settings.") {
+            BookmarksSettingsSection(settings: settings, isConflicting: isConflicting(settings.bookmarksShortcut))
+        }
+    }
+
     private var scriptsTab: some View {
         SettingsTabView(description: "Run your own automation from a keystroke. Point a "
             + "shortcut at a script file: AppleScript (.scpt, .applescript) runs via "
@@ -230,7 +241,7 @@ struct SettingsView: View {
     private var generalTab: some View {
         SettingsTabView(description: "A keyboard-driven clipboard history — plus keyboard-"
             + "only ways to focus apps, click anything, jump through text, search menus, "
-            + "and run scripts. Each tab configures one feature.") {
+            + "find bookmarks, and run scripts. Each tab configures one feature.") {
             VStack(spacing: 6) {
                 AppIconView()
                     .frame(width: 80, height: 80)

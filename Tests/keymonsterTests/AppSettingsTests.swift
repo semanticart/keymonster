@@ -56,6 +56,23 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertNil(AppSettings(defaults: defaults).shortcut)
     }
 
+    func testSettingBookmarksShortcutPersists() {
+        let settings = AppSettings(defaults: defaults)
+        settings.bookmarksShortcut = Shortcut(keyCode: 11, carbonModifiers: 0x0100 | 0x0800)
+
+        let reloaded = AppSettings(defaults: defaults)
+        XCTAssertEqual(reloaded.bookmarksShortcut, settings.bookmarksShortcut)
+    }
+
+    func testClearingBookmarksShortcutRemovesIt() {
+        let settings = AppSettings(defaults: defaults)
+        settings.bookmarksShortcut = Shortcut(keyCode: 11, carbonModifiers: 0x0100)
+        settings.bookmarksShortcut = nil
+
+        XCTAssertNil(defaults.data(forKey: AppSettings.bookmarksShortcutKey))
+        XCTAssertNil(AppSettings(defaults: defaults).bookmarksShortcut)
+    }
+
     func testAutoPasteDefaultsOnWhenNothingStored() {
         XCTAssertTrue(AppSettings(defaults: defaults).autoPaste)
     }

@@ -17,12 +17,12 @@ All paths are relative to `Sources/keymonster/`.
 | `MenuBarIcon.swift`                     | Draws the monochrome template glyph shown in the menu bar.                                                                                                      |
 | `UIScale.swift`                         | The single scale factor applied to the panel and its contents.                                                                                                  |
 | `Snapshot.swift`                        | Headless renderer (`keymonster snapshot`) that writes PNGs of the panel for design iteration.                                                                   |
-| `SettingsView.swift`                    | Tabbed Settings UI — one tab per feature (General, Clipboard, Focus, Clicking, Text, Menus, Scripts), each with a description.                                   |
+| `SettingsView.swift`                    | Tabbed Settings UI — one tab per feature (General, Clipboard, Focus, Clicking, Text, Menus, Bookmarks, Scripts), each with a description.                        |
 | `ShortcutControls.swift`                | Reusable Settings pieces: the shortcut recorder, conflict/Accessibility notices, the grouped section card, and the standard row shapes.                         |
 | `ScriptSettingsView.swift`              | The Scripts tab's rows (shortcut + script-file picker) and the last-failure notice with its Open Log button.                                                    |
 | `AppSettings.swift`                     | Persisted settings, shortcut formatting, launch-at-login registration, and conflict detection.                                                                  |
 | `Updater.swift`                         | Sparkle wrapper: daily/launch update checks, gentle reminders that badge the status item instead of stealing focus; inert in unbundled `swift run` builds.   |
-| `HotkeyManager.swift`                   | Registers/unregisters the global hotkeys (history panel, focus, hint, grid, text-jump, edit-in-editor, menu-search, and script shortcuts).                      |
+| `HotkeyManager.swift`                   | Registers/unregisters the global hotkeys (history panel, focus, hint, grid, text-jump, edit-in-editor, menu-search, bookmarks, and script shortcuts).           |
 | `AppFocuser.swift`                      | Focuses (or cycles through) the apps bound to a focus shortcut.                                                                                                 |
 | `ScriptRunner.swift`                    | `ScriptShortcut` model, the pure script-file→process mapping (`ScriptInvocation`), and the background `Process` launcher.                                       |
 | `ScriptLog.swift`                       | Appends script failures to `~/Library/Logs/keymonster/scripts.log` and publishes the latest one for the Scripts tab.                                            |
@@ -59,6 +59,14 @@ All paths are relative to `Sources/keymonster/`.
 | `MenuFinder/MenuFinderViewModel.swift`  | Drives the menu-finder panel's search, keyboard selection, and activation.                                                                                      |
 | `MenuFinder/MenuFinderController.swift` | The floating menu-finder panel; `MenuFinderCommand` maps its keys to actions. Scans on show, presses the item back into the prior app on Return.                |
 | `MenuFinder/MenuFinderContent.swift`    | SwiftUI content of the menu-finder panel: header, search, and the ranked single-column list.                                                                    |
+| `Bookmarks/Bookmark.swift`              | The `Bookmark` value type plus the pure CSV parser (`BookmarkCSV`) and the fuzzy-ranked filter (`BookmarkFilter`, reusing `FuzzyMatch`) — title matches rank above url-only matches — no AppKit, fully tested. |
+| `Bookmarks/BookmarksStore.swift`        | Where the bookmarks CSV lives (`Application Support/keymonster/bookmarks.csv`); creates it with a header line if missing, loads/parses it on demand.           |
+| `Bookmarks/BookmarksFinderViewModel.swift` | Drives the bookmarks-finder panel's search, keyboard selection, and activation.                                                                              |
+| `Bookmarks/BookmarksFinderController.swift` | The floating bookmarks-finder panel; `BookmarksFinderCommand` maps its keys to actions. Loads the CSV fresh on show; Return opens the highlighted bookmark's URL in the default browser. |
+| `Bookmarks/BookmarksFinderContent.swift` | SwiftUI content of the bookmarks-finder panel: header, search, and the ranked single-column list.                                                              |
+| `Bookmarks/FaviconStore.swift`          | Fetches each bookmark's `/favicon.ico` directly from its host and disk-caches it; rows fall back to a generic glyph when there's none.                         |
+| `Bookmarks/BookmarksEditorController.swift` | Opens the bookmarks CSV in the user's configured editor (the same settings as Edit in Editor) and waits for it to exit.                                      |
+| `Bookmarks/BookmarksSettingsSection.swift` | The Bookmarks tab's controls: shortcut, file path/count, Edit Bookmarks and Reveal in Finder buttons, and the latest failure.                                 |
 | `AppPicker.swift`                       | AppKit bridges for choosing an app and fetching its icon, used by the focus-shortcut editor.                                                                    |
 
 The persistence layer is kept behind the narrow `ClipStore` protocol so

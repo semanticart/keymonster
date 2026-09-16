@@ -75,6 +75,7 @@ final class AppSettings: ObservableObject {
     static let scrollShortcutKey = "scrollPanesShortcut"
     static let textJumpShortcutKey = "textJumpShortcut"
     static let menuSearchShortcutKey = "menuSearchShortcut"
+    static let bookmarksShortcutKey = "bookmarksShortcut"
     static let editInEditorShortcutKey = "editInEditorShortcut"
     static let editorCommandKey = "editorCommand"
     static let editorTerminalKey = "editorTerminalApp"
@@ -156,6 +157,12 @@ final class AppSettings: ObservableObject {
         didSet { persist(menuSearchShortcut, forKey: Self.menuSearchShortcutKey) }
     }
 
+    /// Global shortcut that lists bookmarks from a CSV file in a searchable
+    /// panel; Return opens the highlighted one in the default browser.
+    @Published var bookmarksShortcut: Shortcut? {
+        didSet { persist(bookmarksShortcut, forKey: Self.bookmarksShortcutKey) }
+    }
+
     /// Global shortcut that opens the focused text field's contents in the
     /// user's editor and, when the editor exits cleanly, puts the edited text
     /// back — the way git hands a commit message to `$EDITOR`.
@@ -231,6 +238,7 @@ final class AppSettings: ObservableObject {
         scrollShortcut = Self.loadShortcut(defaults, key: Self.scrollShortcutKey)
         textJumpShortcut = Self.loadShortcut(defaults, key: Self.textJumpShortcutKey)
         menuSearchShortcut = Self.loadShortcut(defaults, key: Self.menuSearchShortcutKey)
+        bookmarksShortcut = Self.loadShortcut(defaults, key: Self.bookmarksShortcutKey)
         editInEditorShortcut = Self.loadShortcut(defaults, key: Self.editInEditorShortcutKey)
         editorCommand = defaults.string(forKey: Self.editorCommandKey) ?? ""
         editorTerminal = Self.loadValue(defaults, key: Self.editorTerminalKey)

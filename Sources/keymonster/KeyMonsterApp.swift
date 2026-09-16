@@ -65,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let textJumpMode = TextJumpController()
     private let externalEditor = ExternalEditorController()
     private let menuFinder = MenuFinderController()
+    private let bookmarksFinder = BookmarksFinderController()
     private let scriptRunner = ScriptRunner()
     private let updater = Updater()
     private var cancellables: Set<AnyCancellable> = []
@@ -258,7 +259,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             (settings.scrollShortcut, { [weak self] in self?.scrollMode.toggle() }),
             (settings.textJumpShortcut, { [weak self] in self?.textJumpMode.toggle() }),
             (settings.editInEditorShortcut, { [weak self] in self?.externalEditor.trigger() }),
-            (settings.menuSearchShortcut, { [weak self] in self?.menuFinder.toggle() })
+            (settings.menuSearchShortcut, { [weak self] in self?.menuFinder.toggle() }),
+            (settings.bookmarksShortcut, { [weak self] in self?.bookmarksFinder.toggle() })
         ])
         for script in settings.scriptShortcuts {
             guard !script.isEmpty else { continue }
