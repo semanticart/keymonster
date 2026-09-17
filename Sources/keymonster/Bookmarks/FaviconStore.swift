@@ -1,11 +1,15 @@
 import AppKit
 
 /// Fetches and disk-caches favicons for bookmarked sites, keyed by host.
-/// Requests each host's own `/favicon.ico` directly — no third-party favicon
-/// service — so coverage is best-effort: a site that only declares a
-/// non-standard icon path simply has no cached favicon, and its row falls
-/// back to a generic glyph. Cached indefinitely; favicons rarely change and
-/// there's no user-facing way to force a refresh.
+/// Tries each host's own `/favicon.ico` first; if that's missing or invalid,
+/// falls back to fetching the homepage and following the `<link rel="icon">`
+/// it declares (see `FaviconLinkParser`) — needed for sites built on
+/// Webflow, Squarespace, and similar, which only declare an icon that way,
+/// often on a different host/CDN. No third-party favicon-resolution service
+/// either way, so coverage is still best-effort: a site with neither has no
+/// cached favicon, and its row falls back to a generic glyph. Cached
+/// indefinitely; favicons rarely change and there's no user-facing way to
+/// force a refresh.
 @MainActor
 final class FaviconStore: ObservableObject {
     static let shared = FaviconStore()
@@ -65,12 +69,28 @@ final class FaviconStore: ObservableObject {
             images[host] = cached
             return
         }
-        guard let url = URL(string: "https://\(host)/favicon.ico"),
-              let data = await fetchData(url), let image = NSImage(data: data) else {
-            return
+        guard let fetched = await fetchIcon(host: host) else { return }
+        saveToDisk(host: host, data: fetched.data)
+        images[host] = fetched.image
+    }
+
+    /// `/favicon.ico` first; if that's missing or isn't a decodable image,
+    /// fetches the homepage and follows its declared `<link rel="icon">`.
+    private func fetchIcon(host: String) async -> (image: NSImage, data: Data)? {
+        guard let root = URL(string: "https://\(host)/") else { return nil }
+        // .absoluteURL: a bare URL(string:relativeTo:) keeps its base and
+        // relative parts separate rather than resolving eagerly, so it won't
+        // == an absolute URL literal even when .absoluteString matches.
+        if let direct = URL(string: "favicon.ico", relativeTo: root)?.absoluteURL,
+           let data = await fetchData(direct), let image = NSImage(data: data) {
+            return (image, data)
         }
-        saveToDisk(host: host, data: data)
-        images[host] = image
+        guard let html = await fetchData(root), let text = String(data: html, encoding: .utf8),
+              let iconURL = FaviconLinkParser.iconURL(in: text, pageURL: root),
+              let data = await fetchData(iconURL), let image = NSImage(data: data) else {
+            return nil
+        }
+        return (image, data)
     }
 
     private func cacheFile(for host: String) -> URL {

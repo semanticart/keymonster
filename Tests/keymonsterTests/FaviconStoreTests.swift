@@ -84,4 +84,66 @@ final class FaviconStoreTests: XCTestCase {
 
         XCTAssertTrue(store.images.isEmpty)
     }
+
+    // MARK: - HTML <link rel="icon"> fallback
+
+    func testFallsBackToTheHomepagesDeclaredIconWhenFaviconICOIsMissing() async {
+        var requestedURLs: [URL] = []
+        let html = #"<link rel="icon" href="/assets/icon.png">"#
+        let store = FaviconStore(cacheDirectory: directory) { url in
+            requestedURLs.append(url)
+            switch url {
+            case URL(string: "https://example.com/favicon.ico")!: return nil
+            case URL(string: "https://example.com/")!: return html.data(using: .utf8)
+            case URL(string: "https://example.com/assets/icon.png")!: return Self.onePixelPNG
+            default: return nil
+            }
+        }
+
+        await store.request(for: "https://example.com/page")
+
+        XCTAssertEqual(requestedURLs, [
+            URL(string: "https://example.com/favicon.ico")!,
+            URL(string: "https://example.com/")!,
+            URL(string: "https://example.com/assets/icon.png")!
+        ])
+        XCTAssertNotNil(store.images["example.com"])
+    }
+
+    func testFallsBackToAnAbsoluteCDNIconDeclaredOnTheHomepage() async {
+        // Mirrors formhealth.co: a Webflow-built site whose icon lives on a
+        // different host entirely, only discoverable via the <link> tag.
+        let cdnIcon = "https://cdn.example-cdn.com/abc/favicon.png"
+        let html = #"<link href="\#(cdnIcon)" rel="shortcut icon" type="image/x-icon"/>"#
+        let store = FaviconStore(cacheDirectory: directory) { url in
+            switch url.absoluteString {
+            case "https://example.com/favicon.ico": return nil
+            case "https://example.com/": return html.data(using: .utf8)
+            case cdnIcon: return Self.onePixelPNG
+            default: return nil
+            }
+        }
+
+        await store.request(for: "https://example.com")
+
+        XCTAssertNotNil(store.images["example.com"])
+    }
+
+    func testGivesUpWhenNeitherFaviconICONorAnyDeclaredIconWorks() async {
+        let store = FaviconStore(cacheDirectory: directory) { url in
+            url == URL(string: "https://example.com/")! ? Data("<html></html>".utf8) : nil
+        }
+
+        await store.request(for: "https://example.com")
+
+        XCTAssertNil(store.images["example.com"])
+    }
+
+    func testGivesUpWhenTheHomepageFetchAlsoFails() async {
+        let store = FaviconStore(cacheDirectory: directory) { _ in nil }
+
+        await store.request(for: "https://example.com")
+
+        XCTAssertNil(store.images["example.com"])
+    }
 }
