@@ -182,6 +182,13 @@ private struct BookmarkRow: View {
         FaviconStore.host(of: bookmark.url).flatMap { favicons.images[$0] }
     }
 
+    /// The Finder icon for a local-path bookmark — synchronous and already
+    /// local, unlike a favicon, so it needs no caching of its own.
+    private var localIcon: NSImage? {
+        guard bookmark.isLocalPath, let path = bookmark.resolvedURL?.path else { return nil }
+        return NSWorkspace.shared.icon(forFile: path)
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 8 * uiScale) {
@@ -213,6 +220,7 @@ private struct BookmarkRow: View {
             withAnimation(.easeOut(duration: 0.12)) { self.hovering = hovering }
         }
         .task(id: bookmark.url) {
+            guard !bookmark.isLocalPath else { return }
             await favicons.request(for: bookmark.url)
         }
     }
@@ -220,7 +228,17 @@ private struct BookmarkRow: View {
     @ViewBuilder
     private var faviconView: some View {
         Group {
-            if let favicon {
+            if bookmark.isLocalPath {
+                if let localIcon {
+                    Image(nsImage: localIcon)
+                        .resizable()
+                        .interpolation(.high)
+                } else {
+                    Image(systemName: "folder")
+                        .font(.system(size: 11 * uiScale))
+                        .foregroundStyle(.secondary)
+                }
+            } else if let favicon {
                 Image(nsImage: favicon)
                     .resizable()
                     .interpolation(.high)

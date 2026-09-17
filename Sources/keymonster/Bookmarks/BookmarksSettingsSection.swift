@@ -21,9 +21,10 @@ struct BookmarksSettingsSection: View {
         SettingsSection(
             header: "Bookmarks",
             footer: "One title,url per line in the file below — quote a title that contains a "
-                + "comma. An optional title,url header line is skipped automatically. Fuzzy-find "
-                + "favors the title but also matches the url; Return opens the highlighted "
-                + "bookmark in your default browser."
+                + "comma. An optional title,url header line is skipped automatically. The second "
+                + "column can also be a local path (/… or ~/…), opened and iconed as a file or "
+                + "folder instead of a website. Fuzzy-find favors the title but also matches the "
+                + "url; Return opens the highlighted bookmark."
         ) {
             ShortcutSettingRow(
                 title: "Search Bookmarks",

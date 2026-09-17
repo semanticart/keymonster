@@ -10,6 +10,22 @@ struct Bookmark: Identifiable, Equatable {
     let id: Int
     let title: String
     let url: String
+
+    /// Whether `url` names a local filesystem path (`/…` or `~/…`) rather
+    /// than a remote url — determines how the bookmark is opened and iconed.
+    var isLocalPath: Bool {
+        url.hasPrefix("/") || url.hasPrefix("~")
+    }
+
+    /// The URL this bookmark opens to: a tilde-expanded `file://` URL for a
+    /// local path, or the parsed remote url otherwise. Nil for text that
+    /// isn't a usable url (e.g. empty after a bad row somehow slipped through).
+    var resolvedURL: URL? {
+        if isLocalPath {
+            return URL(fileURLWithPath: (url as NSString).expandingTildeInPath)
+        }
+        return URL(string: url)
+    }
 }
 
 /// Parses the bookmarks CSV file: one `title,url` per line, with minimal

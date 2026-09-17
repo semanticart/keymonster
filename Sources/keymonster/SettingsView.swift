@@ -222,9 +222,9 @@ struct SettingsView: View {
 
     private var bookmarksTab: some View {
         SettingsTabView(description: "Fuzzy-find a list of bookmarks — favoring the title, but "
-            + "also matching the url — and open the highlighted one in your default browser. "
-            + "The list itself is a plain CSV file, maintained by hand in your editor rather "
-            + "than through rows in Settings.") {
+            + "also matching the url — and open the highlighted one, whether it's a website or "
+            + "a local file or folder. The list itself is a plain CSV file, maintained by hand "
+            + "in your editor rather than through rows in Settings.") {
             BookmarksSettingsSection(settings: settings, isConflicting: isConflicting(settings.bookmarksShortcut))
         }
     }

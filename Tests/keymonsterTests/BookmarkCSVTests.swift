@@ -1,6 +1,34 @@
 import XCTest
 @testable import keymonster
 
+final class BookmarkResolvedURLTests: XCTestCase {
+    func testAbsolutePathIsLocal() {
+        let bookmark = Bookmark(id: 0, title: "Repo", url: "/Users/ship/src/keymonster")
+        XCTAssertTrue(bookmark.isLocalPath)
+        XCTAssertEqual(bookmark.resolvedURL, URL(fileURLWithPath: "/Users/ship/src/keymonster"))
+    }
+
+    func testTildePathIsLocalAndExpanded() {
+        let bookmark = Bookmark(id: 0, title: "Downloads", url: "~/Downloads")
+        XCTAssertTrue(bookmark.isLocalPath)
+        let expected = URL(fileURLWithPath: ("~/Downloads" as NSString).expandingTildeInPath)
+        XCTAssertEqual(bookmark.resolvedURL, expected)
+    }
+
+    func testRemoteURLIsNotLocal() {
+        let bookmark = Bookmark(id: 0, title: "Hacker News", url: "https://news.ycombinator.com")
+        XCTAssertFalse(bookmark.isLocalPath)
+        XCTAssertEqual(bookmark.resolvedURL, URL(string: "https://news.ycombinator.com"))
+    }
+
+    func testBareDomainWithoutSchemeIsNotTreatedAsLocal() {
+        // No leading "/" or "~", so this is left to URL(string:) as a plain
+        // (schemeless) url rather than misread as a relative path.
+        let bookmark = Bookmark(id: 0, title: "Example", url: "example.com")
+        XCTAssertFalse(bookmark.isLocalPath)
+    }
+}
+
 final class BookmarkCSVTests: XCTestCase {
     func testEmptyInputParsesToNoBookmarks() {
         XCTAssertEqual(BookmarkCSV.parse(""), [])

@@ -102,7 +102,7 @@ final class BookmarksFinderController {
     }
 
     private func open(_ bookmark: Bookmark?) {
-        guard let bookmark, let url = URL(string: bookmark.url) else {
+        guard let bookmark, let url = bookmark.resolvedURL else {
             NSSound.beep()
             return
         }
