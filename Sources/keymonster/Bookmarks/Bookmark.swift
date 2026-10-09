@@ -116,10 +116,10 @@ enum BookmarkFilter {
         struct Scored { let bookmark: Bookmark; let matchedTitle: Bool; let score: Int; let index: Int }
         return bookmarks.enumerated()
             .compactMap { index, bookmark -> Scored? in
-                if let score = FuzzyMatch.score(bookmark.title, query: trimmed) {
+                if let score = FuzzyMatch.scoreWords(bookmark.title, query: trimmed) {
                     return Scored(bookmark: bookmark, matchedTitle: true, score: score, index: index)
                 }
-                if let score = FuzzyMatch.score(bookmark.url, query: trimmed) {
+                if let score = FuzzyMatch.scoreWords(bookmark.url, query: trimmed) {
                     return Scored(bookmark: bookmark, matchedTitle: false, score: score, index: index)
                 }
                 return nil

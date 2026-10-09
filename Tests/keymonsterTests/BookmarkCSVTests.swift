@@ -117,6 +117,26 @@ final class BookmarkFilterTests: XCTestCase {
         ]
     }
 
+    func testMultipleWordsMatchInAnyOrder() {
+        let bookmarks = [
+            Bookmark(id: 0, title: "core prs", url: "https://a.example"),
+            Bookmark(id: 1, title: "prod core", url: "https://b.example"),
+            Bookmark(id: 2, title: "unrelated", url: "https://c.example")
+        ]
+        let ids = BookmarkFilter.filter(bookmarks, query: "pr co").map(\.id)
+        XCTAssertEqual(Set(ids), [0, 1])
+        XCTAssertEqual(ids, [1, 0]) // typed order is boosted
+    }
+
+    func testMultipleWordsPreferWordPrefixes() {
+        let bookmarks = [
+            Bookmark(id: 0, title: "improve scope", url: "https://a.example"),
+            Bookmark(id: 1, title: "prod core", url: "https://b.example")
+        ]
+        let ids = BookmarkFilter.filter(bookmarks, query: "pr co").map(\.id)
+        XCTAssertEqual(ids.first, 1)
+    }
+
     func testEmptyQueryReturnsEverythingInOrder() {
         XCTAssertEqual(BookmarkFilter.filter(bookmarks(), query: "").map(\.id), [0, 1, 2])
     }

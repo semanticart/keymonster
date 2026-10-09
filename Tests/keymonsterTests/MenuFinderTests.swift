@@ -62,6 +62,12 @@ final class MenuItemFilterTests: XCTestCase {
         XCTAssertEqual(ids, [3])
     }
 
+    func testWordsMatchInAnyOrder() {
+        // "act zoom" reverses the path/title order but still finds the item.
+        let ids = MenuItemFilter.filter(items(), query: "act zoom").map(\.id)
+        XCTAssertEqual(ids, [3])
+    }
+
     func testBestMatchRanksFirst() {
         // "sa" hits both "Save As…" (leading, consecutive) and "Select All"
         // (two word-initials); the query order should surface the strongest.

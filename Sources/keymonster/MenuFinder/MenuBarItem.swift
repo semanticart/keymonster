@@ -57,6 +57,46 @@ enum FuzzyMatch {
         return matched == needle.count ? score : nil
     }
 
+    /// Multi-word scoring: every whitespace-separated word of `query` must
+    /// match `candidate` on its own, in any order, so "pr co" finds both
+    /// "core prs" and "prod core". Words that start a word in the candidate
+    /// (and especially the candidate itself) score higher, and the words
+    /// appearing in the order they were typed earns a bonus. A single-word
+    /// query scores exactly like `score`.
+    static func scoreWords(_ candidate: String, query: String) -> Int? {
+        let words = query.split(whereSeparator: \.isWhitespace).map(String.init)
+        if words.count <= 1 { return score(candidate, query: words.first ?? "") }
+
+        let cand = candidate.lowercased()
+        var total = 0
+        var positions: [Int] = []
+        for word in words {
+            guard let wordScore = score(candidate, query: word) else { return nil }
+            let lowered = word.lowercased()
+            total += wordScore
+            if let start = wordPrefixOffset(cand, prefix: lowered) {
+                total += start == 0 ? 30 : 15
+                positions.append(start)
+            } else {
+                let first = cand.firstIndex(of: lowered.first!)
+                positions.append(first.map { cand.distance(from: cand.startIndex, to: $0) } ?? 0)
+            }
+        }
+        if zip(positions, positions.dropFirst()).allSatisfy({ $0 < $1 }) { total += 25 }
+        return total
+    }
+
+    /// Character offset of the first word in `text` that starts with `prefix`.
+    private static func wordPrefixOffset(_ text: String, prefix: String) -> Int? {
+        let chars = Array(text)
+        let needle = Array(prefix)
+        guard !needle.isEmpty, chars.count >= needle.count else { return nil }
+        for start in 0...(chars.count - needle.count) where start == 0 || isBoundary(chars[start - 1]) {
+            if Array(chars[start..<start + needle.count]) == needle { return start }
+        }
+        return nil
+    }
+
     private static func isBoundary(_ char: Character) -> Bool {
         char == " " || char == "›"
     }
@@ -74,7 +114,7 @@ enum MenuItemFilter {
         struct Scored { let item: MenuBarItem; let score: Int; let index: Int }
         return items.enumerated()
             .compactMap { index, item -> Scored? in
-                guard let score = FuzzyMatch.score(item.searchString, query: trimmed) else { return nil }
+                guard let score = FuzzyMatch.scoreWords(item.searchString, query: trimmed) else { return nil }
                 return Scored(item: item, score: score, index: index)
             }
             .sorted { $0.score != $1.score ? $0.score > $1.score : $0.index < $1.index }
