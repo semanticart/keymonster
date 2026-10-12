@@ -10,9 +10,14 @@ struct HintTarget: Equatable {
     /// specially.
     let role: String?
 
-    init(frame: CGRect, role: String? = nil) {
+    /// Set for a link found in a terminal's screen text: committing the hint
+    /// opens this URL directly rather than clicking, so the pointer never moves.
+    let linkURL: String?
+
+    init(frame: CGRect, role: String? = nil, linkURL: String? = nil) {
         self.frame = frame
         self.role = role
+        self.linkURL = linkURL
     }
 
     /// Where a synthesized click should land. CGEvent uses the same top-left

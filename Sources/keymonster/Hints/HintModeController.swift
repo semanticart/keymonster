@@ -25,12 +25,15 @@ final class HintModeController {
     private struct Session {
         let button: MouseClicker.Button
         let targets: [HintTarget]
+        /// The app that was frontmost, for terminal links it must open.
+        let app: NSRunningApplication?
         var labels: LabelSession
     }
 
     private let overlay = HintOverlay()
     private let keyInput = HintKeyPanel()
     private var session: Session?
+    private var noticeTask: Task<Void, Never>?
 
     var isActive: Bool { session != nil }
 
@@ -51,9 +54,19 @@ final class HintModeController {
 
     private func activate(button: MouseClicker.Button) {
         guard Paster.isTrusted else { Paster.requestAccess(); return }
-        guard let scan = AXHintTargetFinder.scan(), !scan.targets.isEmpty else {
+        // Terminals draw their text themselves, so the AX scan finds none of
+        // its links; kitty's are read from its screen text instead.
+        noticeTask?.cancel()
+        let scan = AXHintTargetFinder.scan()
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        let terminal = frontmost.map { KittyLinkScanner.scan($0) } ?? KittyLinkScanner.Outcome()
+        let found = (scan?.targets ?? []) + terminal.targets
+        guard let windowFrame = scan?.windowFrame, !found.isEmpty else {
             log.info("no hint targets in the frontmost window")
             NSSound.beep()
+            if let issue = terminal.issue, let frame = scan?.windowFrame {
+                flashNotice("Kitty link hints: \(issue.detail)", over: frame)
+            }
             return
         }
         guard keyInput.start() else {
@@ -63,19 +76,22 @@ final class HintModeController {
         }
 
         // More targets than two-letter labels exist: drop the overflow.
-        let targets = Array(scan.targets.prefix(HintLabels.maxCount))
+        let targets = Array(found.prefix(HintLabels.maxCount))
         // Badges may go anywhere on the window's screen, so labels for
         // elements at the window's edge hang just outside it instead of
         // crowding (and clustering) within.
         let labels = LabelSession(
             anchors: targets.map(\.frame),
-            windowFrame: scan.windowFrame,
-            screenBounds: HintScreens.bounds(around: scan.windowFrame),
+            windowFrame: windowFrame,
+            screenBounds: HintScreens.bounds(around: windowFrame),
             badgeSize: BadgeMetrics.size(forLabelLength:)
         )
-        session = Session(button: button, targets: targets, labels: labels)
+        session = Session(button: button, targets: targets, app: frontmost, labels: labels)
+        // Hints may still exist (a titlebar's buttons) when kitty's links
+        // couldn't be read; say so rather than letting them look like all there is.
         overlay.show(
-            groups: labels.groups, labels: labels.groupLabels, windowFrame: scan.windowFrame
+            groups: labels.groups, labels: labels.groupLabels, windowFrame: windowFrame,
+            banner: terminal.issue.map { "Kitty link hints: \($0.detail)" }
         )
         log.debug(
             "hint mode active with \(targets.count) targets in \(labels.groups.count) groups"
@@ -129,6 +145,10 @@ final class HintModeController {
             let target = session.targets[index]
             let button = shifted ? session.button.opposite : session.button
             dismiss()
+            if let url = target.linkURL, let app = session.app {
+                KittyLinkScanner.open(url, in: app)
+                return
+            }
             MouseClicker.clickOnceOverlaySettles(at: target.clickPoint, button: button)
         case .unwound:
             break // nothing typed and no zoom: backspace has nothing to undo
@@ -143,6 +163,18 @@ final class HintModeController {
             overlay.apply(effect)
         default:
             overlay.apply(effect)
+        }
+    }
+
+    /// Says why nothing was hinted, for a few seconds, over the window. For
+    /// failures the user can fix (a terminal that isn't set up), where a bare
+    /// beep would leave them guessing.
+    private func flashNotice(_ text: String, over windowFrame: CGRect) {
+        overlay.showBanner(text, windowFrame: windowFrame)
+        noticeTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled, let self, self.session == nil else { return }
+            self.overlay.hide()
         }
     }
 

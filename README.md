@@ -55,8 +55,15 @@ screen, scroll any pane, and jump the caret through text, all without the mouse.
   few elements are visible, two letters otherwise); type a label to click it
   without touching the mouse. Works on native macOS
   controls and on web content in Safari, Chrome, and Electron apps (Key Monster
-  asks them to expose their accessibility trees). Separate shortcuts for
-  left-click and right-click hints; holding `Shift` on the final letter clicks
+  asks them to expose their accessibility trees). In **kitty** (also inside
+  tmux) URLs and OSC 8 hyperlinks — including ones Claude prints as linked
+  text — get hints too, read from the window's screen text; picking one asks
+  kitty to open it (no mouse movement), so your `open_url_with` and
+  `open-actions.conf` still apply; this needs `allow_remote_control yes` and
+  `listen_on unix:/tmp/kitty` in `kitty.conf` (restart kitty after adding
+  it), and tmux needs `set -ga terminal-features ",xterm-kitty:hyperlinks"`
+  for linked text to survive. Settings → Mouse shows whether kitty is set up (and says what to fix), and hint mode explains on screen when it can't read kitty. Kitty windows with splits aren't supported yet.
+  Separate shortcuts for left-click and right-click hints; holding `Shift` on the final letter clicks
   with the opposite button. Elements too close together to label individually
   share one green area label — typing it zooms into that area (a magnified
   screenshot; this needs Screen Recording permission — Key Monster prompts the

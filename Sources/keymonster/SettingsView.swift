@@ -143,6 +143,8 @@ struct SettingsView: View {
                 }
             }
 
+            KittySettingsSection()
+
             SettingsSection(
                 header: "Grid Click",
                 footer: "Overlay a grid mirroring the keyboard's letter rows (Q–/) on the "

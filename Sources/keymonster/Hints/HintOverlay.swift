@@ -16,8 +16,11 @@ final class HintOverlay {
     /// groups draw a normal badge; clusters draw a green area badge plus a
     /// translucent green wash over the area itself, so it's clear which
     /// targets the one label stands for.
-    func show(groups: [HintGrouping.Group], labels: [String], windowFrame: CGRect) {
+    func show(
+        groups: [HintGrouping.Group], labels: [String], windowFrame: CGRect, banner: String? = nil
+    ) {
         guard let view = install(around: windowFrame) else { return }
+        view.banner = banner
         // Badge rects become view-local (the view is flipped, so it shares the
         // AX tree's top-left origin — only the overlay's origin needs removing).
         view.badges = zip(groups, labels).map { group, label in
