@@ -260,6 +260,17 @@ struct SettingsView: View {
                 SettingsToggleRow(title: "Launch at Login", isOn: $settings.launchAtLogin)
             }
 
+            SettingsSection(footer: "Save a printable PDF listing every shortcut by feature, "
+                + "with the ones you haven't assigned marked.") {
+                HStack {
+                    Text("Shortcut Cheat Sheet")
+                    Spacer()
+                    Button("Save as PDF…") {
+                        ShortcutSheetPDF.saveInteractively(settings: settings)
+                    }
+                }
+            }
+
             SettingsSection(footer: "Look for a newer release once a day and offer it in the menu bar. "
                 + "With automatic installs on, the update is applied in the background and "
                 + "takes effect the next time Key Monster starts.") {
