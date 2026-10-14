@@ -142,6 +142,15 @@ final class KittyRemoteTests: XCTestCase {
         XCTAssertEqual(size?.lines, 65)
     }
 
+    func testFocusedWindowInfoCarriesTheForegroundPIDs() {
+        let window = #"""
+            {"is_focused": true, "columns": 10, "lines": 5,
+             "foreground_processes": [{"pid": 4242, "cmdline": ["tmux", "attach"]}, {"pid": 7}]}
+            """#
+        let data = Data(#"[{"is_focused": true, "tabs": [{"is_active": true, "windows": [\#(window)]}]}]"#.utf8)
+        XCTAssertEqual(KittyRemote.focusedWindowInfo(inLS: data)?.foregroundPIDs, [4242, 7])
+    }
+
     func testFocusedWindowInfoCarriesTheWorkingDirectory() {
         let window = #"{"is_focused": true, "columns": 10, "lines": 5, "cwd": "/Users/me/proj"}"#
         let data = Data(#"[{"is_focused": true, "tabs": [{"is_active": true, "windows": [\#(window)]}]}]"#.utf8)

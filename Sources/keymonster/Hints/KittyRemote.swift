@@ -27,6 +27,9 @@ enum KittyRemote {
         let columns: Int
         let lines: Int
         let cwd: String?
+        /// Pids of the processes in the window's foreground group — how a tmux
+        /// client running in it is recognized.
+        var foregroundPIDs: [Int] = []
     }
 
     /// Runs one `kitten @` subcommand against the right kitty and returns its
@@ -64,9 +67,13 @@ enum KittyRemote {
                     log.info("kitty tab has \(windows.count) windows; link hints need a single one")
                     return nil
                 }
-                guard let columns = windows[0]["columns"] as? Int,
-                      let lines = windows[0]["lines"] as? Int else { return nil }
-                return WindowInfo(columns: columns, lines: lines, cwd: windows[0]["cwd"] as? String)
+                let window = windows[0]
+                guard let columns = window["columns"] as? Int,
+                      let lines = window["lines"] as? Int else { return nil }
+                let pids = ((window["foreground_processes"] as? [[String: Any]]) ?? [])
+                    .compactMap { $0["pid"] as? Int }
+                return WindowInfo(columns: columns, lines: lines, cwd: window["cwd"] as? String,
+                                  foregroundPIDs: pids)
             }
         }
         return nil

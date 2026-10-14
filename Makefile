@@ -1,4 +1,4 @@
-.PHONY: build run test axtest fixture clean lint app snapshot site site-shots site-cast site-cast-voiced icon emoji-names install dist notarize appcast release
+.PHONY: build run test axtest tmuxtest fixture clean lint app snapshot site site-shots site-cast site-cast-voiced icon emoji-names install dist notarize appcast release
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -162,6 +162,11 @@ fixture: build
 # failure you expected didn't appear.
 axtest:
 	swift test --filter AXLiveTreeTests
+
+# Live check of scroll mode's tmux pane picking inside a throwaway kitty. Needs
+# the dev app running (`make run`), Accessibility, and an unlocked screen.
+tmuxtest:
+	scripts/tmux-scroll-test.sh
 
 clean:
 	swift package clean

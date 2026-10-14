@@ -55,8 +55,8 @@ final class ScrollModeController {
             NSSound.beep()
             return
         }
-        let session = Session(panes: scan.panes, windowFrame: scan.windowFrame)
-        switch ScrollActivation.forPaneCount(scan.panes.count) {
+        let session = Session(panes: tmuxAimed(scan.panes), windowFrame: scan.windowFrame)
+        switch ScrollActivation.forPaneCount(session.panes.count) {
         case .none:
             log.info("no scrollable panes in the frontmost window")
             NSSound.beep()
@@ -66,6 +66,26 @@ final class ScrollModeController {
         case .select:
             guard keyInput.start() else { return captureFailed() }
             startSelecting(session)
+        }
+    }
+
+    /// Kitty running tmux shows every tmux pane inside one text area, and
+    /// wheel events go to whatever is under the pointer — so split that area
+    /// into the tmux panes, active first, and let the usual pick aim at one.
+    /// Tmux then hands the wheel to the program in it (or its own copy-mode,
+    /// per the user's bindings); we only aim.
+    private func tmuxAimed(_ panes: [ScrollPane]) -> [ScrollPane] {
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              app.bundleIdentifier == KittyRemote.bundleID,
+              panes.count == 1, let pane = panes.first,
+              let frames = KittyTmuxScroll.frames(in: app, textArea: pane.frame) else {
+            return panes
+        }
+        return frames.map { frame in
+            var split = pane
+            split.frame = frame
+            split.tracksElement = false
+            return split
         }
     }
 

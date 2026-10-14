@@ -1,3 +1,4 @@
 - We have a Makefile for common tasks. Use them.
 - Design the code for testability and fast feedback loops
 - run `make lint` and fix before commit
+- After changing tmux/scroll pane-picking code (`Hints/TmuxPanes.swift`, `ScrollModeController`, `ScrollWheel`, `AXScrollPaneFinder`, kitty `ls` parsing), run `make tmuxtest` (live, needs the dev app running via `make run`)

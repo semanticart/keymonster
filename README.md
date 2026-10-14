@@ -90,7 +90,8 @@ screen, scroll any pane, and jump the caret through text, all without the mouse.
   dismisses. A window with a single scrollable pane skips the pick and scrolls
   immediately; `Delete` returns to the pane pick. Works on native scroll areas
   and on web content in Safari, Chrome, and Electron apps, even when the pane
-  hides its scroll bars. Requires Accessibility permission.
+  hides its scroll bars. In kitty running tmux, each tmux pane is its own pane
+  (the active one is labeled first). Requires Accessibility permission.
 - **Text jump (jump to character)** — press a shortcut while a text field is
   focused, then any character; every visible occurrence of it in the field grows
   a short label (one letter when there are only a few, two otherwise), and typing

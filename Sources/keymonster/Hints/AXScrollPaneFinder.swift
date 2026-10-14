@@ -9,6 +9,9 @@ private let log = Logger(subsystem: "keymonster", category: "hints.scroll")
 struct ScrollPane {
     let element: AXUIElement
     var frame: CGRect
+    /// False when `frame` is a sub-area of the element (a tmux pane inside
+    /// kitty's one text area), so re-reading the element's frame would be wrong.
+    var tracksElement = true
 }
 
 /// Which panes deserve a badge. Pure so the rules are testable without a
@@ -247,6 +250,9 @@ enum AXScrollPaneFinder {
     /// element has left the screen (its view was torn down or the window
     /// closed), which tells scroll mode to stand down.
     static func currentFrame(of pane: ScrollPane) -> CGRect? {
-        AXHintTargetFinder.frame(of: pane.element)
+        guard pane.tracksElement else {
+            return AXHintTargetFinder.frame(of: pane.element) == nil ? nil : pane.frame
+        }
+        return AXHintTargetFinder.frame(of: pane.element)
     }
 }

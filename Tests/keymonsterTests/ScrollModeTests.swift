@@ -132,3 +132,55 @@ final class ScrollPaneFilterTests: XCTestCase {
         XCTAssertFalse(ScrollPaneFilter.isUsable(visible: .null))
     }
 }
+
+final class TmuxPanesTests: XCTestCase {
+    private let grid = TerminalGrid(frame: CGRect(x: 100, y: 50, width: 800, height: 400), columns: 80, lines: 20)
+
+    func testParsesPanesFromListPanes() {
+        let panes = TmuxPanes.parse("0 0 0 40 19 0\n1 41 0 39 19 0\n")
+        XCTAssertEqual(panes, [
+            .init(left: 0, top: 0, width: 40, height: 19, isActive: false),
+            .init(left: 41, top: 0, width: 39, height: 19, isActive: true)
+        ])
+    }
+
+    func testIgnoresMalformedLines() {
+        XCTAssertEqual(TmuxPanes.parse("garbage\n1 0 0 0 5 0\n"), [])
+    }
+
+    func testFramesPlaceEveryPaneOnTheKittyGridActiveFirst() {
+        let panes = TmuxPanes.parse("0 0 0 40 19 0\n1 41 0 39 19 0\n")
+        // 10pt wide, 20pt tall cells.
+        XCTAssertEqual(TmuxPanes.frames(of: panes, in: grid), [
+            CGRect(x: 510, y: 50, width: 390, height: 380),
+            CGRect(x: 100, y: 50, width: 400, height: 380)
+        ])
+    }
+
+    func testZoomedWindowOffersOnlyTheActivePane() {
+        let panes = TmuxPanes.parse("0 0 0 40 19 1\n1 0 0 80 19 1\n")
+        XCTAssertEqual(TmuxPanes.frames(of: panes, in: grid), [
+            CGRect(x: 100, y: 50, width: 800, height: 380)
+        ])
+    }
+
+    func testFindsTheClientAmongForegroundPIDs() {
+        XCTAssertEqual(TmuxPanes.window(forClientIn: [10, 4242], clients: "999 @1\n4242 @3\n"), "@3")
+        XCTAssertNil(TmuxPanes.window(forClientIn: [10], clients: "4242 @3\n"))
+    }
+
+    func testFramesThroughRunner() {
+        let frames = TmuxPanes.frames(foregroundPIDs: [7], grid: grid) { args in
+            switch args.first {
+            case "list-clients": return Data("7 @2\n".utf8)
+            case "list-panes" where args.contains("@2"): return Data("1 0 1 80 18 0\n".utf8)
+            default: return nil
+            }
+        }
+        XCTAssertEqual(frames, [CGRect(x: 100, y: 70, width: 800, height: 360)])
+    }
+
+    func testNoTmuxClientMeansNoFrames() {
+        XCTAssertNil(TmuxPanes.frames(foregroundPIDs: [7], grid: grid) { _ in Data() })
+    }
+}
