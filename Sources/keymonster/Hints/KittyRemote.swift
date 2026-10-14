@@ -19,6 +19,14 @@ enum KittyRemote {
         let ansiText: String
         let columns: Int
         let lines: Int
+        /// The window's working directory, to resolve relative paths against.
+        var cwd: String?
+    }
+
+    struct WindowInfo: Equatable {
+        let columns: Int
+        let lines: Int
+        let cwd: String?
     }
 
     /// Runs one `kitten @` subcommand against the right kitty and returns its
@@ -26,20 +34,25 @@ enum KittyRemote {
     typealias Runner = (_ subcommand: [String]) -> Data?
 
     static func screen(run: Runner) -> Screen? {
-        guard let listing = run(["ls"]), let size = focusedWindowSize(inLS: listing) else {
+        guard let listing = run(["ls"]), let size = focusedWindowInfo(inLS: listing) else {
             return nil
         }
         guard let data = run(["get-text", "--match", "state:focused", "--ansi"]),
               let text = String(bytes: data, encoding: .utf8) else {
             return nil
         }
-        return Screen(ansiText: text, columns: size.columns, lines: size.lines)
+        return Screen(ansiText: text, columns: size.columns, lines: size.lines, cwd: size.cwd)
     }
 
     /// The focused window's size in cells, from `kitten @ ls` JSON. Nil when no
     /// window is focused, or when the tab holds several windows (kitty splits):
     /// `ls` reports no pane geometry, so cell positions couldn't be placed.
     static func focusedWindowSize(inLS data: Data) -> (columns: Int, lines: Int)? {
+        focusedWindowInfo(inLS: data).map { ($0.columns, $0.lines) }
+    }
+
+    /// `focusedWindowSize` plus the window's working directory.
+    static func focusedWindowInfo(inLS data: Data) -> WindowInfo? {
         guard let osWindows = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else {
             return nil
         }
@@ -53,7 +66,7 @@ enum KittyRemote {
                 }
                 guard let columns = windows[0]["columns"] as? Int,
                       let lines = windows[0]["lines"] as? Int else { return nil }
-                return (columns, lines)
+                return WindowInfo(columns: columns, lines: lines, cwd: windows[0]["cwd"] as? String)
             }
         }
         return nil
@@ -145,7 +158,9 @@ enum KittyLinkScanner {
         var issue: KittyHealth.Item?
     }
 
-    static func scan(_ app: NSRunningApplication) -> Outcome {
+    /// `findFiles` adds the file paths on screen (only worth doing when a
+    /// script is set to receive them).
+    static func scan(_ app: NSRunningApplication, findFiles: Bool = false) -> Outcome {
         guard app.bundleIdentifier == KittyRemote.bundleID else { return Outcome() }
         guard let run = KittyRemote.runner(for: app),
               let screen = KittyRemote.screen(run: run),
@@ -155,8 +170,32 @@ enum KittyLinkScanner {
         }
         let links = TerminalLinks.find(inANSI: screen.ansiText, columns: screen.columns)
         let grid = TerminalGrid(frame: frame, columns: screen.columns, lines: screen.lines)
-        log.debug("kitty: \(links.count) links on a \(screen.columns)x\(screen.lines) grid")
-        return Outcome(targets: grid.targets(for: links))
+        var targets = grid.targets(for: links)
+        if findFiles { targets += grid.targets(for: files(in: screen)) }
+        log.debug("kitty: \(targets.count) targets on a \(screen.columns)x\(screen.lines) grid")
+        return Outcome(targets: targets)
+    }
+
+    /// Path-like text on `screen` that names a file that exists, one entry per
+    /// occurrence.
+    private static func files(in screen: KittyRemote.Screen) -> [(file: FileTarget, spans: [CellSpan])] {
+        let home = NSHomeDirectory()
+        return TerminalLinks.findPaths(inANSI: screen.ansiText, columns: screen.columns).compactMap { candidate in
+            guard let path = TerminalPathResolver.resolve(
+                candidate.text, cwd: screen.cwd, home: home,
+                exists: { FileManager.default.fileExists(atPath: $0) }
+            ) else { return nil }
+            return (FileTarget(path: path, line: candidate.line, column: candidate.column), candidate.spans)
+        }
+    }
+
+    /// Hands a picked file to the user's script: path as `$1`, and the line and
+    /// column, when the output gave them, in `KEYMONSTER_LINE`/`KEYMONSTER_COLUMN`.
+    static func open(_ file: FileTarget, script: String) {
+        var environment: [String: String] = [:]
+        if let line = file.line { environment["KEYMONSTER_LINE"] = String(line) }
+        if let column = file.column { environment["KEYMONSTER_COLUMN"] = String(column) }
+        ScriptRunner().run(ScriptShortcut(path: script), arguments: [file.path], environment: environment)
     }
 
     /// Opens `url` through kitty, falling back to the system's default handler

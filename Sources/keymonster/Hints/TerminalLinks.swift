@@ -223,6 +223,90 @@ enum TerminalLinks {
     }
 }
 
+/// Something in the screen text that reads like a file path, before anyone has
+/// checked it names a real file.
+struct TerminalPathCandidate: Equatable {
+    /// As printed: may be relative or start with `~`.
+    let text: String
+    let line: Int?
+    let column: Int?
+    let spans: [CellSpan]
+}
+
+extension TerminalLinks {
+    /// Paths with at least one slash (`/etc/hosts`, `~/x`, `./a`, `src/a.swift`)
+    /// or a bare `name.ext`, each with an optional `:line[:column]` tail as
+    /// compilers, grep, and test runners print. Deliberately greedy: callers
+    /// confirm candidates against the file system, which is what keeps prose
+    /// like "and/or" or "e.g." from being hinted.
+    private static let pathPattern = try! NSRegularExpression( // swiftlint:disable:this force_try
+        pattern: "(?<![\\w:/~.\\-@])"
+            + "((?:(?:~|\\.{1,2}|[\\w@+-][\\w.@+-]*)?(?:/[\\w.@+%~=,#-]+)+/?"
+            + "|[\\w@+-][\\w.@+-]*\\.[A-Za-z0-9]{1,8}))"
+            + "(?::(\\d+)(?::(\\d+))?)?"
+    )
+
+    /// Path-like text on screen. Hyperlink labels are skipped (they're already
+    /// links), and the lookbehind keeps the tail of a URL from matching.
+    static func findPaths(inANSI text: String, columns: Int) -> [TerminalPathCandidate] {
+        guard columns > 0 else { return [] }
+        let (cells, _) = layOut(text, columns: columns)
+        var haystack = ""
+        var starts: [Int] = []
+        for cell in cells {
+            if cell.startsLine { haystack.append("\n") }
+            starts.append(haystack.utf16.count)
+            haystack.append(cell.hyperlink == nil ? cell.character : "\n")
+        }
+
+        let whole = NSRange(location: 0, length: haystack.utf16.count)
+        return pathPattern.matches(in: haystack, range: whole).compactMap { match in
+            guard let range = Range(match.range(at: 1), in: haystack) else { return nil }
+            var path = String(haystack[range])
+            // A sentence's full stop or comma rides along on the last segment.
+            while let last = path.last, ".,;".contains(last), match.range(at: 2).location == NSNotFound {
+                path.removeLast()
+            }
+            guard !path.isEmpty else { return nil }
+            func number(_ group: Int) -> Int? {
+                guard let range = Range(match.range(at: group), in: haystack) else { return nil }
+                return Int(haystack[range])
+            }
+            var end = match.range(at: 1).location + path.utf16.count
+            if match.range(at: 2).location != NSNotFound {
+                end = match.range.location + match.range.length
+            }
+            let covered = cells.indices.filter { starts[$0] >= match.range.location && starts[$0] < end }
+            guard !covered.isEmpty else { return nil }
+            return TerminalPathCandidate(
+                text: path, line: number(2), column: number(3),
+                spans: spans(of: covered.map { cells[$0] })
+            )
+        }
+    }
+}
+
+/// Turns printed path text into an absolute path that exists. Pure: the file
+/// system is a closure.
+enum TerminalPathResolver {
+    static func resolve(
+        _ text: String, cwd: String?, home: String, exists: (String) -> Bool
+    ) -> String? {
+        let expanded: String
+        if text == "~" || text.hasPrefix("~/") {
+            expanded = home + text.dropFirst()
+        } else if text.hasPrefix("/") {
+            expanded = text
+        } else if let cwd {
+            expanded = cwd + "/" + text
+        } else {
+            return nil
+        }
+        let path = (expanded as NSString).standardizingPath
+        return exists(path) ? path : nil
+    }
+}
+
 /// How many terminal cells a character covers: 2 for East Asian wide glyphs and
 /// emoji, 1 otherwise. Works on grapheme clusters, so a combining sequence
 /// counts by its base.
@@ -267,6 +351,14 @@ struct TerminalGrid: Equatable {
         links.compactMap { link in
             guard let span = link.spans.first, span.row < lines else { return nil }
             return HintTarget(frame: rect(for: span), role: "AXLink", linkURL: link.url)
+        }
+    }
+
+    /// One target per confirmed file, labeled on its first row.
+    func targets(for files: [(file: FileTarget, spans: [CellSpan])]) -> [HintTarget] {
+        files.compactMap { entry in
+            guard let span = entry.spans.first, span.row < lines else { return nil }
+            return HintTarget(frame: rect(for: span), role: "AXLink", file: entry.file)
         }
     }
 }

@@ -18,6 +18,17 @@ final class AppSettingsTests: XCTestCase {
         super.tearDown()
     }
 
+    func testFilePathScriptPersistsAndClearsWhenBlank() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.filePathScript, "")
+
+        settings.filePathScript = "~/bin/open-in-nvim"
+        XCTAssertEqual(AppSettings(defaults: defaults).filePathScript, "~/bin/open-in-nvim")
+
+        settings.filePathScript = "  "
+        XCTAssertEqual(AppSettings(defaults: defaults).filePathScript, "")
+    }
+
     func testSettingShortcutPersists() {
         let settings = AppSettings(defaults: defaults)
         settings.shortcut = Shortcut(keyCode: 9, carbonModifiers: 0x0100 | 0x0200)

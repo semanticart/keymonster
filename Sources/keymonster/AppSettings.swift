@@ -78,6 +78,7 @@ final class AppSettings: ObservableObject {
     static let bookmarksShortcutKey = "bookmarksShortcut"
     static let editInEditorShortcutKey = "editInEditorShortcut"
     static let editorCommandKey = "editorCommand"
+    static let filePathScriptKey = "filePathScript"
     static let editorTerminalKey = "editorTerminalApp"
     static let quitEditorTerminalKey = "quitEditorTerminalWhenDone"
 
@@ -170,6 +171,18 @@ final class AppSettings: ObservableObject {
         didSet { persist(editInEditorShortcut, forKey: Self.editInEditorShortcutKey) }
     }
 
+    /// Script that kitty hint mode runs, with the file path as its argument, when
+    /// a file path on screen is picked. Empty means file paths aren't hinted.
+    @Published var filePathScript: String {
+        didSet {
+            if filePathScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                defaults.removeObject(forKey: Self.filePathScriptKey)
+            } else {
+                defaults.set(filePathScript, forKey: Self.filePathScriptKey)
+            }
+        }
+    }
+
     /// The editor to run, as a shell snippet (`code --wait`, `nvim`). Empty
     /// means "use `$KEY_MONSTER_EDITOR`, `$VISUAL`, then `$EDITOR`, from the
     /// login shell" (see `EditorCommand`).
@@ -241,6 +254,7 @@ final class AppSettings: ObservableObject {
         bookmarksShortcut = Self.loadShortcut(defaults, key: Self.bookmarksShortcutKey)
         editInEditorShortcut = Self.loadShortcut(defaults, key: Self.editInEditorShortcutKey)
         editorCommand = defaults.string(forKey: Self.editorCommandKey) ?? ""
+        filePathScript = defaults.string(forKey: Self.filePathScriptKey) ?? ""
         editorTerminal = Self.loadValue(defaults, key: Self.editorTerminalKey)
         quitEditorTerminal = defaults.object(forKey: Self.quitEditorTerminalKey) as? Bool ?? true
         appShortcuts = Self.loadList(defaults, key: Self.appShortcutsKey)

@@ -50,10 +50,13 @@ final class ScriptRunnerTests: XCTestCase {
         return url.path
     }
 
-    private func runAndWait(_ runner: ScriptRunner, _ script: ScriptShortcut) -> Int32? {
+    private func runAndWait(
+        _ runner: ScriptRunner, _ script: ScriptShortcut,
+        arguments: [String] = [], environment: [String: String] = [:]
+    ) -> Int32? {
         let done = expectation(description: "script finished")
         let status = Box<Int32?>(nil)
-        runner.run(script) { code in
+        runner.run(script, arguments: arguments, environment: environment) { code in
             status.value = code
             done.fulfill()
         }
@@ -73,6 +76,19 @@ final class ScriptRunnerTests: XCTestCase {
 
         XCTAssertEqual(runAndWait(ScriptRunner(), ScriptShortcut(path: path)), 0)
         XCTAssertTrue(FileManager.default.fileExists(atPath: marker.path))
+    }
+
+    func testArgumentsAndEnvironmentReachTheScript() throws {
+        let out = scriptDir.appendingPathComponent("out")
+        let path = try writeScript("args.sh", "printf '%s|%s' \"$1\" \"$KEYMONSTER_LINE\" > '\(out.path)'")
+
+        let status = runAndWait(
+            ScriptRunner(), ScriptShortcut(path: path),
+            arguments: ["/a path/with space.txt"], environment: ["KEYMONSTER_LINE": "42"]
+        )
+
+        XCTAssertEqual(status, 0)
+        XCTAssertEqual(try String(contentsOf: out, encoding: .utf8), "/a path/with space.txt|42")
     }
 
     func testTildeInPathIsExpanded() throws {

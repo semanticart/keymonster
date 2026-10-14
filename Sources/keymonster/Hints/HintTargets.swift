@@ -1,5 +1,13 @@
 import CoreGraphics
 
+/// A file named in a terminal's output, handed to the user's script on commit.
+struct FileTarget: Equatable {
+    /// Absolute, and known to exist when it was found.
+    let path: String
+    let line: Int?
+    let column: Int?
+}
+
 /// A clickable element found in the frontmost window.
 struct HintTarget: Equatable {
     /// The element's visible frame in AX coordinates (global, top-left origin),
@@ -14,10 +22,15 @@ struct HintTarget: Equatable {
     /// opens this URL directly rather than clicking, so the pointer never moves.
     let linkURL: String?
 
-    init(frame: CGRect, role: String? = nil, linkURL: String? = nil) {
+    /// Set for a file path found in a terminal's screen text: committing the
+    /// hint runs the user's file-path script on it.
+    let file: FileTarget?
+
+    init(frame: CGRect, role: String? = nil, linkURL: String? = nil, file: FileTarget? = nil) {
         self.frame = frame
         self.role = role
         self.linkURL = linkURL
+        self.file = file
     }
 
     /// Where a synthesized click should land. CGEvent uses the same top-left

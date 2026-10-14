@@ -62,8 +62,14 @@ struct ScriptRunner {
 
     /// Runs the script detached from the caller. `completion` (used by tests)
     /// fires on a background queue with the exit status, or nil if the process
-    /// never launched (including entries with no script chosen).
-    func run(_ script: ScriptShortcut, completion: (@Sendable (Int32?) -> Void)? = nil) {
+    /// never launched (including entries with no script chosen). `arguments`
+    /// follow the script's own, and `environment` is added to the app's.
+    func run(
+        _ script: ScriptShortcut,
+        arguments: [String] = [],
+        environment: [String: String] = [:],
+        completion: (@Sendable (Int32?) -> Void)? = nil
+    ) {
         guard !script.isEmpty else {
             completion?(nil)
             return
@@ -82,7 +88,10 @@ struct ScriptRunner {
             )
             let process = Process()
             process.executableURL = URL(fileURLWithPath: invocation.executablePath)
-            process.arguments = invocation.arguments
+            process.arguments = invocation.arguments + arguments
+            if !environment.isEmpty {
+                process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
+            }
             process.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
             process.standardOutput = FileHandle.nullDevice
             process.standardInput = FileHandle.nullDevice

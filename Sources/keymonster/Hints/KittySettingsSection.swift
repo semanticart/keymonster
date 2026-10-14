@@ -5,6 +5,7 @@ import SwiftUI
 /// and from the outside "nothing happens" is indistinguishable from "no links
 /// on screen" — this is where the difference is spelled out.
 struct KittySettingsSection: View {
+    @ObservedObject private var settings = AppSettings.shared
     @State private var report: KittyHealth?
 
     var body: some View {
@@ -12,7 +13,11 @@ struct KittySettingsSection: View {
             header: "Kitty Link Hints",
             footer: "Click hints also label URLs and hyperlinks in kitty (including inside tmux), "
                 + "and picking one opens it through kitty. Kitty needs `allow_remote_control yes` "
-                + "and `listen_on unix:/tmp/kitty` in kitty.conf; restart it after changing them."
+                + "and `listen_on unix:/tmp/kitty` in kitty.conf; restart it after changing them. "
+                + "With a script set, file paths on screen (that exist; relative ones are "
+                + "resolved against the window's directory) are hinted too, and picking one "
+                + "runs the script with the absolute path as its argument. A `:line:column` "
+                + "suffix arrives in $KEYMONSTER_LINE and $KEYMONSTER_COLUMN."
         ) {
             if let report {
                 ForEach(Array(report.items.enumerated()), id: \.offset) { _, item in
@@ -31,6 +36,14 @@ struct KittySettingsSection: View {
                 }
             } else {
                 Text("Checking…").foregroundStyle(.secondary)
+            }
+            HStack {
+                Text("File Path Script")
+                Spacer()
+                TextField("none (file paths aren't hinted)", text: $settings.filePathScript)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.body.monospaced())
+                    .frame(width: 260)
             }
             HStack {
                 Button("Check Again") { refresh() }

@@ -62,7 +62,7 @@ screen, scroll any pane, and jump the caret through text, all without the mouse.
   `open-actions.conf` still apply; this needs `allow_remote_control yes` and
   `listen_on unix:/tmp/kitty` in `kitty.conf` (restart kitty after adding
   it), and tmux needs `set -ga terminal-features ",xterm-kitty:hyperlinks"`
-  for linked text to survive. Settings → Mouse shows whether kitty is set up (and says what to fix), and hint mode explains on screen when it can't read kitty. Kitty windows with splits aren't supported yet.
+  for linked text to survive. Settings → Mouse shows whether kitty is set up (and says what to fix), and hint mode explains on screen when it can't read kitty. Kitty windows with splits aren't supported yet. Set **File Path Script** (Settings → Mouse) and file paths on screen that exist (`/abs`, `~/x`, or `src/a.swift:12:5`, resolved against the window's directory) are hinted too; picking one runs your script with the absolute path as `$1` (and `$KEYMONSTER_LINE`/`$KEYMONSTER_COLUMN` when given), e.g. to open it in nvim in a tmux pane. Relative paths inside tmux resolve against kitty's directory, not the pane's.
   Separate shortcuts for left-click and right-click hints; holding `Shift` on the final letter clicks
   with the opposite button. Elements too close together to label individually
   share one green area label — typing it zooms into that area (a magnified

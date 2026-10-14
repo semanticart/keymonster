@@ -142,6 +142,12 @@ final class KittyRemoteTests: XCTestCase {
         XCTAssertEqual(size?.lines, 65)
     }
 
+    func testFocusedWindowInfoCarriesTheWorkingDirectory() {
+        let window = #"{"is_focused": true, "columns": 10, "lines": 5, "cwd": "/Users/me/proj"}"#
+        let data = Data(#"[{"is_focused": true, "tabs": [{"is_active": true, "windows": [\#(window)]}]}]"#.utf8)
+        XCTAssertEqual(KittyRemote.focusedWindowInfo(inLS: data)?.cwd, "/Users/me/proj")
+    }
+
     func testNoFocusedOSWindowOrInactiveTabYieldsNothing() {
         XCTAssertNil(KittyRemote.focusedWindowSize(inLS: listing(osFocused: false)))
         XCTAssertNil(KittyRemote.focusedWindowSize(inLS: listing(tabActive: false)))
@@ -179,5 +185,76 @@ final class KittyRemoteTests: XCTestCase {
     func testScreenIsNilWhenKittenFails() {
         XCTAssertNil(KittyRemote.screen { _ in nil })
         XCTAssertNil(KittyRemote.screen { $0[0] == "ls" ? self.listing() : nil })
+    }
+}
+
+/// File paths in screen text, and confirming them against the file system.
+final class TerminalPathTests: XCTestCase {
+    private func texts(_ text: String) -> [String] {
+        TerminalLinks.findPaths(inANSI: text, columns: 80).map(\.text)
+    }
+
+    func testFindsAbsoluteHomeAndRelativePaths() {
+        XCTAssertEqual(
+            texts("see /etc/hosts and ~/src/a.txt, ./run.sh ../up/x.go src/main.swift"),
+            ["/etc/hosts", "~/src/a.txt", "./run.sh", "../up/x.go", "src/main.swift"]
+        )
+    }
+
+    func testBareFileNameNeedsAnExtension() {
+        XCTAssertEqual(texts("edit Package.swift now"), ["Package.swift"])
+    }
+
+    func testLineAndColumnSuffixAreParsedAndLocated() {
+        let found = TerminalLinks.findPaths(inANSI: "x src/a.swift:12:5: error", columns: 80)
+        XCTAssertEqual(found.count, 1)
+        XCTAssertEqual(found[0].text, "src/a.swift")
+        XCTAssertEqual(found[0].line, 12)
+        XCTAssertEqual(found[0].column, 5)
+        XCTAssertEqual(found[0].spans, [CellSpan(row: 0, startColumn: 2, endColumn: 18)])
+    }
+
+    func testLineWithoutColumn() {
+        let found = TerminalLinks.findPaths(inANSI: "a/b.go:7:content", columns: 80)
+        XCTAssertEqual(found.first?.line, 7)
+        XCTAssertNil(found.first?.column)
+    }
+
+    func testTrailingSentencePunctuationIsDropped() {
+        let found = TerminalLinks.findPaths(inANSI: "wrote /tmp/out.txt.", columns: 80)
+        XCTAssertEqual(found.map(\.text), ["/tmp/out.txt"])
+        XCTAssertEqual(found.first?.spans, [CellSpan(row: 0, startColumn: 6, endColumn: 18)])
+    }
+
+    func testURLsAreNotMistakenForPaths() {
+        XCTAssertEqual(texts("open https://example.com/a/b.html please"), [])
+    }
+
+    func testHyperlinkLabelsAreSkipped() {
+        let esc = "\u{1b}"
+        let text = "\(esc)]8;;file:///tmp/a.txt\(esc)\\/tmp/a.txt\(esc)]8;;\(esc)\\ and /tmp/b.txt"
+        XCTAssertEqual(texts(text), ["/tmp/b.txt"])
+    }
+
+    func testPathWrappedByTheTerminalKeepsASpanPerRow() {
+        let found = TerminalLinks.findPaths(inANSI: "ab /usr/lib/xyz", columns: 8)
+        XCTAssertEqual(found.first?.text, "/usr/lib/xyz")
+        XCTAssertEqual(found.first?.spans, [
+            CellSpan(row: 0, startColumn: 3, endColumn: 8), CellSpan(row: 1, startColumn: 0, endColumn: 7)
+        ])
+    }
+
+    func testResolveExpandsHomeAndRelativeAgainstCwd() {
+        let real: Set<String> = ["/Users/me/a.txt", "/proj/src/x.go", "/etc/hosts"]
+        func resolve(_ text: String, cwd: String? = "/proj") -> String? {
+            TerminalPathResolver.resolve(text, cwd: cwd, home: "/Users/me") { real.contains($0) }
+        }
+        XCTAssertEqual(resolve("~/a.txt"), "/Users/me/a.txt")
+        XCTAssertEqual(resolve("src/x.go"), "/proj/src/x.go")
+        XCTAssertEqual(resolve("./src/x.go"), "/proj/src/x.go")
+        XCTAssertEqual(resolve("../src/x.go", cwd: "/proj/src"), "/proj/src/x.go")
+        XCTAssertEqual(resolve("/etc/hosts"), "/etc/hosts")
+        XCTAssertNil(resolve("and/or"))
+        XCTAssertNil(resolve("src/x.go", cwd: nil))
     }
 }

@@ -37,6 +37,9 @@ final class HintModeController {
 
     var isActive: Bool { session != nil }
 
+    /// The user's file-path script, from Settings; injectable for tests.
+    var filePathScript: String { AppSettings.shared.filePathScript.trimmingCharacters(in: .whitespaces) }
+
     init() {
         keyInput.handler = { [weak self] key in self?.handle(key) }
     }
@@ -59,7 +62,9 @@ final class HintModeController {
         noticeTask?.cancel()
         let scan = AXHintTargetFinder.scan()
         let frontmost = NSWorkspace.shared.frontmostApplication
-        let terminal = frontmost.map { KittyLinkScanner.scan($0) } ?? KittyLinkScanner.Outcome()
+        let findFiles = !filePathScript.isEmpty
+        let terminal = frontmost.map { KittyLinkScanner.scan($0, findFiles: findFiles) }
+            ?? KittyLinkScanner.Outcome()
         let found = (scan?.targets ?? []) + terminal.targets
         guard let windowFrame = scan?.windowFrame, !found.isEmpty else {
             log.info("no hint targets in the frontmost window")
@@ -145,6 +150,10 @@ final class HintModeController {
             let target = session.targets[index]
             let button = shifted ? session.button.opposite : session.button
             dismiss()
+            if let file = target.file {
+                KittyLinkScanner.open(file, script: filePathScript)
+                return
+            }
             if let url = target.linkURL, let app = session.app {
                 KittyLinkScanner.open(url, in: app)
                 return
