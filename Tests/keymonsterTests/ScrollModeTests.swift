@@ -23,6 +23,12 @@ final class ScrollWheelTests: XCTestCase {
         XCTAssertEqual(ScrollWheel.pixels(for: "k"), ScrollWheel.pixelStep)
     }
 
+    func testShiftedJAndKScrollFourTimesFarther() {
+        XCTAssertEqual(ScrollWheel.pixels(for: "j", shifted: true), -ScrollWheel.pixelStep * 4)
+        XCTAssertEqual(ScrollWheel.pixels(for: "k", shifted: true), ScrollWheel.pixelStep * 4)
+        XCTAssertNil(ScrollWheel.pixels(for: "h", shifted: true))
+    }
+
     func testOtherKeysDoNotScroll() {
         XCTAssertNil(ScrollWheel.pixels(for: "h"))
         XCTAssertNil(ScrollWheel.pixels(for: "l"))

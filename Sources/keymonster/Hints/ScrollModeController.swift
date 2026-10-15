@@ -116,7 +116,7 @@ final class ScrollModeController {
         overlay.showPanes(
             [(rect: visibleRect(of: session.panes[index], in: session), label: nil)],
             windowFrame: session.windowFrame,
-            banner: "J/K to scroll · Esc to stop"
+            banner: "J/K to scroll (⇧ faster) · Esc to stop"
         )
     }
 
@@ -169,8 +169,8 @@ final class ScrollModeController {
             if session.panes.count > 1 {
                 startSelecting(session)
             }
-        case .letter(let letter, _):
-            guard let pixels = ScrollWheel.pixels(for: letter) else {
+        case .letter(let letter, let shifted):
+            guard let pixels = ScrollWheel.pixels(for: letter, shifted: shifted) else {
                 NSSound.beep()
                 return
             }

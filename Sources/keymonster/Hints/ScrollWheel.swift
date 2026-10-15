@@ -30,13 +30,17 @@ enum ScrollWheel {
     /// are what trackpads send.
     static let pixelStep: Int32 = 60
 
+    /// Shift+J / Shift+K scroll this many times farther per keystroke.
+    static let fastMultiplier: Int32 = 4
+
     /// How far one keystroke scrolls, in CGEvent's positive-is-up wheel units —
-    /// j rolls the content up (wheel down), k the reverse. nil means the key
-    /// doesn't scroll.
-    static func pixels(for letter: Character) -> Int32? {
+    /// j rolls the content up (wheel down), k the reverse; `shifted` is the fast
+    /// variant. nil means the key doesn't scroll.
+    static func pixels(for letter: Character, shifted: Bool = false) -> Int32? {
+        let step = shifted ? pixelStep * fastMultiplier : pixelStep
         switch letter {
-        case "j": return -pixelStep
-        case "k": return pixelStep
+        case "j": return -step
+        case "k": return step
         default: return nil
         }
     }
@@ -63,6 +67,12 @@ enum ScrollWheel {
             wheel1: pixels, wheel2: 0, wheel3: 0
         ) else { return }
         event.location = point
+        // The event inherits whatever modifiers are physically down — Shift
+        // for the fast keys, still held from the hotkey for the rest. Apps
+        // read those as a different gesture (Shift+wheel is horizontal
+        // scrolling, and kitty hands it to itself instead of the mouse-
+        // reporting program in it), so post a plain wheel.
+        event.flags = []
         event.post(tap: .cghidEventTap)
     }
 }

@@ -114,7 +114,7 @@ extension ShortcutSheet {
                 entry("Left Click Hints", "Label everything clickable; type a label to click", input.hintLeft),
                 entry("Right Click Hints", "Same labels, right mouse button", input.hintRight),
                 entry("Grid Click", "Zoom a keyboard-shaped grid; Return clicks the center", input.grid),
-                entry("Scroll Panes", "Pick a pane, then J and K to scroll", input.scroll)
+                entry("Scroll Panes", "Pick a pane, then J and K to scroll (Shift for 4× faster)", input.scroll)
             ], emptyNote: nil),
             Section(title: "Text", symbol: "character.cursor.ibeam", entries: [
                 entry("Text Jump", "Press, type a character, then a label to move the caret", input.textJump),
