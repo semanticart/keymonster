@@ -118,6 +118,12 @@ enum HintGrouping {
     ///   escape to a nearby spot that is free, covers no element, and takes no
     ///   spot another badge prefers; only when no such gap exists do they
     ///   cluster. Displaced badges place last, so they yield to natural ones.
+    ///
+    /// One density case gets a second chance: an element stacked directly
+    /// under another, so close that the badge above it lands on its neighbor's
+    /// badge. The lower one may hang below its own element instead (same free-
+    /// spot test, below only) — two tight rows keep two labels. Anything else
+    /// crowded, and any stack with no clear gap under it, still clusters.
     private static func placedBadges(
         _ size: CGSize, areas: [CGRect], in bounds: CGRect,
         alignment: HintGeometry.BadgeAlignment
@@ -131,12 +137,27 @@ enum HintGrouping {
                 y: areas[index].minY - size.height - HintGeometry.caretHeight
             )
         }
+        let stacked = areas.indices.map { index in
+            !displaced[index] && areas.indices.contains { other in
+                !displaced[other] && areas[index].minY >= areas[other].maxY
+                    && preferred[index].insetBy(dx: -gap / 2, dy: -gap / 2)
+                        .intersects(preferred[other])
+            }
+        }
+        let movable = areas.indices.map { displaced[$0] || stacked[$0] }
         var placed = preferred
-        var taken = areas.indices.compactMap { displaced[$0] ? nil : preferred[$0] }
-        for index in areas.indices where displaced[index] {
-            let candidates = HintGeometry.badgeCandidates(
+        var taken = areas.indices.compactMap { movable[$0] ? nil : preferred[$0] }
+        for index in areas.indices where movable[index] {
+            var candidates = HintGeometry.badgeCandidates(
                 size, labeling: areas[index], in: bounds, alignment: alignment
             )
+            // A stacked element only tries directly below: sideways escapes
+            // would pull its label away from the element it names.
+            if stacked[index] {
+                candidates = candidates.filter {
+                    $0 == preferred[index] || $0.minY >= areas[index].maxY
+                }
+            }
             let spot = candidates.first { candidate in
                 guard isFree(candidate, avoiding: taken) else { return false }
                 if candidate == preferred[index] { return true }

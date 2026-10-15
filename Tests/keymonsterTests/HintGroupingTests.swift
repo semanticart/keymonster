@@ -128,6 +128,38 @@ final class HintGroupingTests: XCTestCase {
         }
     }
 
+    func testTightlyStackedPairKeepsBothLabelsByHangingTheLowerOneBelow() {
+        // Rows 14pt apart: the second badge's natural spot lands on the first
+        // badge. Free space sits under the second row, so it flips there.
+        let upper = CGRect(x: 100, y: 200, width: 180, height: 12)
+        let lower = CGRect(x: 100, y: 214, width: 180, height: 12)
+        let groups = group([upper, lower])
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertTrue(groups.allSatisfy { !$0.isCluster })
+        XCTAssertGreaterThanOrEqual(groups[1].badge.minY, lower.maxY)
+        XCTAssertLessThan(groups[0].badge.maxY, upper.minY)
+    }
+
+    func testStackedRowsWithNoGapBelowStillCluster() {
+        // The spot under row two is row three: nowhere clear, so merge.
+        let rows = (0..<4).map { CGRect(x: 100, y: 200 + CGFloat($0) * 14, width: 180, height: 12) }
+        let groups = group(rows)
+        XCTAssertTrue(groups.contains { $0.isCluster })
+        for (index, one) in groups.enumerated() {
+            for other in groups[(index + 1)...] {
+                XCTAssertFalse(one.badge.intersects(other.badge))
+            }
+        }
+    }
+
+    func testStackedPairStillClustersWhenSomethingSitsJustBelow() {
+        let upper = CGRect(x: 100, y: 200, width: 180, height: 12)
+        let lower = CGRect(x: 100, y: 214, width: 180, height: 12)
+        let below = CGRect(x: 100, y: 232, width: 180, height: 12)
+        let groups = group([upper, lower, below])
+        XCTAssertTrue(groups.contains { $0.isCluster })
+    }
+
     func testFinalBadgesNeverCollide() {
         // A tight grid of targets: whatever grouping falls out, the visible
         // badges must all stand clear of each other.
@@ -158,15 +190,16 @@ final class HintGroupingTests: XCTestCase {
 
     func testViewportSpanningMembersKeepTheAreaNearTheirAnchors() {
         // Slack's date-divider hairlines: window-wide, a few points tall,
-        // stacked so their badges collide at the shared left corner. The
-        // cluster is right, but its area (the green wash, the zoom) must stay
+        // stacked so their badges collide at the shared left corner. A third
+        // row beneath leaves no clear gap to hang a badge in, so the first two
+        // cluster. The cluster is right, but its area (the green wash, the zoom) must stay
         // near the corner where the labels sit, not span the whole window.
         let rows = [
             CGRect(x: 100, y: 300, width: 891, height: 9),
-            CGRect(x: 100, y: 314, width: 891, height: 9)
+            CGRect(x: 100, y: 314, width: 891, height: 9),
+            CGRect(x: 100, y: 328, width: 891, height: 9)
         ]
         let groups = group(rows)
-        XCTAssertEqual(groups.count, 1)
         XCTAssertTrue(groups[0].isCluster)
         let area = groups[0].area
         // Still anchored where the badges collided, covering both corners…
