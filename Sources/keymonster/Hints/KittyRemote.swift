@@ -123,10 +123,13 @@ enum KittyRemote {
 
     /// Runs a short-lived process and returns its stdout, or nil if it failed to
     /// start, took longer than `timeout`, or exited non-zero.
-    static func execute(_ executable: URL, _ arguments: [String], timeout: TimeInterval) -> Data? {
+    static func execute(
+        _ executable: URL, _ arguments: [String], environment: [String: String]? = nil, timeout: TimeInterval
+    ) -> Data? {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
+        if let environment { process.environment = environment }
         process.standardInput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
         let stdout = Pipe()
@@ -176,7 +179,9 @@ enum KittyLinkScanner {
             return Outcome(issue: KittyHealth.live().firstIssue)
         }
         let links = TerminalLinks.find(inANSI: screen.ansiText, columns: screen.columns)
-        let grid = TerminalGrid(frame: frame, columns: screen.columns, lines: screen.lines)
+        let grid = TerminalGrid(
+            frame: KittyPadding.of(app).inset(frame), columns: screen.columns, lines: screen.lines
+        )
         var targets = grid.targets(for: links)
         if findFiles { targets += grid.targets(for: files(in: screen)) }
         log.debug("kitty: \(targets.count) targets on a \(screen.columns)x\(screen.lines) grid")

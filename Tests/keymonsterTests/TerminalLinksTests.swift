@@ -267,3 +267,35 @@ final class TerminalPathTests: XCTestCase {
         XCTAssertNil(resolve("src/x.go", cwd: nil))
     }
 }
+
+/// Kitty's window padding, which its AX text area includes.
+final class KittyPaddingTests: XCTestCase {
+    func testInsetShrinksTheTextAreaToTheCellGrid() {
+        let padding = KittyPadding(left: 10, top: 4, right: 6, bottom: 8)
+        XCTAssertEqual(
+            padding.inset(CGRect(x: 100, y: 50, width: 800, height: 480)),
+            CGRect(x: 110, y: 54, width: 784, height: 468)
+        )
+    }
+
+    func testInsetIgnoresPaddingThatSwallowsTheArea() {
+        let area = CGRect(x: 0, y: 0, width: 10, height: 10)
+        XCTAssertEqual(KittyPadding(left: 8, top: 0, right: 8, bottom: 0).inset(area), area)
+    }
+
+    func testParsesTheEdgesFromKittysConfigLoader() {
+        XCTAssertEqual(
+            KittyPadding.parse(Data("[4.0, 12.0, 5.0, 13.0]".utf8)),
+            KittyPadding(left: 4, top: 12, right: 5, bottom: 13)
+        )
+        XCTAssertNil(KittyPadding.parse(Data("oops".utf8)))
+    }
+
+    func testLaunchOptionsPickUpConfigAndOverrides() {
+        let args = ["kitty", "--config", "/a.conf", "-c", "/b.conf", "--config=/c.conf",
+                    "-o", "window_padding_width=12", "--override=font_size=14", "--listen-on", "unix:/x"]
+        let options = KittyPadding.launchOptions(fromArguments: args)
+        XCTAssertEqual(options.configs, ["/a.conf", "/b.conf", "/c.conf"])
+        XCTAssertEqual(options.overrides, ["window_padding_width 12", "font_size 14"])
+    }
+}
