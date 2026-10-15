@@ -29,6 +29,7 @@ final class ScrollModeController {
 
     private let overlay = HintOverlay()
     private let keyInput = HintKeyPanel()
+    private let scroller = SmoothScroller()
     private var phase: Phase = .inactive
 
     var isActive: Bool {
@@ -95,6 +96,7 @@ final class ScrollModeController {
     }
 
     private func startSelecting(_ session: Session) {
+        scroller.cancel()
         let labels = HintLabels.labels(count: session.panes.count)
         phase = .selecting(session, HintSelection(labels: labels))
         overlay.showPanes(
@@ -173,7 +175,7 @@ final class ScrollModeController {
                 return
             }
             let rect = visibleRect(of: session.panes[index], in: session)
-            ScrollWheel.scroll(pixels: pixels, at: CGPoint(x: rect.midX, y: rect.midY))
+            scroller.scroll(pixels: pixels, at: CGPoint(x: rect.midX, y: rect.midY))
             refreshOutline(session, index: index)
         }
     }
@@ -196,6 +198,7 @@ final class ScrollModeController {
     }
 
     private func dismiss() {
+        scroller.cancel()
         keyInput.stop()
         overlay.hide()
         phase = .inactive

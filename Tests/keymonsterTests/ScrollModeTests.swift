@@ -184,3 +184,45 @@ final class TmuxPanesTests: XCTestCase {
         XCTAssertNil(TmuxPanes.frames(foregroundPIDs: [7], grid: grid) { _ in Data() })
     }
 }
+
+final class ScrollAnimatorTests: XCTestCase {
+    private func drain(_ animator: inout ScrollAnimator) -> [Int32] {
+        var steps: [Int32] = []
+        while !animator.isIdle { steps.append(animator.tick()) }
+        return steps
+    }
+
+    func testOneStepIsSpreadOverSeveralTicksAndSumsExactly() {
+        var animator = ScrollAnimator()
+        animator.add(-60)
+        let steps = drain(&animator)
+        XCTAssertGreaterThan(steps.count, 4)
+        XCTAssertEqual(steps.reduce(0, +), -60)
+        XCTAssertTrue(steps.allSatisfy { $0 < 0 })
+        // Eases out: never speeds up.
+        XCTAssertEqual(steps.map { abs($0) }, steps.map { abs($0) }.sorted(by: >))
+    }
+
+    func testRepeatsStackIntoTheSameGlide() {
+        var animator = ScrollAnimator()
+        animator.add(60)
+        _ = animator.tick()
+        animator.add(60)
+        XCTAssertEqual(drain(&animator).reduce(0, +) + 15, 120)
+    }
+
+    func testReversingDropsTheOldDirection() {
+        var animator = ScrollAnimator()
+        animator.add(-60)
+        animator.add(60)
+        XCTAssertEqual(drain(&animator).reduce(0, +), 60)
+    }
+
+    func testIdleTickEmitsNothingAndCancelClears() {
+        var animator = ScrollAnimator()
+        XCTAssertEqual(animator.tick(), 0)
+        animator.add(60)
+        animator.cancel()
+        XCTAssertTrue(animator.isIdle)
+    }
+}

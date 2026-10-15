@@ -45,7 +45,18 @@ enum ScrollWheel {
     /// so warp there first — the same trick MouseClicker plays for clicks.
     @MainActor
     static func scroll(pixels: Int32, at point: CGPoint) {
+        warp(to: point)
+        post(pixels: pixels, at: point)
+    }
+
+    @MainActor
+    static func warp(to point: CGPoint) {
         CGWarpMouseCursorPosition(point)
+    }
+
+    /// Posts one pixel-unit wheel event at `point` without moving the pointer.
+    @MainActor
+    static func post(pixels: Int32, at point: CGPoint) {
         let source = CGEventSource(stateID: .combinedSessionState)
         guard let event = CGEvent(
             scrollWheelEvent2Source: source, units: .pixel, wheelCount: 1,
