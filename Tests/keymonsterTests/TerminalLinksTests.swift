@@ -283,6 +283,56 @@ final class KittyPaddingTests: XCTestCase {
         XCTAssertEqual(KittyPadding(left: 8, top: 0, right: 8, bottom: 0).inset(area), area)
     }
 
+    func testMeasuredPaddingBeyondTheConfigIsSplitEvenly() {
+        XCTAssertEqual(
+            KittyPadding.resolve(config: .zero, measuredHorizontal: 400, measuredVertical: 401),
+            KittyPadding(left: 200, top: 200.5, right: 200, bottom: 200.5)
+        )
+    }
+
+    func testConfigSplitWinsWhenItMatchesTheMeasurement() {
+        let config = KittyPadding(left: 10, top: 4, right: 6, bottom: 8)
+        XCTAssertEqual(KittyPadding.resolve(config: config, measuredHorizontal: 17, measuredVertical: 11), config)
+    }
+
+    func testMeasurementNoiseBelowZeroMeansNoPadding() {
+        XCTAssertEqual(KittyPadding.resolve(config: .zero, measuredHorizontal: -1, measuredVertical: 0), .zero)
+    }
+
+    func testMeasuresPaddingFromTheFrameAndTheCellGridInPixels() {
+        // A retina kitty window with 200pt set on every side (seen live).
+        let measured = KittyPadding.measure(
+            frame: CGRect(x: 0, y: 32, width: 1728, height: 1085),
+            cellPixels: CGSize(width: 2652, height: 1369), scale: 2
+        )
+        XCTAssertEqual(measured.horizontal, 402)
+        XCTAssertEqual(measured.vertical, 400.5)
+    }
+
+    func testReadsTheCellGridSizeFromATTY() throws {
+        var ptyHost: Int32 = 0
+        var ptyEnd: Int32 = 0
+        var name = [CChar](repeating: 0, count: 128)
+        var size = winsize(ws_row: 37, ws_col: 156, ws_xpixel: 2652, ws_ypixel: 1369)
+        try XCTSkipIf(openpty(&ptyHost, &ptyEnd, &name, nil, &size) != 0, "no pty available")
+        defer { close(ptyHost); close(ptyEnd) }
+        XCTAssertEqual(
+            KittyPadding.cellAreaInPixels(ttyPath: String(cString: name)),
+            CGSize(width: 2652, height: 1369)
+        )
+    }
+
+    func testATTYWithoutPixelSizesGivesNoCellGridSize() throws {
+        var ptyHost: Int32 = 0
+        var ptyEnd: Int32 = 0
+        var name = [CChar](repeating: 0, count: 128)
+        var size = winsize(ws_row: 24, ws_col: 80, ws_xpixel: 0, ws_ypixel: 0)
+        try XCTSkipIf(openpty(&ptyHost, &ptyEnd, &name, nil, &size) != 0, "no pty available")
+        defer { close(ptyHost); close(ptyEnd) }
+        XCTAssertNil(KittyPadding.cellAreaInPixels(ttyPath: String(cString: name)))
+        XCTAssertNil(KittyPadding.cellAreaInPixels(ttyPath: "/dev/nonexistent"))
+    }
+
     func testParsesTheEdgesFromKittysConfigLoader() {
         XCTAssertEqual(
             KittyPadding.parse(Data("[4.0, 12.0, 5.0, 13.0]".utf8)),

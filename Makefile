@@ -1,4 +1,4 @@
-.PHONY: build run test axtest tmuxtest fixture clean lint app snapshot site site-shots site-cast site-cast-voiced icon emoji-names install dist notarize appcast release
+.PHONY: build run test axtest tmuxtest paddingtest fixture clean lint app snapshot site site-shots site-cast site-cast-voiced icon emoji-names install dist notarize appcast release
 
 CONFIG ?= debug
 APP_NAME := Key Monster
@@ -167,6 +167,12 @@ axtest:
 # the dev app running (`make run`), Accessibility, and an unlocked screen.
 tmuxtest:
 	scripts/tmux-scroll-test.sh
+
+# Live check that hint mode measures kitty's window padding (including runtime
+# `set-spacing`) in a throwaway kitty. Needs the dev app running (`make run`),
+# Accessibility, and an unlocked screen.
+paddingtest:
+	scripts/kitty-padding-test.sh
 
 clean:
 	swift package clean

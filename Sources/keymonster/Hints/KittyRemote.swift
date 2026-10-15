@@ -21,6 +21,7 @@ enum KittyRemote {
         let lines: Int
         /// The window's working directory, to resolve relative paths against.
         var cwd: String?
+        var foregroundPIDs: [Int] = []
     }
 
     struct WindowInfo: Equatable {
@@ -44,7 +45,8 @@ enum KittyRemote {
               let text = String(bytes: data, encoding: .utf8) else {
             return nil
         }
-        return Screen(ansiText: text, columns: size.columns, lines: size.lines, cwd: size.cwd)
+        return Screen(ansiText: text, columns: size.columns, lines: size.lines, cwd: size.cwd,
+                      foregroundPIDs: size.foregroundPIDs)
     }
 
     /// The focused window's size in cells, from `kitten @ ls` JSON. Nil when no
@@ -179,9 +181,8 @@ enum KittyLinkScanner {
             return Outcome(issue: KittyHealth.live().firstIssue)
         }
         let links = TerminalLinks.find(inANSI: screen.ansiText, columns: screen.columns)
-        let grid = TerminalGrid(
-            frame: KittyPadding.of(app).inset(frame), columns: screen.columns, lines: screen.lines
-        )
+        let padding = KittyPadding.of(app, frame: frame, foregroundPIDs: screen.foregroundPIDs)
+        let grid = TerminalGrid(frame: padding.inset(frame), columns: screen.columns, lines: screen.lines)
         var targets = grid.targets(for: links)
         if findFiles { targets += grid.targets(for: files(in: screen)) }
         log.debug("kitty: \(targets.count) targets on a \(screen.columns)x\(screen.lines) grid")

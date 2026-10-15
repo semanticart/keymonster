@@ -23,6 +23,36 @@ struct KittyPadding: Equatable {
         return CGRect(x: rect.minX + left, y: rect.minY + top, width: width, height: height)
     }
 
+    /// How much wider and taller than the cell grid the text area `frame` (points)
+    /// is, given the grid's size in pixels at `scale` pixels per point: the
+    /// padding's totals per axis.
+    static func measure(
+        frame: CGRect, cellPixels: CGSize, scale: CGFloat
+    ) -> (horizontal: CGFloat, vertical: CGFloat) {
+        (frame.width - cellPixels.width / scale, frame.height - cellPixels.height / scale)
+    }
+
+    /// Combines the padding kitty's config says with what the window measures
+    /// (the frame's size beyond its cell area, per axis, in points), so padding
+    /// set at runtime (`kitten @ set-spacing`) counts. The config's split wins
+    /// when its totals agree with the measurement; otherwise the measured total
+    /// is split evenly, since only the sum can be seen.
+    static func resolve(config: KittyPadding, measuredHorizontal: CGFloat, measuredVertical: CGFloat) -> KittyPadding {
+        let tolerance: CGFloat = 3
+        let horizontal = max(measuredHorizontal, 0)
+        let vertical = max(measuredVertical, 0)
+        var result = config
+        if abs(config.left + config.right - horizontal) > tolerance {
+            result.left = horizontal / 2
+            result.right = horizontal / 2
+        }
+        if abs(config.top + config.bottom - vertical) > tolerance {
+            result.top = vertical / 2
+            result.bottom = vertical / 2
+        }
+        return result
+    }
+
     /// The `[left, top, right, bottom]` JSON `effectiveScript` prints.
     static func parse(_ data: Data) -> KittyPadding? {
         guard let values = (try? JSONSerialization.jsonObject(with: data)) as? [Double],
@@ -78,12 +108,27 @@ struct KittyPadding: Equatable {
         return (configs, overrides)
     }
 
-    private static let cache = OSAllocatedUnfairLock(initialState: [pid_t: KittyPadding]())
+    /// The padding of the running kitty `app`'s window whose text area is
+    /// `frame`: the config's, corrected by measuring the window when a tty of
+    /// its foreground group can be read. Re-read on every call (config about
+    /// 50 ms) so config edits reloaded with ctrl+shift+f5 are picked up.
+    static func of(_ app: NSRunningApplication, frame: CGRect, foregroundPIDs: [Int]) -> KittyPadding {
+        let config = configured(app)
+        guard let cells = cellAreaInPixels(foregroundPIDs: foregroundPIDs),
+              let scale = backingScale(at: frame) else {
+            log.debug("kitty padding: not measurable; using the config's")
+            return config
+        }
+        let measured = measure(frame: frame, cellPixels: cells, scale: scale)
+        let padding = resolve(
+            config: config, measuredHorizontal: measured.horizontal, measuredVertical: measured.vertical
+        )
+        log.info("kitty padding: measured \(padding.left) \(padding.top) \(padding.right) \(padding.bottom)")
+        return padding
+    }
 
-    /// The padding of the running kitty `app`, cached per process.
-    static func of(_ app: NSRunningApplication) -> KittyPadding {
+    private static func configured(_ app: NSRunningApplication) -> KittyPadding {
         let pid = app.processIdentifier
-        if let cached = cache.withLock({ $0[pid] }) { return cached }
         guard let python = app.executableURL else { return .zero }
         let options = launchOptions(fromArguments: arguments(of: pid))
         var environment = ProcessInfo.processInfo.environment
@@ -96,8 +141,43 @@ struct KittyPadding: Equatable {
             log.error("couldn't read kitty's window padding; assuming none")
             return .zero
         }
-        cache.withLock { $0[pid] = padding }
         return padding
+    }
+
+    /// Backing scale of the screen holding the center of `frame` (AX
+    /// coordinates: global, origin top-left of the primary screen).
+    private static func backingScale(at frame: CGRect) -> CGFloat? {
+        guard let primary = NSScreen.screens.first else { return nil }
+        let center = CGPoint(x: frame.midX, y: primary.frame.height - frame.midY)
+        return (NSScreen.screens.first { $0.frame.contains(center) } ?? primary).backingScaleFactor
+    }
+
+    /// The pixel size of the cell grid, as kitty reports it to programs in the
+    /// window (`TIOCGWINSZ`) — it leaves the padding out.
+    static func cellAreaInPixels(foregroundPIDs: [Int]) -> CGSize? {
+        for pid in foregroundPIDs {
+            if let path = ttyPath(of: pid_t(pid)), let size = cellAreaInPixels(ttyPath: path) { return size }
+        }
+        return nil
+    }
+
+    /// The pixel size the terminal behind the device at `path` reports.
+    static func cellAreaInPixels(ttyPath path: String) -> CGSize? {
+        let tty = open(path, O_RDONLY | O_NONBLOCK | O_NOCTTY)
+        guard tty >= 0 else { return nil }
+        defer { close(tty) }
+        var size = winsize()
+        guard ioctl(tty, TIOCGWINSZ, &size) == 0, size.ws_xpixel > 0, size.ws_ypixel > 0 else { return nil }
+        return CGSize(width: CGFloat(size.ws_xpixel), height: CGFloat(size.ws_ypixel))
+    }
+
+    private static func ttyPath(of pid: pid_t) -> String? {
+        var info = proc_bsdinfo()
+        let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+        guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size,
+              info.e_tdev != UInt32.max,
+              let name = devname(dev_t(info.e_tdev), S_IFCHR) else { return nil }
+        return "/dev/" + String(cString: name)
     }
 
     private static func json(_ strings: [String]) -> String {

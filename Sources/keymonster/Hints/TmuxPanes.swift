@@ -104,9 +104,8 @@ enum KittyTmuxScroll {
               let tmux = TmuxPanes.runner() else {
             return nil
         }
-        let grid = TerminalGrid(
-            frame: KittyPadding.of(app).inset(textArea), columns: window.columns, lines: window.lines
-        )
+        let padding = KittyPadding.of(app, frame: textArea, foregroundPIDs: window.foregroundPIDs)
+        let grid = TerminalGrid(frame: padding.inset(textArea), columns: window.columns, lines: window.lines)
         let frames = TmuxPanes.frames(foregroundPIDs: window.foregroundPIDs, grid: grid, run: tmux)
         log.debug("tmux panes: \(frames?.count ?? 0)")
         return frames
