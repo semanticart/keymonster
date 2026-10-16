@@ -22,14 +22,18 @@ final class HintOverlayView: NSView {
         /// area washed, and its label opens the zoom.
         let isGroup: Bool
         let caret: CaretDirection
+        /// Overrides the badge's yellow/green scheme — scroll mode gives each
+        /// pane its own hue so a badge is matched to its wash at a glance.
+        let tint: Tint?
 
         init(rect: CGRect, label: String, target: CGRect, isGroup: Bool = false,
-             caret: CaretDirection) {
+             caret: CaretDirection, tint: Tint? = nil) {
             self.rect = rect
             self.label = label
             self.target = target
             self.isGroup = isGroup
             self.caret = caret
+            self.tint = tint
         }
     }
 
@@ -62,6 +66,28 @@ final class HintOverlayView: NSView {
     static func caretAim(down badge: CGRect, at target: CGRect, halfBase: CGFloat) -> CGFloat {
         let aim = target.height < badge.height ? target.midY : badge.midY
         return min(max(aim, badge.minY + halfBase + 1), badge.maxY - halfBase - 1)
+    }
+
+    /// One hue's badge fill, badge/outline stroke, and area wash.
+    struct Tint {
+        let fill: NSColor
+        let stroke: NSColor
+        let wash: NSColor
+        /// Fully opaque and vivid, for the pane outline.
+        let outline: NSColor
+
+        private static let hues: [CGFloat] = [0.58, 0.02, 0.33, 0.78, 0.09, 0.50, 0.92, 0.15]
+
+        /// Neighboring indices get far-apart hues; past the palette it repeats.
+        static func forIndex(_ index: Int) -> Tint {
+            let hue = hues[index % hues.count]
+            return Tint(
+                fill: NSColor(calibratedHue: hue, saturation: 0.4, brightness: 1.0, alpha: 0.95),
+                stroke: NSColor(calibratedHue: hue, saturation: 0.9, brightness: 0.55, alpha: 0.95),
+                wash: NSColor(calibratedHue: hue, saturation: 0.85, brightness: 0.95, alpha: 1),
+                outline: NSColor(calibratedHue: hue, saturation: 0.9, brightness: 0.8, alpha: 1)
+            )
+        }
     }
 
     /// A scrollable pane scroll mode is showing. With a label, the pane is a
@@ -137,8 +163,8 @@ final class HintOverlayView: NSView {
         if let zoom {
             drawZoom(zoom)
         } else {
-            for pane in panes where pane.label?.hasPrefix(typed) ?? true {
-                drawPane(pane)
+            for (index, pane) in panes.enumerated() where pane.label?.hasPrefix(typed) ?? true {
+                drawPane(pane, tint: .forIndex(index))
             }
             let visible = badges.filter { $0.label.hasPrefix(typed) }
             // Areas go down first so a wash never dims a neighboring badge.
@@ -187,23 +213,23 @@ final class HintOverlayView: NSView {
 
     /// The outline sits just inside the pane's edge so neighboring panes'
     /// outlines never merge into one stroke.
-    private func drawPane(_ pane: Pane) {
+    private func drawPane(_ pane: Pane, tint: Tint) {
         let accent = NSColor.controlAccentColor
         let path = NSBezierPath(
             roundedRect: pane.rect.insetBy(dx: 2, dy: 2), xRadius: 6, yRadius: 6
         )
         if let label = pane.label {
-            accent.withAlphaComponent(0.12).setFill()
+            tint.wash.withAlphaComponent(0.3).setFill()
             path.fill()
-            accent.withAlphaComponent(0.7).setStroke()
-            path.lineWidth = 2
+            tint.outline.setStroke()
+            path.lineWidth = 3
             path.stroke()
             let size = BadgeMetrics.size(forLabelLength: label.count)
             let rect = CGRect(
                 x: pane.rect.midX - size.width / 2, y: pane.rect.midY - size.height / 2,
                 width: size.width, height: size.height
             )
-            drawBadge(Badge(rect: rect, label: label, target: pane.rect, caret: .hidden))
+            drawBadge(Badge(rect: rect, label: label, target: pane.rect, caret: .hidden, tint: tint))
         } else {
             accent.withAlphaComponent(0.9).setStroke()
             path.lineWidth = 3
@@ -236,8 +262,8 @@ final class HintOverlayView: NSView {
             )
         }
 
-        let fillColor = badge.isGroup ? Self.groupFill : Self.fill
-        let strokeColor = badge.isGroup ? Self.groupStroke : Self.stroke
+        let fillColor = badge.tint?.fill ?? (badge.isGroup ? Self.groupFill : Self.fill)
+        let strokeColor = badge.tint?.stroke ?? (badge.isGroup ? Self.groupStroke : Self.stroke)
         let path = NSBezierPath(roundedRect: badge.rect, xRadius: 4, yRadius: 4)
         fillColor.setFill()
         path.fill()
