@@ -48,11 +48,30 @@ enum AXDumpRunner {
         AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
         AXUIElementSetAttributeValue(axApp, "AXManualAccessibility" as CFString, kCFBooleanTrue)
 
+        // Agents like Notification Center never have a focused window; dump
+        // the app element itself so every window it owns shows up.
         guard let window = AXHintTargetFinder.focusedWindow(of: axApp) else {
-            out += "ERROR: no window\n"
+            out += dump(axApp)
             return
         }
         out += dump(window)
+    }
+
+    /// ` "title" "description" actions:[…]` — what an agent app's elements (e.g.
+    /// Notification Center banners) are identified and driven by.
+    private static func actionsAndLabel(of element: AXUIElement) -> String {
+        let labels = AXHintTargetFinder.attributes(of: element, [
+            kAXTitleAttribute as String, kAXDescriptionAttribute as String
+        ])
+        var text = labels.compactMap { $0 as? String }.filter { !$0.isEmpty }
+            .map { " \"\($0.prefix(40))\"" }.joined()
+        var names: CFArray?
+        if AXUIElementCopyActionNames(element, &names) == .success,
+           let all = names as? [String], !all.isEmpty {
+            let shown = all.map { $0.replacingOccurrences(of: "\n", with: "|") }
+            text += " actions:[\(shown.joined(separator: ","))]"
+        }
+        return text
     }
 
     private static func dump(_ window: AXUIElement) -> String {
@@ -99,7 +118,7 @@ enum AXDumpRunner {
             }
 
             out += String(repeating: "  ", count: depth)
-                + "\(role)\(subrole) \(frameText)\(scrollish) kids:\(children.count)\n"
+                + "\(role)\(subrole) \(frameText)\(scrollish)\(actionsAndLabel(of: element)) kids:\(children.count)\n"
             for child in children.reversed() {
                 stack.append((child, depth + 1))
             }
@@ -110,6 +129,24 @@ enum AXDumpRunner {
             out += "  \(tally)\t\(role)\n"
         }
         return out
+    }
+}
+
+/// `keymonster notifscan <output-path>` — writes what the dismiss-notifications
+/// shortcut would press right now, without pressing anything. Launch via `open -n
+/// --args …` like the other runners.
+@MainActor
+enum NotificationScanRunner {
+    static func main() {
+        guard let flagIndex = CommandLine.arguments.firstIndex(of: "notifscan"),
+              CommandLine.arguments.count >= flagIndex + 2 else {
+            fputs("usage: keymonster notifscan <output-path>\n", stderr)
+            exit(2)
+        }
+        let lines = NotificationDismisser.describeTargets()
+        try? (lines.joined(separator: "\n") + "\n(\(lines.count) target(s))\n")
+            .write(toFile: CommandLine.arguments[flagIndex + 1], atomically: true, encoding: .utf8)
+        exit(0)
     }
 }
 

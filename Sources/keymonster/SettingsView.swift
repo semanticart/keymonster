@@ -16,7 +16,8 @@ struct SettingsView: View {
         let singles = [
             settings.shortcut, settings.hintLeftShortcut, settings.hintRightShortcut,
             settings.gridShortcut, settings.scrollShortcut, settings.textJumpShortcut,
-            settings.editInEditorShortcut, settings.menuSearchShortcut, settings.bookmarksShortcut
+            settings.editInEditorShortcut, settings.menuSearchShortcut, settings.bookmarksShortcut,
+            settings.dismissNotificationsShortcut
         ]
         return ShortcutConflicts.conflicting(
             singles.compactMap { $0 }
@@ -54,6 +55,12 @@ struct SettingsView: View {
                 .tabItem { Label("Menus", systemImage: "filemenu.and.selection") }
             bookmarksTab
                 .tabItem { Label("Bookmarks", systemImage: "bookmark") }
+            NotificationsSettingsTab(
+                shortcut: $settings.dismissNotificationsShortcut,
+                isConflicting: isConflicting(settings.dismissNotificationsShortcut),
+                showAccessibilityNotice: settings.dismissNotificationsShortcut != nil && !accessTrusted
+            )
+                .tabItem { Label("Notifications", systemImage: "bell.slash") }
             scriptsTab
                 .tabItem { Label("Scripts", systemImage: "terminal") }
         }
@@ -285,7 +292,7 @@ struct SettingsView: View {
 /// One Settings tab: a description of the feature up top, then its sections.
 /// A plain VStack (no Form, no scrolling) so the tab's ideal height is its
 /// content height and the window can size to it.
-private struct SettingsTabView<Content: View>: View {
+struct SettingsTabView<Content: View>: View {
     let description: String
     @ViewBuilder var content: Content
 

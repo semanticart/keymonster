@@ -17,12 +17,12 @@ All paths are relative to `Sources/keymonster/`.
 | `MenuBarIcon.swift`                     | Draws the monochrome template glyph shown in the menu bar.                                                                                                      |
 | `UIScale.swift`                         | The single scale factor applied to the panel and its contents.                                                                                                  |
 | `Snapshot.swift`                        | Headless renderer (`keymonster snapshot`) that writes PNGs of the panel for design iteration.                                                                   |
-| `SettingsView.swift`                    | Tabbed Settings UI — one tab per feature (General, Clipboard, Focus, Clicking, Text, Menus, Bookmarks, Scripts), each with a description.                        |
+| `SettingsView.swift`                    | Tabbed Settings UI — one tab per feature (General, Clipboard, Focus, Clicking, Text, Menus, Bookmarks, Notifications, Scripts), each with a description.                        |
 | `ShortcutControls.swift`                | Reusable Settings pieces: the shortcut recorder, conflict/Accessibility notices, the grouped section card, and the standard row shapes.                         |
 | `ScriptSettingsView.swift`              | The Scripts tab's rows (shortcut + script-file picker) and the last-failure notice with its Open Log button.                                                    |
 | `AppSettings.swift`                     | Persisted settings, shortcut formatting, launch-at-login registration, and conflict detection.                                                                  |
 | `Updater.swift`                         | Sparkle wrapper: daily/launch update checks, gentle reminders that badge the status item instead of stealing focus; inert in unbundled `swift run` builds.   |
-| `HotkeyManager.swift`                   | Registers/unregisters the global hotkeys (history panel, focus, hint, grid, text-jump, edit-in-editor, menu-search, bookmarks, and script shortcuts).           |
+| `HotkeyManager.swift`                   | Registers/unregisters the global hotkeys (history panel, focus, hint, grid, text-jump, edit-in-editor, menu-search, bookmarks, dismiss-notifications, and script shortcuts).           |
 | `AppFocuser.swift`                      | Focuses (or cycles through) the apps bound to a focus shortcut.                                                                                                 |
 | `ScriptRunner.swift`                    | `ScriptShortcut` model, the pure script-file→process mapping (`ScriptInvocation`), and the background `Process` launcher.                                       |
 | `ScriptLog.swift`                       | Appends script failures to `~/Library/Logs/keymonster/scripts.log` and publishes the latest one for the Scripts tab.                                            |
@@ -73,6 +73,9 @@ All paths are relative to `Sources/keymonster/`.
 | `Bookmarks/FaviconLinkParser.swift`     | Pulls the icon url out of a page's `<link rel="icon">` tag, for sites (Webflow, Squarespace, …) that don't serve a conventional `/favicon.ico`.                 |
 | `Bookmarks/BookmarksEditorController.swift` | Opens the bookmarks CSV in the user's configured editor (the same settings as Edit in Editor) and waits for it to exit.                                      |
 | `Bookmarks/BookmarksSettingsSection.swift` | The Bookmarks tab's controls: shortcut, file path/count, Edit Bookmarks and Reveal in Finder buttons, and the latest failure.                                 |
+| `Notifications/NotificationDismissal.swift` | The pure half of dismiss-notifications: over the `NotificationTree` protocol, finds `AXNotificationCenter*` banners and stacks and picks their `Clear All` / `Close` action. Fully tested, including trees captured live from macOS 26. |
+| `Notifications/NotificationDismisser.swift` | The live edge: reads Notification Center's windows via AX (not its menu bar) and presses the targets; debug-only `describeTargets` backs `keymonster notifscan`, a side-effect-free check. |
+| `Notifications/NotificationsSettingsSection.swift` | The Notifications tab: the dismiss shortcut and what it does. |
 | `AppPicker.swift`                       | AppKit bridges for choosing an app and fetching its icon, used by the focus-shortcut editor.                                                                    |
 
 The persistence layer is kept behind the narrow `ClipStore` protocol so

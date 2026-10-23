@@ -25,6 +25,8 @@ enum Entry {
             MainActor.assumeIsolated { ScreencastRunner.main() }
         } else if CommandLine.arguments.dropFirst().contains("axdump") {
             MainActor.assumeIsolated { AXDumpRunner.main() }
+        } else if CommandLine.arguments.dropFirst().contains("notifscan") {
+            MainActor.assumeIsolated { NotificationScanRunner.main() }
         } else if CommandLine.arguments.dropFirst().contains("scrollscan") {
             MainActor.assumeIsolated { ScrollScanRunner.main() }
         } else if CommandLine.arguments.dropFirst().contains("scrolltest") {
@@ -260,7 +262,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             (settings.textJumpShortcut, { [weak self] in self?.textJumpMode.toggle() }),
             (settings.editInEditorShortcut, { [weak self] in self?.externalEditor.trigger() }),
             (settings.menuSearchShortcut, { [weak self] in self?.menuFinder.toggle() }),
-            (settings.bookmarksShortcut, { [weak self] in self?.bookmarksFinder.toggle() })
+            (settings.bookmarksShortcut, { [weak self] in self?.bookmarksFinder.toggle() }),
+            (settings.dismissNotificationsShortcut, { NotificationDismisser.dismissAll() })
         ])
         for script in settings.scriptShortcuts {
             guard !script.isEmpty else { continue }

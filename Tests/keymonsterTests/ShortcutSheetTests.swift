@@ -10,11 +10,13 @@ final class ShortcutSheetTests: XCTestCase {
         clipboard: Shortcut? = nil,
         apps: [AppShortcut] = [],
         grid: Shortcut? = nil,
+        dismissNotifications: Shortcut? = nil,
         scripts: [ScriptShortcut] = []
     ) -> ShortcutSheetInput {
         ShortcutSheetInput(
             clipboard: clipboard, appShortcuts: apps, hintLeft: nil, hintRight: nil, grid: grid,
-            scroll: nil, textJump: nil, editInEditor: nil, menuSearch: nil, bookmarks: nil, scripts: scripts
+            scroll: nil, textJump: nil, editInEditor: nil, menuSearch: nil, bookmarks: nil,
+            dismissNotifications: dismissNotifications, scripts: scripts
         )
     }
 
@@ -33,6 +35,18 @@ final class ShortcutSheetTests: XCTestCase {
         XCTAssertEqual(entry("Grid Click", in: sheet)?.isAssigned, false)
         XCTAssertEqual(sheet.assignedCount, 1)
         XCTAssertEqual(sheet.unassignedCount, sheet.allEntries.count - 1)
+    }
+
+    func testDismissNotificationsIsListedAndConflictsAreFlagged() {
+        let unassigned = ShortcutSheet(input())
+        XCTAssertEqual(entry("Dismiss Notifications", in: unassigned)?.isAssigned, false)
+
+        let assigned = ShortcutSheet(input(dismissNotifications: ctrlJ))
+        XCTAssertEqual(entry("Dismiss Notifications", in: assigned)?.keyCaps, ["⌃", "J"])
+
+        let clashing = ShortcutSheet(input(grid: ctrlJ, dismissNotifications: ctrlJ))
+        XCTAssertEqual(entry("Dismiss Notifications", in: clashing)?.isConflicting, true)
+        XCTAssertEqual(entry("Grid Click", in: clashing)?.isConflicting, true)
     }
 
     func testFocusEntriesNameTheirAppsAndEmptyOnesAreOmitted() {

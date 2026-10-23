@@ -126,6 +126,12 @@ pdf` reaches **File › Export › PDF…**); the closest match floats to the to
   highlighted item back in that app — no reaching for the mouse to hunt through
   menus. `Esc` cancels. Disabled items and separators are skipped. Requires
   Accessibility permission.
+- **Dismiss notifications** — press a shortcut to clear every notification on
+  screen at once: banners, and stacks in the open Notification Center (a stack is
+  cleared whole). Pressing it with nothing showing does nothing. It presses
+  the notification's own *Close* / *Clear All* action through accessibility, so
+  it finds that action by position and checks its name against the translations Notification Center ships, so it works in any system language. Requires
+  Accessibility permission.
 - **Script shortcuts** — point a global shortcut at any script file on disk and
   press it to run the script in the background — toggle dark mode, start a
   timer, rearrange windows, whatever you can script. Pick the file with a
@@ -214,7 +220,7 @@ notarization, and the GitHub Actions pipeline.
    enabled and grant **Accessibility** access when prompted (Key Monster links
    you to the right System Settings pane).
 3. Optionally set up the other tabs — **Focus** (app switching), **Clicking**
-   (hints and grid), **Text** (jump to character), **Menus** (menu search), and
+   (hints and grid), **Text** (jump to character), **Menus** (menu search), **Notifications** (dismiss them), and
    **Scripts** (run script files) — and toggle **Launch at Login** in the
    **General** tab, which leads the row.
 4. Copy things as you normally would; Key Monster records them in the background.

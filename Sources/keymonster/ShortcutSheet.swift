@@ -60,6 +60,7 @@ struct ShortcutSheetInput {
     var editInEditor: Shortcut?
     var menuSearch: Shortcut?
     var bookmarks: Shortcut?
+    var dismissNotifications: Shortcut?
     var scripts: [ScriptShortcut]
 }
 
@@ -77,6 +78,7 @@ extension ShortcutSheet {
             editInEditor: settings.editInEditorShortcut,
             menuSearch: settings.menuSearchShortcut,
             bookmarks: settings.bookmarksShortcut,
+            dismissNotifications: settings.dismissNotificationsShortcut,
             scripts: settings.scriptShortcuts
         ))
     }
@@ -84,7 +86,8 @@ extension ShortcutSheet {
     init(_ input: ShortcutSheetInput) {
         let everyShortcut = [
             input.clipboard, input.hintLeft, input.hintRight, input.grid, input.scroll,
-            input.textJump, input.editInEditor, input.menuSearch, input.bookmarks
+            input.textJump, input.editInEditor, input.menuSearch, input.bookmarks,
+            input.dismissNotifications
         ].compactMap { $0 }
             + input.appShortcuts.filter { !$0.apps.isEmpty }.compactMap(\.shortcut)
             + input.scripts.filter { !$0.isEmpty }.compactMap(\.shortcut)
@@ -125,6 +128,9 @@ extension ShortcutSheet {
             ], emptyNote: nil),
             Section(title: "Bookmarks", symbol: "bookmark", entries: [
                 entry("Search Bookmarks", "Fuzzy-find and open a site, file, or folder", input.bookmarks)
+            ], emptyNote: nil),
+            Section(title: "Notifications", symbol: "bell.slash", entries: [
+                entry("Dismiss Notifications", "Clear every notification banner on screen", input.dismissNotifications)
             ], emptyNote: nil),
             Section(title: "Scripts", symbol: "terminal", entries: scriptEntries,
                     emptyNote: "No scripts yet — add one in Settings → Scripts.")

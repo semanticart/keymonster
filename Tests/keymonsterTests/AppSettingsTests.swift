@@ -84,6 +84,24 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertNil(AppSettings(defaults: defaults).bookmarksShortcut)
     }
 
+    func testSettingDismissNotificationsShortcutPersists() {
+        let settings = AppSettings(defaults: defaults)
+        settings.dismissNotificationsShortcut = Shortcut(keyCode: 2, carbonModifiers: 0x0100 | 0x0800)
+
+        let reloaded = AppSettings(defaults: defaults)
+        XCTAssertEqual(reloaded.dismissNotificationsShortcut, settings.dismissNotificationsShortcut)
+        XCTAssertNil(reloaded.bookmarksShortcut, "must not share a key with another shortcut")
+    }
+
+    func testClearingDismissNotificationsShortcutRemovesIt() {
+        let settings = AppSettings(defaults: defaults)
+        settings.dismissNotificationsShortcut = Shortcut(keyCode: 2, carbonModifiers: 0x0100)
+        settings.dismissNotificationsShortcut = nil
+
+        XCTAssertNil(defaults.data(forKey: AppSettings.dismissNotificationsShortcutKey))
+        XCTAssertNil(AppSettings(defaults: defaults).dismissNotificationsShortcut)
+    }
+
     func testAutoPasteDefaultsOnWhenNothingStored() {
         XCTAssertTrue(AppSettings(defaults: defaults).autoPaste)
     }

@@ -76,6 +76,7 @@ final class AppSettings: ObservableObject {
     static let textJumpShortcutKey = "textJumpShortcut"
     static let menuSearchShortcutKey = "menuSearchShortcut"
     static let bookmarksShortcutKey = "bookmarksShortcut"
+    static let dismissNotificationsShortcutKey = "dismissNotificationsShortcut"
     static let editInEditorShortcutKey = "editInEditorShortcut"
     static let editorCommandKey = "editorCommand"
     static let filePathScriptKey = "filePathScript"
@@ -162,6 +163,12 @@ final class AppSettings: ObservableObject {
     /// panel; Return opens the highlighted one in the default browser.
     @Published var bookmarksShortcut: Shortcut? {
         didSet { persist(bookmarksShortcut, forKey: Self.bookmarksShortcutKey) }
+    }
+
+    /// Global shortcut that dismisses every notification currently on screen —
+    /// banners, and stacks in the open Notification Center.
+    @Published var dismissNotificationsShortcut: Shortcut? {
+        didSet { persist(dismissNotificationsShortcut, forKey: Self.dismissNotificationsShortcutKey) }
     }
 
     /// Global shortcut that opens the focused text field's contents in the
@@ -252,6 +259,7 @@ final class AppSettings: ObservableObject {
         textJumpShortcut = Self.loadShortcut(defaults, key: Self.textJumpShortcutKey)
         menuSearchShortcut = Self.loadShortcut(defaults, key: Self.menuSearchShortcutKey)
         bookmarksShortcut = Self.loadShortcut(defaults, key: Self.bookmarksShortcutKey)
+        dismissNotificationsShortcut = Self.loadShortcut(defaults, key: Self.dismissNotificationsShortcutKey)
         editInEditorShortcut = Self.loadShortcut(defaults, key: Self.editInEditorShortcutKey)
         editorCommand = defaults.string(forKey: Self.editorCommandKey) ?? ""
         filePathScript = defaults.string(forKey: Self.filePathScriptKey) ?? ""
