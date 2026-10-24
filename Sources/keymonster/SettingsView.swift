@@ -68,7 +68,7 @@ struct SettingsView: View {
         // hand-rolled SettingsSection cards (not List-backed Form) make each
         // tab report its natural height, and AppDelegate resizes the window to
         // follow it.
-        .frame(width: 540)
+        .frame(width: 820)
         .onChange(of: settings.autoPaste) { _, enabled in
             if enabled { Paster.requestAccess() }
             accessTrusted = Paster.isTrusted
