@@ -126,8 +126,8 @@ extension ShortcutSheet {
             Section(title: "Menus", symbol: "filemenu.and.selection", entries: [
                 entry("Search Menus", "Fuzzy-find and run any menu item in the active app", input.menuSearch)
             ], emptyNote: nil),
-            Section(title: "Bookmarks", symbol: "bookmark", entries: [
-                entry("Search Bookmarks", "Fuzzy-find and open a site, file, or folder", input.bookmarks)
+            Section(title: "Palette", symbol: "command", entries: [
+                entry("Open Palette", "Fuzzy-find and open a site, file, or folder", input.bookmarks)
             ], emptyNote: nil),
             Section(title: "Notifications", symbol: "bell.slash", entries: [
                 entry("Dismiss Notifications", "Clear every notification banner on screen", input.dismissNotifications)

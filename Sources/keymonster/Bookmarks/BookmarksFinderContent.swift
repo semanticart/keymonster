@@ -38,12 +38,12 @@ struct BookmarksFinderContent: View {
     private var header: some View {
         VStack(spacing: 10 * uiScale) {
             HStack(spacing: 10 * uiScale) {
-                Image(systemName: "bookmark")
+                Image(systemName: "command")
                     .font(.system(size: 18 * uiScale))
                     .foregroundStyle(.tint)
                     .frame(width: 26 * uiScale, height: 26 * uiScale)
 
-                Text("Bookmarks")
+                Text("Palette")
                     .font(.system(size: 17 * uiScale, weight: .semibold))
 
                 Spacer()
@@ -61,7 +61,7 @@ struct BookmarksFinderContent: View {
                 .font(.system(size: 13 * uiScale))
                 .foregroundStyle(.secondary)
 
-            TextField("Search bookmarks", text: $model.searchText)
+            TextField("Search or paste a query", text: $model.searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14 * uiScale))
                 .focused($searchFocused)
@@ -90,7 +90,7 @@ struct BookmarksFinderContent: View {
 
     @ViewBuilder
     private var content: some View {
-        if model.bookmarks.isEmpty {
+        if model.bookmarks.isEmpty && model.filteredBookmarks.isEmpty {
             emptyState
         } else if model.filteredBookmarks.isEmpty {
             noMatchesState
@@ -127,7 +127,7 @@ struct BookmarksFinderContent: View {
         centeredMessage(
             icon: "bookmark",
             title: "No bookmarks",
-            subtitle: "Add some from the Bookmarks tab in Settings"
+            subtitle: "Add some from the Palette tab in Settings"
         )
     }
 

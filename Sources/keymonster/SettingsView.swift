@@ -54,7 +54,7 @@ struct SettingsView: View {
             menusTab
                 .tabItem { Label("Menus", systemImage: "filemenu.and.selection") }
             bookmarksTab
-                .tabItem { Label("Bookmarks", systemImage: "bookmark") }
+                .tabItem { Label("Palette", systemImage: "command") }
             NotificationsSettingsTab(
                 shortcut: $settings.dismissNotificationsShortcut,
                 isConflicting: isConflicting(settings.dismissNotificationsShortcut),
@@ -230,10 +230,11 @@ struct SettingsView: View {
     }
 
     private var bookmarksTab: some View {
-        SettingsTabView(description: "Fuzzy-find a list of bookmarks — favoring the title, but "
+        SettingsTabView(description: "A command-K style palette: fuzzy-find your bookmarks — favoring the title, but "
             + "also matching the url — and open the highlighted one, whether it's a website or "
             + "a local file or folder. The list itself is a plain CSV file, maintained by hand "
-            + "in your editor rather than through rows in Settings.") {
+            + "in your editor rather than through rows in Settings. JavaScript providers add "
+            + "rows of their own for queries they recognise.") {
             BookmarksSettingsSection(settings: settings, isConflicting: isConflicting(settings.bookmarksShortcut))
         }
     }
@@ -250,7 +251,7 @@ struct SettingsView: View {
     private var generalTab: some View {
         SettingsTabView(description: "A keyboard-driven clipboard history — plus keyboard-"
             + "only ways to focus apps, click anything, jump through text, search menus, "
-            + "find bookmarks, and run scripts. Each tab configures one feature.") {
+            + "open things from the palette, and run scripts. Each tab configures one feature.") {
             VStack(spacing: 6) {
                 AppIconView()
                     .frame(width: 80, height: 80)

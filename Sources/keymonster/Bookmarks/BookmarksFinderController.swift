@@ -68,7 +68,7 @@ final class BookmarksFinderController {
     private func show() {
         log.debug("show bookmarks finder")
         try? BookmarksStore.ensureExists()
-        viewModel.present(bookmarks: BookmarksStore.load())
+        viewModel.present(bookmarks: BookmarksStore.load(), providers: ProviderStore.load())
 
         centerOnActiveScreen()
         NSApp.activate(ignoringOtherApps: true)

@@ -9,7 +9,10 @@ import Foundation
 final class BookmarksFinderViewModel: ObservableObject {
     /// The current query. Editing it re-selects the best match.
     @Published var searchText: String = "" {
-        didSet { selectFirst() }
+        didSet {
+            refresh()
+            selectFirst()
+        }
     }
 
     /// The id of the keyboard-highlighted row, if any.
@@ -21,11 +24,13 @@ final class BookmarksFinderViewModel: ObservableObject {
     /// Bumped each time the panel is presented so the view can refocus the field.
     @Published private(set) var focusBump = 0
 
-    /// The bookmarks matching the query, best title match first (or all, in
-    /// file order).
-    var filteredBookmarks: [Bookmark] {
-        BookmarkFilter.filter(bookmarks, query: searchText)
-    }
+    /// The rows for the current query: provider suggestions first (a script
+    /// that recognises the query outranks fuzzy matching), then the bookmarks
+    /// matching it, best title match first (or all, in file order). Cached
+    /// because running scripts on every read would be wasteful.
+    @Published private(set) var filteredBookmarks: [Bookmark] = []
+
+    private var providers: [SuggestionProvider] = []
 
     var selectedBookmark: Bookmark? {
         guard let selectedID else { return nil }
@@ -34,9 +39,11 @@ final class BookmarksFinderViewModel: ObservableObject {
 
     /// Load a fresh read of the bookmarks file and reset to a blank query with
     /// the first bookmark selected. Call each time the panel is shown.
-    func present(bookmarks: [Bookmark]) {
+    func present(bookmarks: [Bookmark], providers: [SuggestionProvider] = []) {
         self.bookmarks = bookmarks
+        self.providers = providers
         searchText = ""
+        refresh()
         selectFirst()
         focusBump &+= 1
     }
@@ -57,6 +64,21 @@ final class BookmarksFinderViewModel: ObservableObject {
     /// The highlighted bookmark to open, or nil if nothing is selected.
     func activateSelection() -> Bookmark? {
         selectedBookmark
+    }
+
+    /// Provider rows get negative ids so they can't collide with the
+    /// non-negative file-order ids of bookmarks.
+    private func refresh() {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        var suggested: [Bookmark] = []
+        if !query.isEmpty {
+            for provider in providers {
+                for item in provider.suggestions(for: query) {
+                    suggested.append(Bookmark(id: -(suggested.count + 1), title: item.title, url: item.url))
+                }
+            }
+        }
+        filteredBookmarks = suggested + BookmarkFilter.filter(bookmarks, query: searchText)
     }
 
     private func selectFirst() {
