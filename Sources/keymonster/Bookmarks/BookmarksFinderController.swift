@@ -107,7 +107,11 @@ final class BookmarksFinderController {
             return
         }
         hide()
-        NSWorkspace.shared.open(url)
+        if let scriptPath = bookmark.scriptPath {
+            ScriptRunner().run(ScriptShortcut(path: scriptPath))
+        } else {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func hide() {

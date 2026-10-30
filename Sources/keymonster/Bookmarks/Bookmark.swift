@@ -11,18 +11,30 @@ struct Bookmark: Identifiable, Equatable {
     let title: String
     let url: String
 
-    /// Whether `url` names a local filesystem path (`/…` or `~/…`) rather
-    /// than a remote url — determines how the bookmark is opened and iconed.
+    private static let scriptPrefix = "sh://"
+
+    /// The filesystem path of an `sh://` bookmark (`sh:///abs/path` or
+    /// `sh://~/path`), or nil for any other bookmark. Such a bookmark names a
+    /// local file like `file://` would, but is run as a script instead of opened.
+    var scriptPath: String? {
+        guard url.lowercased().hasPrefix(Self.scriptPrefix) else { return nil }
+        let path = String(url.dropFirst(Self.scriptPrefix.count))
+        return path.hasPrefix("/") || path.hasPrefix("~") ? path : nil
+    }
+
+    /// Whether `url` names a local filesystem path (`/…`, `~/…` or `sh://…`)
+    /// rather than a remote url — determines how the bookmark is opened and iconed.
     var isLocalPath: Bool {
-        url.hasPrefix("/") || url.hasPrefix("~")
+        url.hasPrefix("/") || url.hasPrefix("~") || scriptPath != nil
     }
 
     /// The URL this bookmark opens to: a tilde-expanded `file://` URL for a
-    /// local path, or the parsed remote url otherwise. Nil for text that
-    /// isn't a usable url (e.g. empty after a bad row somehow slipped through).
+    /// local path (or an `sh://` script's file), or the parsed remote url
+    /// otherwise. Nil for text that isn't a usable url (e.g. empty after a bad
+    /// row somehow slipped through).
     var resolvedURL: URL? {
         if isLocalPath {
-            return URL(fileURLWithPath: (url as NSString).expandingTildeInPath)
+            return URL(fileURLWithPath: ((scriptPath ?? url) as NSString).expandingTildeInPath)
         }
         return URL(string: url)
     }

@@ -21,6 +21,25 @@ final class BookmarkResolvedURLTests: XCTestCase {
         XCTAssertEqual(bookmark.resolvedURL, URL(string: "https://news.ycombinator.com"))
     }
 
+    func testShAbsolutePathIsScript() {
+        let bookmark = Bookmark(id: 0, title: "Backup", url: "sh:///usr/local/bin/backup.sh")
+        XCTAssertEqual(bookmark.scriptPath, "/usr/local/bin/backup.sh")
+        XCTAssertTrue(bookmark.isLocalPath)
+        XCTAssertEqual(bookmark.resolvedURL, URL(fileURLWithPath: "/usr/local/bin/backup.sh"))
+    }
+
+    func testShTildePathIsScriptAndExpanded() {
+        let bookmark = Bookmark(id: 0, title: "Sync", url: "sh://~/bin/sync.sh")
+        XCTAssertEqual(bookmark.scriptPath, "~/bin/sync.sh")
+        let expected = URL(fileURLWithPath: ("~/bin/sync.sh" as NSString).expandingTildeInPath)
+        XCTAssertEqual(bookmark.resolvedURL, expected)
+    }
+
+    func testShWithoutPathIsNotScript() {
+        XCTAssertNil(Bookmark(id: 0, title: "x", url: "sh://relative.sh").scriptPath)
+        XCTAssertNil(Bookmark(id: 0, title: "x", url: "/tmp/a.sh").scriptPath)
+    }
+
     func testBareDomainWithoutSchemeIsNotTreatedAsLocal() {
         // No leading "/" or "~", so this is left to URL(string:) as a plain
         // (schemeless) url rather than misread as a relative path.
