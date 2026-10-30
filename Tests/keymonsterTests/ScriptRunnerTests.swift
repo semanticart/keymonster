@@ -91,6 +91,16 @@ final class ScriptRunnerTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: out, encoding: .utf8), "/a path/with space.txt|42")
     }
 
+    func testExecutableScriptStartsFromTheBaseEnvironment() throws {
+        let out = scriptDir.appendingPathComponent("out")
+        let path = try writeScript("env.sh", "#!/bin/sh\nprintf '%s' \"$PATH\" > '\(out.path)'\n", executable: true)
+        var runner = ScriptRunner()
+        runner.baseEnvironment = { ["PATH": "/opt/test/bin"] }
+
+        XCTAssertEqual(runAndWait(runner, ScriptShortcut(path: path)), 0)
+        XCTAssertEqual(try String(contentsOf: out, encoding: .utf8), "/opt/test/bin")
+    }
+
     func testTildeInPathIsExpanded() throws {
         // zsh reports a missing file as status 127; reaching that (rather than a
         // launch failure) proves the tilde path was expanded and handed to zsh.

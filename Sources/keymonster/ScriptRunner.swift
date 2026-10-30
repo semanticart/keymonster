@@ -60,6 +60,11 @@ struct ScriptRunner {
         DispatchQueue.main.async { ScriptLog.shared.record(script: script, detail: detail) }
     }
 
+    /// The environment scripts start from. A menu bar app has none of the user's
+    /// profile (no Homebrew on `PATH`), so by default this is the login shell's,
+    /// read once and cached. Blocking, so it is only called off the main thread.
+    var baseEnvironment: @Sendable () -> [String: String] = { LoginShellCache.environment }
+
     /// Runs the script detached from the caller. `completion` (used by tests)
     /// fires on a background queue with the exit status, or nil if the process
     /// never launched (including entries with no script chosen). `arguments`
@@ -77,6 +82,7 @@ struct ScriptRunner {
         let path = (script.path as NSString).expandingTildeInPath
         let name = script.displayName
         let report = reportFailure
+        let baseEnvironment = baseEnvironment
 
         // Everything Process-related happens on one background block: run,
         // stderr drain, wait. Draining stderr before waitUntilExit keeps a
@@ -89,9 +95,7 @@ struct ScriptRunner {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: invocation.executablePath)
             process.arguments = invocation.arguments + arguments
-            if !environment.isEmpty {
-                process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
-            }
+            process.environment = baseEnvironment().merging(environment) { _, new in new }
             process.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
             process.standardOutput = FileHandle.nullDevice
             process.standardInput = FileHandle.nullDevice
@@ -122,4 +126,10 @@ struct ScriptRunner {
             completion?(status)
         }
     }
+}
+
+/// The login shell's environment, loaded on first use and kept for the life of
+/// the app (a profile can take a while to run).
+private enum LoginShellCache {
+    static let environment = LoginShellEnvironment.load()
 }
