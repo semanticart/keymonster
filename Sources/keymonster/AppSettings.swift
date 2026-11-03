@@ -66,6 +66,7 @@ final class AppSettings: ObservableObject {
     static let appShortcutsKey = "appFocusShortcuts"
     static let scriptShortcutsKey = "scriptShortcuts"
     static let autoPasteKey = "autoPaste"
+    static let appsInPaletteKey = "appsInPalette"
     static let checkForUpdatesKey = "checkForUpdates"
     static let installUpdatesAutomaticallyKey = "installUpdatesAutomatically"
     static let hasLaunchedKey = "hasLaunched"
@@ -226,6 +227,12 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(autoPaste, forKey: Self.autoPasteKey) }
     }
 
+    /// When on (the default), the Palette also offers installed applications
+    /// as rows above the bookmarks; see `ApplicationsProvider`.
+    @Published var appsInPalette: Bool {
+        didSet { defaults.set(appsInPalette, forKey: Self.appsInPaletteKey) }
+    }
+
     /// When on (the default), Sparkle checks once a day whether a newer release
     /// exists and offers it in the status menu; see Updater.
     @Published var checkForUpdates: Bool {
@@ -248,6 +255,7 @@ final class AppSettings: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         autoPaste = defaults.object(forKey: Self.autoPasteKey) as? Bool ?? true
+        appsInPalette = defaults.object(forKey: Self.appsInPaletteKey) as? Bool ?? true
         checkForUpdates = defaults.object(forKey: Self.checkForUpdatesKey) as? Bool ?? true
         installUpdatesAutomatically = defaults.object(forKey: Self.installUpdatesAutomaticallyKey) as? Bool ?? true
         launchAtLogin = SMAppService.mainApp.status == .enabled

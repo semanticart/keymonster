@@ -23,6 +23,7 @@ struct BookmarksSettingsSection: View {
         VStack(alignment: .leading, spacing: 16) {
             shortcutSection
             bookmarksSection
+            applicationsSection
             providersSection
         }
         .onAppear {
@@ -74,6 +75,16 @@ struct BookmarksSettingsSection: View {
             if let lastFailure {
                 ScriptFailureNotice(failure: lastFailure)
             }
+        }
+    }
+
+    private var applicationsSection: some View {
+        SettingsSection(
+            header: "Applications",
+            footer: "Matching apps from /Applications, /System/Applications and ~/Applications "
+                + "appear above your bookmarks as you type; Return launches the highlighted one."
+        ) {
+            SettingsToggleRow(title: "Include applications", isOn: $settings.appsInPalette)
         }
     }
 
