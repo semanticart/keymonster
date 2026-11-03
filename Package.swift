@@ -7,7 +7,7 @@ let package = Package(
         .macOS(.v14)
     ],
     dependencies: [
-        .package(url: "https://github.com/groue/GRDB.swift.git", from: "6.0.0"),
+        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.0.0"),
         // Sparkle drives in-app updates: it checks the appcast the Release
         // workflow publishes, verifies the DMG's EdDSA signature, and swaps
         // the bundle in place. Ships as a prebuilt xcframework.
