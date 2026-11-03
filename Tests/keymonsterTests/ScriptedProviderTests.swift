@@ -20,6 +20,28 @@ final class ScriptedProviderTests: XCTestCase {
         XCTAssertEqual(results.first?.url, "https://admin.example.com/orders/\(uuid)")
     }
 
+    func testPassesThroughAnOptionalIcon() throws {
+        let provider = try ScriptedProvider(name: "i.js", source: """
+        function suggest(q) {
+          return [{ title: "a", url: "https://a.com", icon: "doc.text" },
+                  { title: "b", url: "https://b.com", icon: "  " },
+                  { title: "c", url: "https://c.com", icon: 5 }]
+        }
+        """)
+        XCTAssertEqual(provider.suggestions(for: "x").map(\.icon), ["doc.text", nil, nil])
+    }
+
+    func testRowIconInterpretsDataURIsPathsAndSymbols() {
+        XCTAssertEqual(RowIcon("data:image/png;base64,AAEC"), .imageData(Data([0, 1, 2])))
+        XCTAssertNil(RowIcon("data:image/png;base64,"))
+        XCTAssertNil(RowIcon("data:image/png,AAEC"))
+        XCTAssertEqual(RowIcon("/tmp/a.png"), .path("/tmp/a.png"))
+        XCTAssertEqual(RowIcon("~/a.png"), .path(("~/a.png" as NSString).expandingTildeInPath))
+        XCTAssertEqual(RowIcon("doc.text"), .symbol("doc.text"))
+        XCTAssertNil(RowIcon(nil))
+        XCTAssertNil(RowIcon("  "))
+    }
+
     func testReturnsNothingForANonMatchingQuery() throws {
         let provider = try ScriptedProvider(name: "uuid.js", source: uuidScript)
         XCTAssertEqual(provider.suggestions(for: "hacker news"), [])

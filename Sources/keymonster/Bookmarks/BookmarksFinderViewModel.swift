@@ -74,7 +74,9 @@ final class BookmarksFinderViewModel: ObservableObject {
         if !query.isEmpty {
             for provider in providers {
                 for item in provider.suggestions(for: query) {
-                    suggested.append(Bookmark(id: -(suggested.count + 1), title: item.title, url: item.url))
+                    suggested.append(
+                        Bookmark(id: -(suggested.count + 1), title: item.title, url: item.url, icon: item.icon)
+                    )
                 }
             }
         }

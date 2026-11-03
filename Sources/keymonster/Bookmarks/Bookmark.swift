@@ -10,6 +10,8 @@ struct Bookmark: Identifiable, Equatable {
     let id: Int
     let title: String
     let url: String
+    /// Optional icon override, set only by provider scripts (see `RowIcon`).
+    var icon: String?
 
     private static let scriptPrefix = "sh://"
 
@@ -37,6 +39,31 @@ struct Bookmark: Identifiable, Equatable {
             return URL(fileURLWithPath: ((scriptPath ?? url) as NSString).expandingTildeInPath)
         }
         return URL(string: url)
+    }
+}
+
+/// What a provider row's `icon` string means: a `data:` URI carrying a
+/// base64 image, a local file path (`/…` or `~/…`; shown as an image if it is
+/// one, otherwise as the file's Finder icon), or else an SF Symbol name.
+/// Pure so the interpretation is unit-tested without AppKit.
+enum RowIcon: Equatable {
+    case imageData(Data)
+    case path(String)
+    case symbol(String)
+
+    init?(_ spec: String?) {
+        guard let spec = spec?.trimmingCharacters(in: .whitespacesAndNewlines), !spec.isEmpty else { return nil }
+        if spec.lowercased().hasPrefix("data:") {
+            guard let comma = spec.firstIndex(of: ","),
+                  spec[..<comma].lowercased().hasSuffix(";base64"),
+                  let data = Data(base64Encoded: String(spec[spec.index(after: comma)...])),
+                  !data.isEmpty else { return nil }
+            self = .imageData(data)
+        } else if spec.hasPrefix("/") || spec.hasPrefix("~") {
+            self = .path((spec as NSString).expandingTildeInPath)
+        } else {
+            self = .symbol(spec)
+        }
     }
 }
 

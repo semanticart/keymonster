@@ -13,7 +13,7 @@ protocol SuggestionProvider {
 }
 
 /// A user script run in-process with JavaScriptCore. The script defines a
-/// global `suggest(query)` that returns an array of `{title, url}` objects (an
+/// global `suggest(query)` that returns an array of `{title, url, icon?}` objects (an
 /// empty array or `undefined` for "nothing to say"):
 ///
 ///     function suggest(q) {
@@ -80,7 +80,10 @@ final class ScriptedProvider: SuggestionProvider {
             guard let title = (item["title"] as? String)?.trimmingCharacters(in: .whitespaces),
                   let url = (item["url"] as? String)?.trimmingCharacters(in: .whitespaces),
                   !title.isEmpty, !url.isEmpty else { continue }
-            bookmarks.append(Bookmark(id: bookmarks.count, title: title, url: url))
+            let icon = (item["icon"] as? String)?.trimmingCharacters(in: .whitespaces)
+            bookmarks.append(Bookmark(
+                id: bookmarks.count, title: title, url: url, icon: icon?.isEmpty == false ? icon : nil
+            ))
         }
         return bookmarks
     }

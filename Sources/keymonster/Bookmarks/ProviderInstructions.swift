@@ -35,11 +35,15 @@ enum ProviderInstructions {
         - Define a global function `suggest(query)`. Nothing else is required.
         - `query` is the trimmed text typed so far, never empty. It runs on every keystroke, so keep it \
         fast and synchronous.
-        - Return an array of `{ title: string, url: string }` objects, shown in order. Return `[]` \
+        - Return an array of `{ title: string, url: string, icon?: string }` objects, shown in order. Return `[]` \
         (or nothing) when the query isn't something this provider recognises — most queries should \
         produce no rows.
         - `url` is opened when the row is chosen: an https:// url, another scheme (slack://, \
         obsidian://, mailto:), or a local path starting with / or ~/.
+        - A row may also have an optional `icon: string`, shown instead of the default icon. It is one \
+        of: a `data:image/png;base64,…` URI (any image format macOS reads); a local file path starting \
+        with / or ~/ (an image file shows the image, anything else shows that file's Finder icon); or an \
+        SF Symbol name such as "doc.text". An icon that can't be loaded falls back to the default.
         - Rows missing a non-empty title or url are skipped. A script that throws contributes nothing.
         - The script runs in plain JavaScriptCore: ES2015+ language features and the standard library \
         (RegExp, JSON, String methods, Date, Math, encodeURIComponent), but no console, fetch, timers, \

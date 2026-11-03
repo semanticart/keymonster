@@ -189,6 +189,16 @@ private struct BookmarkRow: View {
         return NSWorkspace.shared.icon(forFile: path)
     }
 
+    /// A provider-supplied icon, or nil to use the default favicon/Finder icon.
+    private var customIcon: NSImage? {
+        switch RowIcon(bookmark.icon) {
+        case .imageData(let data): return NSImage(data: data)
+        case .path(let path): return NSImage(contentsOfFile: path) ?? NSWorkspace.shared.icon(forFile: path)
+        case .symbol(let name): return NSImage(systemSymbolName: name, accessibilityDescription: nil)
+        case nil: return nil
+        }
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 8 * uiScale) {
@@ -228,7 +238,12 @@ private struct BookmarkRow: View {
     @ViewBuilder
     private var faviconView: some View {
         Group {
-            if bookmark.isLocalPath {
+            if let customIcon {
+                Image(nsImage: customIcon)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+            } else if bookmark.isLocalPath {
                 if let localIcon {
                     Image(nsImage: localIcon)
                         .resizable()
