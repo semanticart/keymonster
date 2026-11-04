@@ -287,9 +287,7 @@ enum ScrollTestRunner {
 
     private static func capture(around point: CGPoint) -> Data? {
         let rect = CGRect(x: point.x - 150, y: point.y - 80, width: 300, height: 160)
-        guard let image = CGWindowListCreateImage(
-            rect, .optionOnScreenOnly, kCGNullWindowID, [.boundsIgnoreFraming]
-        ) else { return nil }
+        guard let image = ScreenGrab.imageBlocking(of: rect) else { return nil }
         return image.dataProvider?.data as Data?
     }
 
