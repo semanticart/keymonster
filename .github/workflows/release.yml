@@ -45,6 +45,10 @@ jobs:
     # macOS 14 deployment target is set in Package.swift, so the binary still
     # runs on macOS 14+ regardless of the builder's OS or Xcode.
     runs-on: macos-26
+    # Hard cap: a normal release takes ~4 minutes. A hung step (notarization
+    # has stalled for hours before) fails the run instead of waiting for
+    # GitHub's 6-hour default.
+    timeout-minutes: 30
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
@@ -109,6 +113,7 @@ jobs:
       # values never appear in make's echoed command line; the recipe's shell
       # expands them from the environment only when notarytool runs.
       - name: Notarize and staple
+        timeout-minutes: 20
         env:
           VERSION: ${{ steps.version.outputs.version }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
