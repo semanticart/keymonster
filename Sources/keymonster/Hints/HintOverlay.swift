@@ -10,6 +10,9 @@ final class HintOverlay {
     /// AX (top-left origin) coordinates of the overlay window's own origin —
     /// what to subtract to make a global AX rect view-local.
     private var origin: CGPoint = .zero
+    /// The in-flight screenshot for the current zoom; cancelled whenever the
+    /// zoom changes or ends so a late image never lands on the wrong view.
+    private var captureTask: Task<Void, Never>?
 
     /// `windowFrame` is the target window's frame in AX (top-left origin)
     /// coordinates — the same space the groups' frames are in. Single-member
@@ -63,7 +66,7 @@ final class HintOverlay {
     /// is already showing; `clearZoom` restores the group badges untouched.
     func zoomIn(area: CGRect, memberFrames: [CGRect], labels: [String]) {
         guard let view else { return }
-        let image = WindowCapture.below(window, bounds: area)
+        captureTask?.cancel()
         func local(_ rect: CGRect) -> CGRect {
             rect.offsetBy(dx: -origin.x, dy: -origin.y)
         }
@@ -77,7 +80,7 @@ final class HintOverlay {
         view.zoom = HintOverlayView.Zoom(
             panel: layout.panel,
             canvas: layout.canvas,
-            image: image,
+            image: nil,
             content: layout.content,
             badges: layout.badges.indices.map { index in
                 HintOverlayView.Badge(
@@ -90,10 +93,18 @@ final class HintOverlay {
                 )
             }
         )
+        // The panel draws at once, empty; the screenshot fills in when the
+        // capture lands. A failed capture leaves it as it is.
+        captureTask = Task { [weak self, weak view] in
+            let image = await WindowCapture.below(self?.window, bounds: area)
+            guard !Task.isCancelled, let image, let view else { return }
+            view.zoom?.image = image
+        }
     }
 
     /// Leaves the zoom and reveals the group badges again.
     func clearZoom() {
+        captureTask?.cancel()
         view?.zoom = nil
         view?.typed = ""
     }
@@ -137,6 +148,7 @@ final class HintOverlay {
     }
 
     func hide() {
+        captureTask?.cancel()
         window?.orderOut(nil)
         window = nil
         view = nil

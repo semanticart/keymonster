@@ -102,7 +102,8 @@ final class HintOverlayView: NSView {
     struct Zoom {
         let panel: CGRect
         let canvas: CGRect
-        let image: CGImage?
+        /// The magnified screenshot; nil until the capture lands (or if it fails).
+        var image: CGImage?
         /// Member frames magnified onto the canvas — the badge carets aim at
         /// them.
         let content: [CGRect]

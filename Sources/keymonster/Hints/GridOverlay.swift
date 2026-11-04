@@ -11,6 +11,9 @@ final class GridOverlay {
     private var view: GridOverlayView?
     private var windowOrigin: CGPoint = .zero
     private var windowBounds: CGRect = .zero
+    /// The in-flight screenshot for the current loupe; cancelled whenever the
+    /// view changes so a late image never lands on the wrong region.
+    private var captureTask: Task<Void, Never>?
 
     /// Creates the overlay window over `windowFrame` (AX, top-left origin).
     /// Call once when grid mode activates, then drive it with the `show*` calls.
@@ -45,6 +48,7 @@ final class GridOverlay {
     /// The initial two-character hint grid (`cells` in AX coordinates). `typed`
     /// dims the labels that no longer match what's been entered.
     func showHints(cells: [GridHints.Cell], typed: String) {
+        captureTask?.cancel()
         view?.showHints(
             cells: cells.map {
                 GridOverlayView.HintCell(label: $0.label, rect: inView($0.rect))
@@ -57,11 +61,18 @@ final class GridOverlay {
     /// it's the whole window and as a magnified loupe once zoomed in. Falls back
     /// to the plain grid when there's nothing to magnify or the capture fails.
     func showGrid(current: CGRect) {
+        captureTask?.cancel()
         let region = inView(current)
-        if GridZoom.scale(magnifying: region, into: windowBounds) > 1,
-           let image = WindowCapture.below(window, bounds: current) {
+        if GridZoom.scale(magnifying: region, into: windowBounds) > 1 {
+            // Draw the magnified grid at once, then fill in the screenshot
+            // when the capture lands; a failed capture leaves the plain wash.
             let panel = GridZoom.panel(magnifying: region, into: windowBounds)
-            view?.showGrid(region: region, panel: panel, image: image)
+            view?.showGrid(region: region, panel: panel, image: nil)
+            captureTask = Task { [weak self] in
+                let image = await WindowCapture.below(self?.window, bounds: current)
+                guard !Task.isCancelled, let image else { return }
+                self?.view?.showGrid(region: region, panel: panel, image: image)
+            }
         } else {
             view?.showGrid(region: region, panel: region, image: nil)
         }
@@ -74,6 +85,7 @@ final class GridOverlay {
     }
 
     func hide() {
+        captureTask?.cancel()
         window?.orderOut(nil)
         window = nil
         view = nil

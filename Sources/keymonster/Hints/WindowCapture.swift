@@ -33,15 +33,12 @@ enum WindowCapture {
     /// same space AX frames are in) showing what's beneath `window`, so the
     /// overlay's own badges never appear in the shot. Gate with
     /// `ensureAccess()` first; without permission (or if capture fails) this
-    /// returns nil.
+    /// returns nil. Asynchronous: ScreenCaptureKit has no blocking capture.
     @MainActor
-    static func below(_ window: NSWindow?, bounds: CGRect) -> CGImage? {
+    static func below(_ window: NSWindow?, bounds: CGRect) async -> CGImage? {
         guard CGPreflightScreenCaptureAccess() else { return nil }
         guard let window, window.windowNumber > 0 else { return nil }
-        return CGWindowListCreateImage(
-            bounds, .optionOnScreenBelowWindow, CGWindowID(window.windowNumber),
-            [.boundsIgnoreFraming, .bestResolution]
-        )
+        return await ScreenGrab.image(of: bounds, excluding: CGWindowID(window.windowNumber))
     }
 
     /// Delete our Screen Recording row from the TCC database so the system
