@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Combine
 
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
@@ -185,6 +186,8 @@ struct SettingsView: View {
                     AccessibilityNotice()
                 }
             }
+
+            ExperimentalHintsSection()
 
         }
     }

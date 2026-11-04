@@ -149,12 +149,25 @@ enum HintGeometry {
         /// glyph's left edge leaves it visibly sitting a character to the
         /// right of the thing it points at.
         case centered
+        /// Decided per area: `.centered` for an area no wider than
+        /// `smallTargetBadgeWidths` badges (an icon button, a checkbox — where
+        /// a badge hanging off the left edge reads as sitting beside the thing
+        /// rather than on it), `.leading` for anything wider. Experimental
+        /// hint-mode alternative to a blanket `.leading`.
+        case adaptive
+
+        /// How many badge widths wide an area may be and still count as small
+        /// under `.adaptive`.
+        static let smallTargetBadgeWidths: CGFloat = 2.5
 
         /// The badge's left edge for a badge of `width` labeling `area`.
         func x(labeling area: CGRect, width: CGFloat) -> CGFloat {
             switch self {
             case .leading: return area.minX
             case .centered: return area.midX - width / 2
+            case .adaptive:
+                let small = area.width <= width * Self.smallTargetBadgeWidths
+                return small ? area.midX - width / 2 : area.minX
             }
         }
     }

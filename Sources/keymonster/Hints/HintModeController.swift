@@ -89,7 +89,8 @@ final class HintModeController {
             anchors: targets.map(\.frame),
             windowFrame: windowFrame,
             screenBounds: HintScreens.bounds(around: windowFrame),
-            badgeSize: BadgeMetrics.size(forLabelLength:)
+            badgeSize: BadgeMetrics.size(forLabelLength:),
+            alignment: AppSettings.shared.centerSmallHints ? .adaptive : .leading
         )
         session = Session(button: button, targets: targets, app: frontmost, labels: labels)
         // Hints may still exist (a titlebar's buttons) when kitty's links

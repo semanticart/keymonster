@@ -113,6 +113,15 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertFalse(AppSettings(defaults: defaults).autoPaste)
     }
 
+    func testCenterSmallHintsDefaultsOffAndPersists() {
+        XCTAssertFalse(AppSettings(defaults: defaults).centerSmallHints)
+
+        let settings = AppSettings(defaults: defaults)
+        settings.centerSmallHints = true
+
+        XCTAssertTrue(AppSettings(defaults: defaults).centerSmallHints)
+    }
+
     func testAppShortcutsStartEmptyWhenNothingStored() {
         XCTAssertTrue(AppSettings(defaults: defaults).appShortcuts.isEmpty)
     }

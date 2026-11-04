@@ -67,6 +67,7 @@ final class AppSettings: ObservableObject {
     static let scriptShortcutsKey = "scriptShortcuts"
     static let autoPasteKey = "autoPaste"
     static let appsInPaletteKey = "appsInPalette"
+    static let centerSmallHintsKey = "experimentalCenterSmallHints"
     static let checkForUpdatesKey = "checkForUpdates"
     static let installUpdatesAutomaticallyKey = "installUpdatesAutomatically"
     static let hasLaunchedKey = "hasLaunched"
@@ -233,6 +234,14 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(appsInPalette, forKey: Self.appsInPaletteKey) }
     }
 
+    /// Experimental, off by default. When on, hint badges for small targets
+    /// (icon buttons, checkboxes) center over the target instead of hanging off
+    /// its top-left corner; wide targets keep the corner. See
+    /// `HintGeometry.BadgeAlignment.adaptive`.
+    @Published var centerSmallHints: Bool {
+        didSet { defaults.set(centerSmallHints, forKey: Self.centerSmallHintsKey) }
+    }
+
     /// When on (the default), Sparkle checks once a day whether a newer release
     /// exists and offers it in the status menu; see Updater.
     @Published var checkForUpdates: Bool {
@@ -256,6 +265,7 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         autoPaste = defaults.object(forKey: Self.autoPasteKey) as? Bool ?? true
         appsInPalette = defaults.object(forKey: Self.appsInPaletteKey) as? Bool ?? true
+        centerSmallHints = defaults.object(forKey: Self.centerSmallHintsKey) as? Bool ?? false
         checkForUpdates = defaults.object(forKey: Self.checkForUpdatesKey) as? Bool ?? true
         installUpdatesAutomatically = defaults.object(forKey: Self.installUpdatesAutomaticallyKey) as? Bool ?? true
         launchAtLogin = SMAppService.mainApp.status == .enabled
