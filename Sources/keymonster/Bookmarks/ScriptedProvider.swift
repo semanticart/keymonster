@@ -9,7 +9,14 @@ private let log = Logger(subsystem: "keymonster", category: "palette.providers")
 /// open, and selection code needs no second path; the view model reassigns
 /// their ids, so a provider may number them however it likes.
 protocol SuggestionProvider {
+    /// True when this provider's rows belong after the bookmark matches
+    /// instead of ahead of them (lower-priority sources, like applications).
+    var trailsBookmarks: Bool { get }
     func suggestions(for query: String) -> [Bookmark]
+}
+
+extension SuggestionProvider {
+    var trailsBookmarks: Bool { false }
 }
 
 /// A user script run in-process with JavaScriptCore. The script defines a

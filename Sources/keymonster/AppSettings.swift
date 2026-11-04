@@ -229,7 +229,7 @@ final class AppSettings: ObservableObject {
     }
 
     /// When on (the default), the Palette also offers installed applications
-    /// as rows above the bookmarks; see `ApplicationsProvider`.
+    /// as rows below the scripts and bookmarks; see `ApplicationsProvider`.
     @Published var appsInPalette: Bool {
         didSet { defaults.set(appsInPalette, forKey: Self.appsInPaletteKey) }
     }

@@ -130,6 +130,24 @@ final class ScriptedProviderTests: XCTestCase {
     }
 }
 
+final class ApplicationRankingTests: XCTestCase {
+    @MainActor
+    func testApplicationRowsTrailScriptsAndBookmarks() throws {
+        let apps = ApplicationsProvider(apps: [("Hacker Tool", "/Applications/Hacker Tool.app")])
+        let script = try ScriptedProvider(
+            name: "h.js",
+            source: "function suggest(q) { return [{ title: 'Script hit', url: 'https://example.com' }] }"
+        )
+        let model = BookmarksFinderViewModel()
+        model.present(
+            bookmarks: [Bookmark(id: 0, title: "Hacker News", url: "https://news.ycombinator.com")],
+            providers: [apps, script]
+        )
+        model.searchText = "hacker"
+        XCTAssertEqual(model.filteredBookmarks.map(\.title), ["Script hit", "Hacker News", "Hacker Tool"])
+    }
+}
+
 final class ProviderInstructionsTests: XCTestCase {
     func testTheExampleScriptLoadsAndRuns() throws {
         let provider = try ScriptedProvider(name: "uuid.js", source: ProviderInstructions.exampleScript)

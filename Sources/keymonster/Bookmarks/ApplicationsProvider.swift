@@ -16,6 +16,9 @@ final class ApplicationsProvider: SuggestionProvider {
     /// Most rows one query may add, so a short query can't bury the bookmarks.
     static let maxResults = 5
 
+    /// Applications rank below scripts and bookmarks.
+    let trailsBookmarks = true
+
     private let apps: [(name: String, path: String)]
 
     init(apps: [(name: String, path: String)]) {

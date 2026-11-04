@@ -24,9 +24,10 @@ final class BookmarksFinderViewModel: ObservableObject {
     /// Bumped each time the panel is presented so the view can refocus the field.
     @Published private(set) var focusBump = 0
 
-    /// The rows for the current query: provider suggestions first (a script
+    /// The rows for the current query: script suggestions first (a script
     /// that recognises the query outranks fuzzy matching), then the bookmarks
-    /// matching it, best title match first (or all, in file order). Cached
+    /// matching it, best title match first (or all, in file order), then
+    /// trailing providers' rows (applications). Cached
     /// because running scripts on every read would be wasteful.
     @Published private(set) var filteredBookmarks: [Bookmark] = []
 
@@ -70,17 +71,19 @@ final class BookmarksFinderViewModel: ObservableObject {
     /// non-negative file-order ids of bookmarks.
     private func refresh() {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        var suggested: [Bookmark] = []
+        var leading: [Bookmark] = []
+        var trailing: [Bookmark] = []
+        var count = 0
         if !query.isEmpty {
             for provider in providers {
                 for item in provider.suggestions(for: query) {
-                    suggested.append(
-                        Bookmark(id: -(suggested.count + 1), title: item.title, url: item.url, icon: item.icon)
-                    )
+                    count += 1
+                    let row = Bookmark(id: -count, title: item.title, url: item.url, icon: item.icon)
+                    if provider.trailsBookmarks { trailing.append(row) } else { leading.append(row) }
                 }
             }
         }
-        filteredBookmarks = suggested + BookmarkFilter.filter(bookmarks, query: searchText)
+        filteredBookmarks = leading + BookmarkFilter.filter(bookmarks, query: searchText) + trailing
     }
 
     private func selectFirst() {
