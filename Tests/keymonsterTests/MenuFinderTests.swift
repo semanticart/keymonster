@@ -102,13 +102,13 @@ final class MenuFinderViewModelTests: XCTestCase {
         XCTAssertEqual(model.activateSelection()?.id, 1)
     }
 
-    func testMoveSelectionClampsToTheEnds() {
+    func testMoveSelectionWrapsAround() {
         let model = MenuFinderViewModel()
         present(model)
-        model.moveSelection(by: -1) // already at the top
-        XCTAssertEqual(model.selectedID, 0)
-        model.moveSelection(by: 99) // past the bottom
+        model.moveSelection(by: -1) // top wraps to the bottom
         XCTAssertEqual(model.selectedID, 2)
+        model.moveSelection(by: 1) // bottom wraps to the top
+        XCTAssertEqual(model.selectedID, 0)
     }
 
     func testActivateReturnsNilWhenNothingMatches() {

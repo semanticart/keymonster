@@ -55,7 +55,8 @@ final class BookmarksFinderViewModel: ObservableObject {
         let bookmarks = filteredBookmarks
         guard !bookmarks.isEmpty else { selectedID = nil; return }
         if let id = selectedID, let index = bookmarks.firstIndex(where: { $0.id == id }) {
-            let next = min(max(index + delta, 0), bookmarks.count - 1)
+            let count = bookmarks.count
+            let next = ((index + delta) % count + count) % count // wrap around
             selectedID = bookmarks[next].id
         } else {
             selectedID = delta >= 0 ? bookmarks.first?.id : bookmarks.last?.id

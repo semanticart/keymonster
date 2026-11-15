@@ -58,7 +58,7 @@ final class HistoryViewModelTests: XCTestCase {
         XCTAssertEqual(model.filteredItems.first?.id, model.selectedID)
     }
 
-    func testCtrlNAndCtrlPMoveAndClamp() {
+    func testCtrlNAndCtrlPMoveAndWrap() {
         let model = populatedViewModel()
         model.prepareForPresentation()
         let ids = model.filteredItems.map(\.id)
@@ -67,17 +67,15 @@ final class HistoryViewModelTests: XCTestCase {
         XCTAssertEqual(model.selectedID, ids[1])
         model.moveSelection(by: 1)
         XCTAssertEqual(model.selectedID, ids[2])
-        // Clamp at the bottom.
+        // Wrap from the bottom to the top.
         model.moveSelection(by: 1)
-        XCTAssertEqual(model.selectedID, ids[2])
+        XCTAssertEqual(model.selectedID, ids[0])
 
+        // Wrap from the top to the bottom.
+        model.moveSelection(by: -1)
+        XCTAssertEqual(model.selectedID, ids[2])
         model.moveSelection(by: -1)
         XCTAssertEqual(model.selectedID, ids[1])
-        model.moveSelection(by: -1)
-        XCTAssertEqual(model.selectedID, ids[0])
-        // Clamp at the top.
-        model.moveSelection(by: -1)
-        XCTAssertEqual(model.selectedID, ids[0])
     }
 
     func testEditingSearchReselectsFirstMatch() {

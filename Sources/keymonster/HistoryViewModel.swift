@@ -65,7 +65,8 @@ final class HistoryViewModel: ObservableObject {
         let items = filteredItems
         guard !items.isEmpty else { selectedID = nil; return }
         if let id = selectedID, let index = items.firstIndex(where: { $0.id == id }) {
-            let next = min(max(index + delta, 0), items.count - 1)
+            let count = items.count
+            let next = ((index + delta) % count + count) % count // wrap around
             selectedID = items[next].id
         } else {
             selectedID = delta >= 0 ? items.first?.id : items.last?.id
