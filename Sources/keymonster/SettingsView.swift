@@ -293,24 +293,6 @@ struct SettingsView: View {
     }
 }
 
-/// One Settings tab: a description of the feature up top, then its sections.
-/// A plain VStack (no Form, no scrolling) so the tab's ideal height is its
-/// content height and the window can size to it.
-struct SettingsTabView<Content: View>: View {
-    let description: String
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(description)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            content
-        }
-        .padding(20)
-    }
-}
-
 // MARK: - Focus shortcut row
 
 private struct FocusShortcutRow: View {

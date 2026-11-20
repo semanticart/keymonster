@@ -73,12 +73,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables: Set<AnyCancellable> = []
     private var settingsWindow: NSWindow?
     private var settingsSizeObservation: NSKeyValueObservation?
+    private var settingsFitObserver: NSObjectProtocol?
     private let axPrewarmer = AXPrewarmer()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.info("applicationDidFinishLaunching")
         NSApp.setActivationPolicy(.accessory)
         axPrewarmer.start()
+        #if DEBUG
+        // `--show-settings` opens the settings window at launch so live checks
+        // (keysim shot:/click:) can look at it without driving the menu bar.
+        if CommandLine.arguments.contains("--show-settings") {
+            DispatchQueue.main.async { self.showSettings() }
+        }
+        #endif
 
         do {
             let store = try SQLiteClipStore(url: SQLiteClipStore.defaultURL())
@@ -217,6 +225,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 win?.resizeContentKeepingTopLeft(to: size)
             }
         }
+        // The window follows the content's size by itself, growing downward
+        // from where it was centered for the first tab — so after every
+        // resize, slide it back up if a taller tab left it hanging off-screen.
+        settingsFitObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResizeNotification, object: win, queue: .main
+        ) { [weak win] _ in
+            MainActor.assumeIsolated { win?.slideOntoScreen() }
+        }
         settingsWindow = win
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
@@ -281,6 +297,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 private extension NSWindow {
+    /// Moves the window up just enough that its bottom edge is on screen.
+    func slideOntoScreen() {
+        guard let visible = (screen ?? NSScreen.main)?.visibleFrame else { return }
+        let newY = WindowFit.originY(forHeight: frame.height, proposed: frame.minY, in: visible)
+        if newY != frame.minY { setFrameOrigin(NSPoint(x: frame.minX, y: newY)) }
+    }
+
     /// Resize to a new content size, keeping the top-left corner where it is —
     /// how Settings-style windows grow and shrink when tabs change. A plain
     /// setContentSize pins the bottom-left instead, so the title bar would jump.
@@ -291,5 +314,14 @@ private extension NSWindow {
         frame.origin = NSPoint(x: topLeft.x, y: topLeft.y - frame.height)
         guard frame != self.frame else { return }
         setFrame(frame, display: true, animate: true)
+    }
+}
+
+enum WindowFit {
+    /// The window's bottom edge (AppKit y) once it's pulled back onto
+    /// `visible`: a tab switch that grows the window downward slides it up
+    /// just enough to keep its bottom on screen, never past the top.
+    static func originY(forHeight height: CGFloat, proposed: CGFloat, in visible: CGRect) -> CGFloat {
+        min(max(proposed, visible.minY), max(visible.maxY - height, visible.minY))
     }
 }

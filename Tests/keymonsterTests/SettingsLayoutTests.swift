@@ -32,3 +32,36 @@ final class SettingsLayoutTests: XCTestCase {
         XCTAssertEqual(squeezed, ideal, accuracy: 1)
     }
 }
+
+final class SettingsTabHeightTests: XCTestCase {
+    func testShortContentKeepsItsHeight() {
+        XCTAssertEqual(SettingsTabHeight.clamped(content: 400, screenHeight: 1000), 400)
+    }
+
+    func testTallContentStopsShortOfTheScreen() {
+        XCTAssertEqual(
+            SettingsTabHeight.clamped(content: 3000, screenHeight: 1000),
+            1000 - SettingsTabHeight.chrome
+        )
+    }
+
+    func testTinyScreensStillGetUsableHeight() {
+        XCTAssertEqual(SettingsTabHeight.clamped(content: 3000, screenHeight: 200), 300)
+    }
+}
+
+final class WindowFitTests: XCTestCase {
+    private let visible = CGRect(x: 0, y: 100, width: 1000, height: 800)
+
+    func testWindowAlreadyOnScreenStaysPut() {
+        XCTAssertEqual(WindowFit.originY(forHeight: 300, proposed: 400, in: visible), 400)
+    }
+
+    func testWindowHangingOffTheBottomSlidesUp() {
+        XCTAssertEqual(WindowFit.originY(forHeight: 600, proposed: 20, in: visible), 100)
+    }
+
+    func testWindowTallerThanTheScreenPinsToTheBottomEdge() {
+        XCTAssertEqual(WindowFit.originY(forHeight: 900, proposed: 20, in: visible), 100)
+    }
+}

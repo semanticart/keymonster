@@ -11,6 +11,7 @@ import CoreGraphics
 ///   activate:<bundle-id-substring>   foreground a running app
 ///   delay:<seconds>                  sleep
 ///   key:<keyCode>[:<mod,mod...>]     press+release; mods: cmd,shift,opt,ctrl
+///   click:<x>:<y>                    left-click at global point (points)
 ///   shot:<path.png>                  save the main display (overlays included)
 ///
 /// Launch via `open -n --args …` like the other debug runners, so the posted
@@ -39,6 +40,13 @@ enum KeySimRunner {
             }?.activate()
         case "delay":
             usleep(UInt32((Double(parts[1]) ?? 1) * 1_000_000))
+        case "click":
+            let point = CGPoint(x: Double(parts[1]) ?? 0, y: Double(parts[2]) ?? 0)
+            for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+                CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left)?
+                    .post(tap: .cghidEventTap)
+                usleep(50_000)
+            }
         case "shot":
             saveScreenshot(to: parts[1])
         case "key":
