@@ -75,6 +75,7 @@ final class AppSettings: ObservableObject {
     static let hintRightShortcutKey = "hintRightClickShortcut"
     static let gridShortcutKey = "gridClickShortcut"
     static let scrollShortcutKey = "scrollPanesShortcut"
+    static let largestScrollDomainsKey = "largestScrollDomains"
     static let textJumpShortcutKey = "textJumpShortcut"
     static let menuSearchShortcutKey = "menuSearchShortcut"
     static let bookmarksShortcutKey = "bookmarksShortcut"
@@ -256,6 +257,12 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(installUpdatesAutomatically, forKey: Self.installUpdatesAutomaticallyKey) }
     }
 
+    /// Browser domains where scroll mode skips the pane pick and scrolls the
+    /// biggest pane; see `ScrollDomainRule`. Entries are normalized hosts.
+    @Published var largestScrollDomains: [String] {
+        didSet { persistList(largestScrollDomains, forKey: Self.largestScrollDomainsKey) }
+    }
+
     /// True while ShortcutRecorder is capturing a key combo. Not persisted:
     /// AppDelegate registers no hotkeys while this is set, so a combo being
     /// recorded can't also trigger a live global shortcut.
@@ -285,6 +292,7 @@ final class AppSettings: ObservableObject {
         quitEditorTerminal = defaults.object(forKey: Self.quitEditorTerminalKey) as? Bool ?? true
         appShortcuts = Self.loadList(defaults, key: Self.appShortcutsKey)
         scriptShortcuts = Self.loadList(defaults, key: Self.scriptShortcutsKey)
+        largestScrollDomains = Self.loadList(defaults, key: Self.largestScrollDomainsKey)
     }
 
     private static func loadShortcut(_ defaults: UserDefaults, key: String) -> Shortcut? {

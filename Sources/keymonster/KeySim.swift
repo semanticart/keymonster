@@ -11,6 +11,7 @@ import CoreGraphics
 ///   activate:<bundle-id-substring>   foreground a running app
 ///   delay:<seconds>                  sleep
 ///   key:<keyCode>[:<mod,mod...>]     press+release; mods: cmd,shift,opt,ctrl
+///   shot:<path.png>                  save the main display (overlays included)
 ///
 /// Launch via `open -n --args …` like the other debug runners, so the posted
 /// events come from the app's own TCC identity.
@@ -38,6 +39,8 @@ enum KeySimRunner {
             }?.activate()
         case "delay":
             usleep(UInt32((Double(parts[1]) ?? 1) * 1_000_000))
+        case "shot":
+            saveScreenshot(to: parts[1])
         case "key":
             let keyCode = CGKeyCode(Int(parts[1]) ?? 0)
             let flags = parts.count > 2 ? flags(from: parts[2]) : []
@@ -52,6 +55,15 @@ enum KeySimRunner {
         default:
             fputs("keysim: unknown step \(step)\n", stderr)
         }
+    }
+
+    private static func saveScreenshot(to path: String) {
+        guard let image = ScreenGrab.imageBlocking(of: CGDisplayBounds(CGMainDisplayID())) else {
+            fputs("keysim: screenshot failed (Screen Recording permission?)\n", stderr)
+            return
+        }
+        let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+        try? data?.write(to: URL(fileURLWithPath: path))
     }
 
     private static func flags(from mods: String) -> CGEventFlags {

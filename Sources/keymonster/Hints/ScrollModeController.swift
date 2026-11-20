@@ -17,6 +17,12 @@ final class ScrollModeController {
     private struct Session {
         var panes: [ScrollPane]
         let windowFrame: CGRect
+        /// The browser page behind the panes, for the `!` shortcut.
+        var pageURL: URL?
+        /// Every pane found, before a per-site rule narrowed the list.
+        var allPanes: [ScrollPane]
+        /// The site whose always-biggest-pane rule chose the pane, if one did.
+        var ruleHost: String?
     }
 
     private enum Phase {
@@ -37,7 +43,12 @@ final class ScrollModeController {
         return true
     }
 
-    init() {
+    private let settings: AppSettings
+
+    init(settings: AppSettings = .shared) {
+        self.settings = settings
+        // `!` remembers the site; the classifier must let it through.
+        keyInput.classifier.extraCharacters = ["!"]
         keyInput.handler = { [weak self] key in self?.handle(key) }
     }
 
@@ -56,7 +67,15 @@ final class ScrollModeController {
             NSSound.beep()
             return
         }
-        let session = Session(panes: tmuxAimed(scan.panes), windowFrame: scan.windowFrame)
+        let all = tmuxAimed(scan.panes)
+        let panes = ScrollDomainRule.resolve(
+            panes: all, pageURL: scan.pageURL,
+            rules: settings.largestScrollDomains, windowFrame: scan.windowFrame
+        )
+        let session = Session(
+            panes: panes, windowFrame: scan.windowFrame, pageURL: scan.pageURL, allPanes: all,
+            ruleHost: panes.count < all.count ? ScrollDomainRule.rule(for: scan.pageURL) : nil
+        )
         switch ScrollActivation.forPaneCount(session.panes.count) {
         case .none:
             log.info("no scrollable panes in the frontmost window")
@@ -113,10 +132,12 @@ final class ScrollModeController {
     }
 
     private func showActivePane(_ session: Session, index: Int) {
+        var banner = "J/K to scroll (⇧ faster) · Esc to stop"
+        if let host = session.ruleHost { banner += " · biggest pane on \(host)" }
         overlay.showPanes(
             [(rect: visibleRect(of: session.panes[index], in: session), label: nil)],
             windowFrame: session.windowFrame,
-            banner: "J/K to scroll (⇧ faster) · Esc to stop"
+            banner: banner
         )
     }
 
@@ -146,6 +167,8 @@ final class ScrollModeController {
             selection.backspace()
             phase = .selecting(session, selection)
             overlay.update(typed: selection.typed)
+        case .letter("!", _):
+            rememberSite(session)
         case .letter(let letter, _):
             switch selection.type(letter) {
             case .matched(let index):
@@ -169,6 +192,8 @@ final class ScrollModeController {
             if session.panes.count > 1 {
                 startSelecting(session)
             }
+        case .letter("!", _):
+            rememberSite(session)
         case .letter(let letter, let shifted):
             guard let pixels = ScrollWheel.pixels(for: letter, shifted: shifted) else {
                 NSSound.beep()
@@ -178,6 +203,24 @@ final class ScrollModeController {
             scroller.scroll(pixels: pixels, at: CGPoint(x: rect.midX, y: rect.midY))
             refreshOutline(session, index: index)
         }
+    }
+
+    /// `!`: always scroll the biggest pane on this page's site from now on.
+    /// Takes effect immediately — the pick collapses to that pane.
+    private func rememberSite(_ session: Session) {
+        guard let host = ScrollDomainRule.rule(for: session.pageURL),
+              let biggest = ScrollDomainRule.largest(of: session.allPanes, in: session.windowFrame) else {
+            NSSound.beep()
+            return
+        }
+        if !settings.largestScrollDomains.contains(host) {
+            settings.largestScrollDomains.append(host)
+        }
+        var narrowed = session
+        narrowed.panes = [biggest]
+        narrowed.ruleHost = host
+        phase = .scrolling(narrowed, index: 0)
+        showActivePane(narrowed, index: 0)
     }
 
     /// Keeps the outline honest while scrolling: panes rarely move, but ones

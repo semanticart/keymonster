@@ -99,6 +99,9 @@ enum AXScrollPaneFinder {
         let panes: [ScrollPane]
         /// Focused window frame in AX (global, top-left origin) coordinates.
         let windowFrame: CGRect
+        /// The page a browser window is showing (the outermost web area's
+        /// URL), for per-site scroll rules. nil outside browsers.
+        let pageURL: URL?
     }
 
     private static let maxElements = 3000
@@ -130,6 +133,7 @@ enum AXScrollPaneFinder {
         // twice (see `ScrollPaneFilter.isRedundant`).
         var queue: [(element: AXUIElement, paneAbove: CGRect?)] = [(window, nil)]
         var head = 0
+        var pageURL: URL?
 
         while head < queue.count, head < maxElements, Date().timeIntervalSince(start) < timeBudget {
             let (element, paneAbove) = queue[head]
@@ -146,6 +150,10 @@ enum AXScrollPaneFinder {
                 frame: AXHintTargetFinder.frame(position: values[1], size: values[2]),
                 children: AXHintTargetFinder.children(from: values[3])
             )
+
+            if pageURL == nil, read.role == "AXWebArea" {
+                pageURL = AXHintTargetFinder.attributes(of: element, ["AXURL"])[0] as? URL
+            }
 
             let vetted = vet(
                 element, read: read, windowFrame: windowFrame,
@@ -164,7 +172,7 @@ enum AXScrollPaneFinder {
         }
 
         log.debug("scanned \(head) elements, found \(panes.count) scroll pane(s)")
-        return Scan(panes: panes, windowFrame: windowFrame)
+        return Scan(panes: panes, windowFrame: windowFrame, pageURL: pageURL)
     }
 
     /// One element's attributes, fetched in a single IPC round trip.

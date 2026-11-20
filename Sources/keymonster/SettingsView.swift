@@ -174,17 +174,17 @@ struct SettingsView: View {
                 header: "Scroll Panes",
                 footer: "Outline every scrollable pane in the active window and type a "
                     + "pane's letter to start scrolling it with J and K — a lone pane "
-                    + "starts scrolling right away. Delete returns to the pane pick; "
-                    + "Esc stops."
+                    + "starts scrolling right away. Delete returns to the pane pick; Esc "
+                    + "stops. In a browser, ! remembers the site (always scroll its biggest pane)."
             ) {
                 ShortcutSettingRow(
-                    title: "Scroll",
-                    shortcut: $settings.scrollShortcut,
+                    title: "Scroll", shortcut: $settings.scrollShortcut,
                     isConflicting: isConflicting(settings.scrollShortcut)
                 )
                 if settings.scrollShortcut != nil && !accessTrusted {
                     AccessibilityNotice()
                 }
+                ScrollDomainsEditor(settings: settings)
             }
 
             ExperimentalHintsSection()
